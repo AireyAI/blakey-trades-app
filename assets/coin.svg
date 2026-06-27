@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <radialGradient id="face" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#F7E6AE"/>
+      <stop offset="42%" stop-color="#D8B860"/>
+      <stop offset="78%" stop-color="#C7A44D"/>
+      <stop offset="100%" stop-color="#9A7B2E"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8CE86"/>
+      <stop offset="100%" stop-color="#7E6322"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="url(#rim)"/>
+  <circle cx="50" cy="50" r="44" fill="url(#face)"/>
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#fff" stroke-opacity="0.25" stroke-width="1"/>
+  <circle cx="50" cy="50" r="38" fill="none" stroke="#7E6322" stroke-opacity="0.45" stroke-width="1.4"/>
+  <!-- ₿-style BT monogram -->
+  <g fill="none" stroke="#2a1f06" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+    <path d="M41 22 V78"/>
+    <path d="M41 30 H53 a11 10 0 0 1 0 20 H41"/>
+    <path d="M41 50 H56 a12 11 0 0 1 0 22 H41"/>
+  </g>
+  <!-- sheen -->
+  <ellipse cx="38" cy="32" rx="22" ry="13" fill="#fff" opacity="0.16"/>
+</svg>

@@ -1,0 +1,37 @@
+# Design locked — Blakey Trades community app (pitch prototype)
+
+design_system: premium-dark (mirrored from client brand, blakeytrades.com)
+design_md_ref: premium-dark + bespoke "living market" direction
+rationale: |
+  Brand is GIVEN by the client (near-black + gold, Sora/Outfit). The app must feel
+  like Blakey Trades, so dark+gold is mandated, not a default choice. Distinctiveness
+  comes from the SUBJECT (live gold market), not from inventing a new palette:
+    - JetBrains Mono for ALL numerics (prices, entry/SL/TP, timers, P&L, ranks) —
+      trading data belongs in a tabular mono face. Content-driven, not decorative.
+    - Signature: the market is literally alive — animated gold candlestick/price line
+      behind Home + Live headers (canvas, reduced-motion aware).
+    - Gold-foil sheen reserved ONLY for "earned" moments (Trader of the Week trophy,
+      level badges). Everything else stays quiet so the signature lands.
+    - Broker-ticket vernacular for trade ideas; session eyebrows (LONDON · LIVE)
+      instead of generic 01/02/03 numbering.
+
+brand:
+  ink:        "#040406"
+  surface:    "#0E0E12"
+  surface_2:  "#16161B"
+  surface_3:  "#20202A"
+  line:       "rgba(237,237,232,0.08)"
+  gold:       "#C7A44D"
+  gold_hi:    "#E8CE86"
+  gold_deep:  "#9A7B2E"
+  text:       "#EDEDE8"
+  muted:      "#8F8F99"
+  up:         "#37BE7E"
+  down:       "#F0565B"
+  live:       "#FF4D4D"
+  display_font: "Sora"
+  body_font:    "Outfit"
+  data_font:    "JetBrains Mono"
+
+locked_by: claude (mirroring client brand per SPEC.md; no 2-direction exploration needed — brand is predetermined)
+date: 2026-06-27
