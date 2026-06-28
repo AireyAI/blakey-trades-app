@@ -1,7 +1,13 @@
 # Design locked — Blakey Trades community app (pitch prototype)
 
 design_system: premium-dark (mirrored from client brand, blakeytrades.com)
-design_md_ref: premium-dark + bespoke "living market" direction
+design_md_ref: premium-dark · exemplars Revolut (design.md 12505) + Apple (design.md 359)
+aaa_upgrade_2026_06_29: |
+  Client asked for triple-A. Rebuilt the token layer — tokens.css is now the single
+  source — and benchmarked to Revolut + Apple ("flagship fintech app"): near-black +
+  graphite surfaces, gold as a PRECISE accent (perpetual gold shimmer removed — Apple
+  restraint), big tight-tracked display type, pill buttons, glass top-bar/tab-bar,
+  near-zero shadows (depth via contrast + whitespace), brushed-metal hero card.
 rationale: |
   Brand is GIVEN by the client (near-black + gold, Sora/Outfit). The app must feel
   like Blakey Trades, so dark+gold is mandated, not a default choice. Distinctiveness
@@ -16,16 +22,16 @@ rationale: |
       instead of generic 01/02/03 numbering.
 
 brand:
-  ink:        "#040406"
-  surface:    "#0E0E12"
-  surface_2:  "#16161B"
-  surface_3:  "#20202A"
-  line:       "rgba(237,237,232,0.08)"
+  ink:        "#08080A"
+  surface:    "#0E0E11"
+  surface_2:  "#15151A"
+  surface_3:  "#1D1D23"
+  line:       "rgba(255,255,255,0.06)"
   gold:       "#C7A44D"
   gold_hi:    "#E8CE86"
   gold_deep:  "#9A7B2E"
-  text:       "#EDEDE8"
-  muted:      "#8F8F99"
+  text:       "#F3F3F1"
+  muted:      "#9A9AA6"
   up:         "#37BE7E"
   down:       "#F0565B"
   live:       "#FF4D4D"

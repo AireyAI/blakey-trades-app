@@ -3,54 +3,16 @@
    Premium dark + gold. "Living market" direction.
    ============================================================ */
 
-:root{
-  /* surfaces */
-  --ink:#040406;
-  --surface:#0E0E12;
-  --surface-2:#16161B;
-  --surface-3:#20202A;
-  --line:rgba(237,237,232,0.08);
-  --line-2:rgba(237,237,232,0.14);
-
-  /* brand gold */
-  --gold:#C7A44D;
-  --gold-hi:#E8CE86;
-  --gold-deep:#9A7B2E;
-  --gold-foil:linear-gradient(135deg,#9A7B2E 0%,#C7A44D 28%,#F3DfA0 50%,#C7A44D 72%,#8C6E27 100%);
-
-  /* text */
-  --text:#EDEDE8;
-  --muted:#8F8F99;
-  --faint:#5C5C66;
-
-  /* market */
-  --up:#37BE7E;
-  --down:#F0565B;
-  --live:#FF4D4D;
-
-  /* type */
-  --display:"Sora",system-ui,sans-serif;
-  --body:"Outfit",system-ui,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,monospace;
-
-  /* radii / shadow */
-  --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:28px; --r-full:999px;
-  --sh-1:0 1px 0 rgba(255,255,255,0.03) inset,0 8px 24px -12px rgba(0,0,0,0.7);
-  --sh-2:0 1px 0 rgba(255,255,255,0.04) inset,0 24px 60px -24px rgba(0,0,0,0.85);
-  --glow-gold:0 0 0 1px rgba(199,164,77,0.35),0 12px 40px -12px rgba(199,164,77,0.35);
-
-  /* app metrics */
-  --tabbar-h:78px;
-  --app-w:390px;
-  --app-h:844px;
-}
+/* Design tokens are the single source of truth in tokens.css (loaded first).
+   Family: premium-dark · Exemplars: Revolut + Apple (see tokens.css header). */
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
   font-family:var(--body);
-  background:#08080b;
+  background:var(--ink);
   color:var(--text);
+  letter-spacing:var(--tracking-body);
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
   overflow:hidden;
@@ -141,8 +103,8 @@ a{color:inherit;text-decoration:none}
   height:var(--tabbar-h);
   display:flex;align-items:flex-start;justify-content:space-around;
   padding:11px 3px 0;
-  background:linear-gradient(to top,rgba(4,4,6,.96) 60%,rgba(4,4,6,.0));
-  backdrop-filter:blur(18px);
+  background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
   border-top:1px solid var(--line);
 }
 .tab{
@@ -160,8 +122,8 @@ a{color:inherit;text-decoration:none}
 /* ---------- Type utilities ---------- */
 .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
 .eyebrow.muted{color:var(--muted)}
-.h1{font-family:var(--display);font-weight:800;font-size:30px;line-height:1.04;letter-spacing:-.03em}
-.h2{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.1;letter-spacing:-.02em}
+.h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.02;letter-spacing:var(--tracking-mega)}
+.h2{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.12;letter-spacing:var(--tracking)}
 .h3{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:-.01em}
 .sub{color:var(--muted);font-size:13.5px;line-height:1.55}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -173,18 +135,18 @@ a{color:inherit;text-decoration:none}
 .section-head .more{font-size:12px;color:var(--muted);font-weight:600}
 
 /* gold text */
-.gold-text{background:var(--gold-foil);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:foil 6s linear infinite}
-@keyframes foil{to{background-position:200% center}}
+.gold-text{background:var(--gold-foil);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 /* ---------- Buttons ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
-  height:52px;padding:0 22px;border-radius:var(--r-full);
-  font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.01em;
-  transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s,filter .25s;
+  height:54px;padding:0 24px;border-radius:var(--r-full);
+  font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.005em;
+  transition:transform .2s var(--ease-spring),box-shadow .25s,filter .25s,opacity .25s;
   -webkit-tap-highlight-color:transparent;user-select:none}
-.btn:active{transform:scale(.96)}
-.btn-gold{background:var(--gold-foil);background-size:200% auto;color:#1a1407;box-shadow:var(--glow-gold);animation:foil 6s linear infinite}
-.btn-gold:active{filter:brightness(1.05)}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold-foil);color:#190f02;box-shadow:0 10px 34px -12px rgba(199,164,77,.42)}
+.btn-gold:hover{filter:brightness(1.06)}
+.btn-gold:active{filter:brightness(1.02)}
 .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--line-2)}
 .btn-block{display:flex;width:100%}
 .btn-sm{height:40px;font-size:13px;padding:0 16px}
@@ -255,8 +217,8 @@ a{color:inherit;text-decoration:none}
 .brand-word{height:24px;width:auto;opacity:.95}
 .app-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 2px}
 .app-head .who{display:flex;align-items:center;gap:11px}
-.app-head .who small{display:block;font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.02em}
-.app-head .who b{font-family:var(--display);font-size:16px;font-weight:700}
+.app-head .who small{display:block;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.01em}
+.app-head .who b{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;position:relative}
 .icon-btn svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:1.7}
 .icon-btn .badge{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--surface-2)}
@@ -264,12 +226,13 @@ a{color:inherit;text-decoration:none}
 /* =========================================================
    HOME
    ========================================================= */
-.live-banner{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:18px;margin-top:14px;
-  background:linear-gradient(150deg,#16110a,#0b0a0e 72%);border:1px solid rgba(199,164,77,.15);box-shadow:var(--sh-2)}
+.live-banner{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:20px;margin-top:16px;
+  background:linear-gradient(155deg,#1b150c 0%,#100d11 56%,#0b0a0e 100%);border:1px solid var(--gold-line);
+  box-shadow:var(--sh-2),inset 0 1px 0 rgba(246,227,172,.16)}
 .live-banner .market-bg{position:absolute;inset:0;opacity:.55}
 .live-banner .lb-inner{position:relative;z-index:2}
 .live-banner .lb-row{display:flex;align-items:center;justify-content:space-between}
-.live-banner h3{font-family:var(--display);font-weight:700;font-size:18px;margin:9px 0 3px}
+.live-banner h3{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.02em;line-height:1.1;margin:11px 0 4px}
 .countdown{display:flex;gap:7px;margin-top:13px}
 .cd-cell{background:rgba(0,0,0,.45);border:1px solid var(--line);border-radius:12px;min-width:52px;padding:8px 0;text-align:center}
 .cd-cell b{font-family:var(--mono);font-size:21px;font-weight:700;display:block;line-height:1}
