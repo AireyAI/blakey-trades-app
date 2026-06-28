@@ -90,7 +90,7 @@ a{color:inherit;text-decoration:none}
   scrollbar-width:none;
 }
 .screen-scroll::-webkit-scrollbar{display:none}
-.screen{padding:0 18px calc(var(--tabbar-h) + 26px);}
+.screen{padding:0 20px calc(var(--tabbar-h) + 26px);}
 .screen.noscroll{padding-bottom:0}
 
 /* screen transition */
@@ -131,7 +131,7 @@ a{color:inherit;text-decoration:none}
 /* base inline icon — context rules (.stat .ic, .pill .ic, .tab svg…) override */
 .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:middle}
 
-.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:26px 2px 13px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:30px 2px 14px}
 .section-head .more{font-size:12px;color:var(--muted);font-weight:600}
 
 /* gold text */
@@ -218,7 +218,7 @@ a{color:inherit;text-decoration:none}
 .app-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 2px}
 .app-head .who{display:flex;align-items:center;gap:11px}
 .app-head .who small{display:block;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.01em}
-.app-head .who b{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.app-head .who b{font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.025em;line-height:1.08}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;position:relative}
 .icon-btn svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:1.7}
 .icon-btn .badge{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--surface-2)}
@@ -478,7 +478,7 @@ a{color:inherit;text-decoration:none}
 .profile-head .handle{font-family:var(--mono);font-size:12px;color:var(--gold);margin-top:3px}
 .level{margin-top:18px;padding:15px}
 .level-bar{height:8px;border-radius:5px;background:var(--surface-3);overflow:hidden;margin:11px 0 8px}
-.level-bar i{display:block;height:100%;background:var(--gold-foil);background-size:200% auto;animation:foil 6s linear infinite}
+.level-bar i{display:block;height:100%;background:var(--gold-foil)}
 .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 .kv b{font-family:var(--mono);color:var(--text)}
 .settings-row{display:flex;align-items:center;gap:13px;padding:15px 2px;border-bottom:1px solid var(--line)}
