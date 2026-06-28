@@ -27,9 +27,9 @@ window.DATA = {
     bias: "Cautiously bullish",
     headline: "Gold coiling under 2,980 — London could expand the range",
     points: [
-      { ic:"💵", label:"Dollar (DXY)", text:"Softening into the open — a tailwind for gold" },
-      { ic:"🎯", label:"Key levels", text:"2,945 demand holds the bias · 2,982 is the cap" },
-      { ic:"📅", label:"On watch", text:"US data at 13:30 BST — expect a volatility spike" },
+      { ic:"i-dollar", label:"Dollar (DXY)", text:"Softening into the open — a tailwind for gold" },
+      { ic:"i-target", label:"Key levels", text:"2,945 demand holds the bias · 2,982 is the cap" },
+      { ic:"i-cal", label:"On watch", text:"US data at 13:30 BST — expect a volatility spike" },
     ],
   },
 
@@ -137,13 +137,13 @@ window.DATA = {
   ],
 
   badges: [
-    { ic:"🔥", name:"18-day streak", on:true },
-    { ic:"🎯", name:"60% win rate", on:true },
-    { ic:"📓", name:"Journaled 40", on:true },
-    { ic:"🎥", name:"Live regular", on:true },
-    { ic:"🏆", name:"Top 10", on:true },
-    { ic:"💎", name:"100 trades", on:false },
-    { ic:"🧠", name:"Course grad", on:false },
+    { ic:"i-flame", name:"18-day streak", on:true },
+    { ic:"i-target", name:"60% win rate", on:true },
+    { ic:"i-book", name:"Journaled 40", on:true },
+    { ic:"i-live", name:"Live regular", on:true },
+    { ic:"i-trophy", name:"Top 10", on:true },
+    { ic:"i-chart", name:"100 trades", on:false },
+    { ic:"i-learn", name:"Course grad", on:false },
   ],
 
   hubs: [
@@ -172,12 +172,12 @@ window.DATA = {
   ],
 
   notifications: [
-    { icon:"🔴", text:"London Open call starts in 12 minutes", time:"now", unread:true, group:"Today", go:"live" },
-    { icon:"📈", text:"New gold idea — XAUUSD long @ 2,946.50", time:"08:14", unread:true, group:"Today", go:"signals" },
-    { icon:"🏆", text:"You climbed to #6 on the weekly leaderboard", time:"1h ago", unread:true, group:"Today", go:"community" },
-    { icon:"💬", text:"Marcus Webb replied to your post", time:"2h ago", unread:false, group:"Today", go:"community" },
-    { icon:"🎥", text:"New replay added — New York Session", time:"Yesterday", unread:false, group:"Earlier", go:"learn" },
-    { icon:"📍", text:"London meetup is in 3 days — you're going", time:"Yesterday", unread:false, group:"Earlier", go:"hubs" },
+    { icon:"i-live", text:"London Open call starts in 12 minutes", time:"now", unread:true, group:"Today", go:"live" },
+    { icon:"i-chart", text:"New gold idea — XAUUSD long @ 2,946.50", time:"08:14", unread:true, group:"Today", go:"signals" },
+    { icon:"i-trophy", text:"You climbed to #6 on the weekly leaderboard", time:"1h ago", unread:true, group:"Today", go:"community" },
+    { icon:"i-comment", text:"Marcus Webb replied to your post", time:"2h ago", unread:false, group:"Today", go:"community" },
+    { icon:"i-play", text:"New replay added — New York Session", time:"Yesterday", unread:false, group:"Earlier", go:"learn" },
+    { icon:"i-pin", text:"London meetup is in 3 days — you're going", time:"Yesterday", unread:false, group:"Earlier", go:"hubs" },
   ],
 
   // Live chat playback script (loops). host:true = Arron pinned style.

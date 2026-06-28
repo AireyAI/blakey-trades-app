@@ -122,10 +122,11 @@
   function morningBriefCard() {
     const b = D.morningBrief;
     return `<div class="card brief reveal">
-      <div class="brief-head"><span class="eyebrow">${ic("i-chart", "ic")} Morning brief · ${b.bias}</span><span class="brief-time num">6:30 BST</span></div>
+      <div class="brief-head"><span class="eyebrow">${ic("i-chart", "ic")} Morning brief</span><span class="brief-time num">6:30 BST</span></div>
+      <div class="brief-bias">${b.bias}</div>
       <h3 class="brief-h">${b.headline}</h3>
       <div class="brief-points">
-        ${b.points.map(p => `<div class="brief-pt"><span class="bp-ic">${p.ic}</span><div class="bp-tx"><b>${p.label}</b><span>${p.text}</span></div></div>`).join("")}
+        ${b.points.map(p => `<div class="brief-pt">${ic(p.ic, "bp-ic")}<div class="bp-tx"><b>${p.label}</b><span>${p.text}</span></div></div>`).join("")}
       </div>
     </div>`;
   }
@@ -251,7 +252,7 @@
   function totwMini() {
     const w = D.traderOfWeek;
     return `<div class="card totw reveal" data-tab="community">
-      <div class="trophy">🏆</div>
+      <div class="trophy">${ic("i-trophy")}</div>
       ${av(w.initials, 44)}
       <div class="meta"><small class="eyebrow muted">This week</small><b>${w.name}</b>
         <div class="num up" style="font-size:13px;margin-top:2px">${w.ret} · ${w.winRate} win rate</div></div>
@@ -479,7 +480,7 @@
     body.innerHTML = `
       <div class="totw-big reveal">
         <div class="shine"></div>
-        <div class="crown">👑</div>
+        <div class="crown">${ic("i-trophy")}</div>
         <span class="eyebrow">Trader of the week</span>
         ${av(w.initials, 64)}
         <div class="name gold-text">${w.name}</div>
@@ -494,7 +495,7 @@
       <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
       ${D.leaderboard.map(lbRow).join("")}
       <div class="section-head"><span class="h2">Your badges</span></div>
-      <div class="badges">${D.badges.map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${b.ic}</div><small>${b.name}</small></div>`).join("")}</div>
+      <div class="badges">${D.badges.map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
       <div class="section-head"><span class="h2">From the floor</span></div>
       ${D.posts.map(post).join("")}
       <div class="spacer"></div>`;
@@ -567,10 +568,10 @@
     };
   }
   function lbRow(r) {
-    const medal = r.rank <= 3 ? ["🥇","🥈","🥉"][r.rank-1] : r.rank;
+    const medalCls = r.rank === 1 ? "m1" : r.rank === 2 ? "m2" : r.rank === 3 ? "m3" : "";
     const dn = r.delta.startsWith("+") ? "up" : r.delta.startsWith("-") ? "down" : "";
     return `<div class="lb-row ${r.top?"top":""}" style="${r.me?"border-color:rgba(199,164,77,.4);background:rgba(199,164,77,.06)":""}">
-      <div class="rank num">${medal}</div>
+      <div class="rank num ${medalCls}">${r.rank}</div>
       ${av(r.initials, 36, r.top ? "" : "quiet")}
       <div class="nm"><b>${r.name}${r.me?' · You':''}</b><small class="num">${r.handle}</small></div>
       <div style="text-align:right"><div class="pts num">${r.pts}</div><div class="delta num ${dn}">${r.delta!=="0"?r.delta:"—"}</div></div>
@@ -749,7 +750,7 @@
     const groups = {};
     D.notifications.forEach(n => (groups[n.group] = groups[n.group] || []).push(n));
     const sec = g => groups[g] ? `<div class="eyebrow muted" style="margin:16px 2px 9px">${g}</div>` +
-      groups[g].map(n => `<button class="notif ${n.unread ? "unread" : ""}" data-go="${n.go}"><span class="nicon">${n.icon}</span><span class="ntext">${n.text}</span><span class="ntime num">${n.time}</span></button>`).join("") : "";
+      groups[g].map(n => `<button class="notif ${n.unread ? "unread" : ""}" data-go="${n.go}">${ic(n.icon, "nicon")}<span class="ntext">${n.text}</span><span class="ntime num">${n.time}</span></button>`).join("") : "";
     openModal(`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
         <h2 class="h2">Notifications</h2>
