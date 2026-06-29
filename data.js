@@ -222,14 +222,11 @@ window.DATA = {
     { day:"Friday", time:"13:30", cur:"USD", impact:"high", event:"Unemployment Rate" },
     { day:"Friday", time:"13:30", cur:"USD", impact:"med",  event:"Avg Hourly Earnings" },
   ],
-  // ── watchlist (gold + correlated) ──
-  watchlist: [
-    { sym:"XAU/USD", name:"Gold Spot", chg:"+0.42%", dir:"up", seed:7, live:true },
-    { sym:"DXY", name:"US Dollar Index", px:"104.18", chg:"-0.18%", dir:"down", seed:21 },
-    { sym:"XAG/USD", name:"Silver", px:"31.92", chg:"+0.61%", dir:"up", seed:14 },
-    { sym:"US100", name:"Nasdaq 100", px:"20,438", chg:"+0.33%", dir:"up", seed:9 },
-    { sym:"BTC/USD", name:"Bitcoin", px:"68,240", chg:"-0.74%", dir:"down", seed:33 },
-    { sym:"EUR/USD", name:"Euro", px:"1.0872", chg:"+0.12%", dir:"up", seed:5 },
+  // ── gold price tool: live spot gold, priced in the community's currencies (UK / EU / Dubai) ──
+  goldCurrencies: [
+    { code:"GBP", name:"British Pound", flag:"🇬🇧", sym:"£" },
+    { code:"EUR", name:"Euro", flag:"🇪🇺", sym:"€" },
+    { code:"AED", name:"UAE Dirham", flag:"🇦🇪", sym:"AED " },
   ],
   // ── price alerts ──
   alerts: [

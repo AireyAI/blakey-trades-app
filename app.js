@@ -936,7 +936,7 @@
       { act: "calc", ic: "i-calc", label: "Risk calc" },
       { act: "calendar", ic: "i-cal", label: "Calendar" },
       { act: "alerts", ic: "i-bell", label: "Alerts" },
-      { act: "watchlist", ic: "i-chart", label: "Watchlist" },
+      { act: "watchlist", ic: "i-dollar", label: "Gold price" },
     ];
     return `<div class="tools-row">${tools.map(t => `<button class="tool-tile" data-act="${t.act}">${ic(t.ic)}<span>${t.label}</span></button>`).join("")}</div>`;
   }
@@ -1006,10 +1006,38 @@
     wire();
     const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
   }
+  // ── Gold price tool: live spot gold in the community's currencies ──
+  // USD = real spot (gold-api, shared with the market bar); GBP/EUR = ECB daily (frankfurter); AED = its fixed USD peg.
+  const AED_PEG = 3.6725; // the UAE dirham is pegged to the US dollar
+  let fxUsd = null; // { GBP, EUR } — units per 1 USD
+  async function loadFx() {
+    try {
+      const r = await fetch(CAL_API + "/fx", { cache: "no-store" });
+      if (!r.ok) throw 0;
+      const j = await r.json(); // the /fx route returns the rates object directly: { GBP, EUR }
+      if (j && (j.GBP || j.EUR)) { fxUsd = j; try { localStorage.setItem("bt_fx", JSON.stringify({ t: Date.now(), r: j })); } catch (e) {} return j; }
+    } catch (e) {}
+    return null;
+  }
+  function goldRowsHtml() {
+    const g = (mbPrice != null) ? mbPrice : null;
+    const rate = { GBP: fxUsd && fxUsd.GBP, EUR: fxUsd && fxUsd.EUR, AED: AED_PEG };
+    return D.goldCurrencies.map(c => {
+      const r = rate[c.code];
+      const px = (g != null && r) ? c.sym + (g * r).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+      return `<div class="gp-ccy"><span class="gp-flag">${c.flag}</span><div class="gp-cbody"><b>XAU/${c.code}</b><small>${c.name}</small></div><span class="gp-cpx num">${px}</span></div>`;
+    }).join("");
+  }
   function openWatchlist() {
-    const rows = D.watchlist.map(w => `<div class="wl-row"><canvas class="wl-spark" data-chart="thumb" data-seed="${w.seed}"></canvas><div class="wl-body"><b>${w.sym}</b><small>${w.name}</small></div><div class="wl-px"><b class="num">${w.live ? `<span id="wl-xau">—</span>` : w.px}</b><small class="num ${w.dir}">${w.chg}</small></div></div>`).join("");
-    openModal(`<h3 class="sheet-title">Watchlist</h3><p class="sheet-sub">Gold and what moves it.</p><div class="wl">${rows}</div>`);
-    requestAnimationFrame(() => { const x = $("#wl-xau"); if (x) x.textContent = (mbPrice != null ? mbPrice : 4090.6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); });
+    const g = (mbPrice != null) ? mbPrice : null;
+    const pct = (g != null && mbBase) ? ((g - mbBase) / mbBase * 100) : null;
+    const usd = g != null ? "$" + g.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+    const chg = pct != null ? `<span class="gp-chg num ${pct >= 0 ? "up" : "down"}">${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct).toFixed(2)}% today</span>` : "";
+    openModal(`<h3 class="sheet-title">Gold</h3><p class="sheet-sub">Live spot price · XAU/USD</p>
+      <div class="gp-hero"><canvas class="gp-spark" data-chart="thumb" data-seed="7"></canvas><div class="gp-px num">${usd}</div>${chg}<div class="gp-unit">per troy ounce</div></div>
+      <div class="gp-ccy-h">Gold in your currency</div>
+      <div class="gp-list" id="gp-list">${goldRowsHtml()}</div>`);
+    if (!fxUsd) loadFx().then(r => { if (r) { const box = $("#gp-list"); if (box) box.innerHTML = goldRowsHtml(); } });
   }
 
   // ============================ COMMUNITY / PROFILE FEATURES ============================
@@ -1264,6 +1292,8 @@
     // hydrate the economic calendar from cache (instant), then refresh from the live proxy
     try { const c = JSON.parse(localStorage.getItem("bt_cal") || "null"); if (c && c.d && c.d.length && (Date.now() - c.t) < 12 * 36e5) liveCal = c.d; } catch (e) {}
     loadCalendar();
+    try { const f = JSON.parse(localStorage.getItem("bt_fx") || "null"); if (f && f.r && (Date.now() - f.t) < 12 * 36e5) fxUsd = f.r; } catch (e) {}
+    loadFx();
     // Demo phase: no SW caching — always serve fresh. Nuke any stale SW + caches from earlier loads.
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
