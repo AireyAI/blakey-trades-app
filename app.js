@@ -425,6 +425,8 @@
           <h3 class="h2" style="margin:7px 0 5px">${f.title}</h3>
           <div class="vmeta sub" style="font-size:12px">${f.dur} · ${f.views} views · ${f.date}</div></div>
       </div>
+      ${academySection()}
+      <div class="section-head"><span class="h2">Library</span></div>
       <div class="chips" id="chips">
         ${D.categories.map(c => `<button class="chip${c===learnCat?" active":""}" data-cat="${c}">${c}</button>`).join("")}
       </div>
@@ -548,6 +550,10 @@
         </div>
         <p class="sub" style="margin-top:15px;font-style:italic">“${w.quote}”</p>
       </div>
+      <div class="comm-actions">
+        <button class="comm-act" data-act="chat">${ic("i-comm")}<span><b>Community chat</b><small>The floor, all day</small></span></button>
+        <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>June challenge</b><small>${D.challenge.done}/${D.challenge.total} days</small></span></button>
+      </div>
       <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
       ${D.leaderboard.map(lbRow).join("")}
       <div class="section-head"><span class="h2">Your badges</span></div>
@@ -559,6 +565,8 @@
       const liked = a.classList.toggle("liked"); const c = a.querySelector("span"); let n = +c.dataset.n;
       n += liked ? 1 : -1; c.dataset.n = n; c.textContent = n;
     });
+    const cbtn = body.querySelector("[data-act=chat]"); if (cbtn) cbtn.onclick = openChat;
+    const chbtn = body.querySelector("[data-act=challenge]"); if (chbtn) chbtn.onclick = openChallenge;
   }
   function openJournalEntry(id) {
     const j = D.journal.find(x => x.id === id); if (!j) return;
@@ -841,6 +849,8 @@
       <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
       ${marketBar()}
       <div style="height:14px"></div>
+      ${trackRecordCard()}
+      <div class="section-head"><span class="h2">Channels</span></div>
       ${D.channels.map(channelCard).join("")}
       <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Educational content only. Not financial advice.</p>
       <div class="spacer"></div>`);
@@ -996,8 +1006,58 @@
     openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat">${msgs.map(m => `<div class="cmsg ${m.host ? "host" : ""}">${av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : ""}</b>${m.text}</div></div>`).join("")}</div><div class="cchat-in"><input class="finput" placeholder="Message the floor…"><button class="btn btn-gold" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
   }
 
+  // ============================ ACADEMY + TRACK RECORD ============================
+  const LESSON_POOL = ["What moves gold", "Reading candles", "Support & resistance", "The London open", "Liquidity & sweeps", "The 3 entry models", "Risk per trade", "Stop placement", "Managing the trade", "Journaling & review", "Trading psychology", "Building your edge"];
+  function academySection() {
+    return `<div class="section-head"><span class="h2">Your path</span><span class="more" data-act="glossary">Glossary ›</span></div>
+      <div class="paths">${D.paths.map(p => {
+        const pct = Math.round(p.done / p.lessons * 100);
+        return `<button class="path" data-path="${p.id}">
+          <div class="path-ring" style="background:conic-gradient(${p.color} ${pct * 3.6}deg, var(--surface-3) 0)"><span>${pct}%</span></div>
+          <div class="path-body"><div class="path-top"><b>${p.name}</b><span class="path-lvl">${p.level}</span></div>
+          <div class="path-desc">${p.desc}</div><div class="path-meta">${p.done}/${p.lessons} lessons${p.done === p.lessons ? " · complete ✓" : ""}</div></div>
+          ${ic("i-chev", "ic")}</button>`;
+      }).join("")}</div>`;
+  }
+  function openPath(id) {
+    const p = D.paths.find(x => x.id === id) || D.paths[0];
+    const rows = Array.from({ length: p.lessons }, (_, i) => { const done = i < p.done, t = LESSON_POOL[i % LESSON_POOL.length]; return `<div class="lesson ${done ? "done" : ""}"><span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span><span class="les-t">${t}</span>${done ? "" : ic("i-play", "ic")}</div>`; }).join("");
+    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${p.done}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} Take the path quiz</button>`);
+    const q = $("#path-quiz"); if (q) q.onclick = openQuiz;
+  }
+  function openQuiz() {
+    const qs = [
+      { q: "What's the core BT long trigger?", a: ["Reclaim &amp; hold a level", "Buy every dip", "Round numbers"], c: 0 },
+      { q: "+2R means…", a: ["2% of account", "Twice what you risked", "Two lots"], c: 1 },
+      { q: "Gold usually moves ___ the US dollar.", a: ["With", "Inverse to", "Unrelated to"], c: 1 },
+    ];
+    openModal(`<h3 class="sheet-title">Quick quiz</h3><p class="sheet-sub">3 questions — lock in what you learned.</p><div class="quiz">${qs.map((q, i) => `<div class="quiz-q"><b>${i + 1}. ${q.q}</b>${q.a.map((opt, j) => `<button class="quiz-opt" data-c="${q.c}" data-j="${j}">${opt}</button>`).join("")}</div>`).join("")}</div><div id="quiz-score"></div>`);
+    let answered = 0, correct = 0;
+    [...document.querySelectorAll(".quiz-opt")].forEach(b => b.onclick = () => {
+      const qd = b.closest(".quiz-q"); if (qd.classList.contains("done")) return;
+      qd.classList.add("done"); answered++; if (+b.dataset.j === +b.dataset.c) correct++;
+      [...qd.querySelectorAll(".quiz-opt")].forEach(o => { o.disabled = true; if (+o.dataset.j === +o.dataset.c) o.classList.add("right"); else if (o === b) o.classList.add("wrong"); });
+      if (answered === 3) { const s = $("#quiz-score"); if (s) s.innerHTML = `<div class="qs-card">${ic("i-trophy", "ic")} You scored <b class="gold-text">${correct}/3</b> — ${correct === 3 ? "nailed it!" : "review & retry."}</div>`; }
+    });
+  }
+  function trackRecordCard() {
+    const closed = D.ideas.filter(i => i.status === "tp" || i.status === "sl");
+    const wins = closed.filter(i => i.status === "tp");
+    const wr = closed.length ? Math.round(wins.length / closed.length * 100) : 0;
+    const totalR = wins.reduce((s, i) => s + (parseFloat(i.rr) || 2), 0) - (closed.length - wins.length);
+    return `<div class="card track">
+      <div class="sch-head"><span class="eyebrow">${ic("i-shield", "ic")} Verified track record</span><span class="sch-count">last 30 days</span></div>
+      <div class="track-stats">
+        <div><b class="num up">${wr}%</b><small>Win rate</small></div>
+        <div><b class="num">${D.ideas.length}</b><small>Signals</small></div>
+        <div><b class="num ${totalR >= 0 ? "up" : "down"}">${totalR >= 0 ? "+" : ""}${totalR.toFixed(1)}R</b><small>Net result</small></div>
+      </div>
+      <p class="track-note">${ic("i-check", "ic")} Every call logged — wins and losses, independently tracked.</p></div>`;
+  }
+
   function wireCommon() {
     [...document.querySelectorAll("[data-tab]")].forEach(n => n.addEventListener("click", e => { e.stopPropagation(); go(n.dataset.tab); }));
+    [...document.querySelectorAll("[data-path]")].forEach(n => n.onclick = () => openPath(n.dataset.path));
     [...document.querySelectorAll("[data-video]")].forEach(n => n.addEventListener("click", () => openPlayer(n.dataset.video)));
     [...document.querySelectorAll("[data-idea]")].forEach(n => n.addEventListener("click", () => openIdea(n.dataset.idea)));
     [...document.querySelectorAll("[data-act=notif]")].forEach(n => n.onclick = openNotifications);
