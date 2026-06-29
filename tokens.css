@@ -10,9 +10,9 @@
   /* ---- surfaces: near-black base + graphite elevation (Apple) ---- */
   --ink:#08080A;
   --surface:#0E0E11;
-  --surface-2:#15151A;
-  --surface-3:#1D1D23;
-  --surface-4:#26262D;
+  --surface-2:rgba(255,255,255,0.05);
+  --surface-3:rgba(255,255,255,0.08);
+  --surface-4:rgba(255,255,255,0.12);
   --line:rgba(255,255,255,0.06);
   --line-2:rgba(255,255,255,0.11);
   --hairline:rgba(255,255,255,0.08);
@@ -62,7 +62,7 @@
   --sh-1:0 6px 24px -12px rgba(0,0,0,0.55);
   --sh-2:0 18px 60px -22px rgba(0,0,0,0.75);
   --glow-gold:0 0 0 1px rgba(199,164,77,0.22),0 20px 60px -20px rgba(199,164,77,0.28);
-  --glass-blur:saturate(160%) blur(22px);
+  --glass-blur:blur(30px) saturate(165%);
   --glass-bg:rgba(10,10,12,0.72);
 
   /* ---- motion ---- */

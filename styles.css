@@ -62,12 +62,15 @@ a{color:inherit;text-decoration:none}
 .app{
   position:relative;
   width:var(--app-w);height:var(--app-h);
-  background:var(--ink);
+  background:radial-gradient(125% 85% at 50% -10%, #14161d 0%, #0b0c11 50%, #070809 100%);
   border-radius:48px;
   overflow:hidden;
   display:flex;flex-direction:column;
   isolation:isolate;
 }
+/* soft vignette for depth — monochrome, no colour */
+.app::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 -70px 130px -50px rgba(0,0,0,.55),inset 0 0 150px 30px rgba(0,0,0,.3)}
 .statusbar{
   position:relative;z-index:30;
   height:50px;flex:none;
@@ -175,7 +178,7 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse{70%{box-shadow:0 0 0 7px rgba(255,77,77,0)}100%{box-shadow:0 0 0 0 rgba(255,77,77,0)}}
 
 /* ---------- Cards ---------- */
-.card{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1)}
+.card{background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 48px -24px rgba(0,0,0,.8)}
 .card-pad{padding:16px}
 .reveal{opacity:0;transform:translateY(16px);animation:reveal .6s cubic-bezier(.2,.7,.2,1) forwards}
 @keyframes reveal{to{opacity:1;transform:none}}
@@ -237,9 +240,9 @@ a{color:inherit;text-decoration:none}
    HOME
    ========================================================= */
 .live-banner{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:20px;margin-top:16px;
-  background:linear-gradient(155deg,#1b150c 0%,#100d11 56%,#0b0a0e 100%);border:1px solid var(--gold-line);
-  box-shadow:var(--sh-2),inset 0 1px 0 rgba(246,227,172,.16)}
-.live-banner .market-bg{position:absolute;inset:0;opacity:.55}
+  background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 48px -24px rgba(0,0,0,.8)}
+.live-banner .market-bg{position:absolute;inset:0;opacity:.16}
 .live-banner .lb-inner{position:relative;z-index:2}
 .live-banner .lb-row{display:flex;align-items:center;justify-content:space-between}
 .live-banner h3{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.02em;line-height:1.1;margin:11px 0 4px}
@@ -268,7 +271,7 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse-g{70%{box-shadow:0 0 0 6px rgba(55,190,126,0)}100%{box-shadow:0 0 0 0 rgba(55,190,126,0)}}
 
 /* morning brief */
-.brief{padding:16px;margin-top:13px;background:linear-gradient(135deg,rgba(199,164,77,.05),var(--surface-2) 60%);border:1px solid rgba(199,164,77,.13)}
+.brief{padding:16px;margin-top:13px}
 .brief-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .brief-time{font-size:11px;color:var(--muted)}
 .brief-bias{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:rgba(199,164,77,.09);border:1px solid rgba(199,164,77,.22);padding:3px 9px;border-radius:var(--r-full);margin-bottom:11px}
@@ -299,8 +302,8 @@ a{color:inherit;text-decoration:none}
 
 /* trader of week mini */
 .totw{position:relative;overflow:hidden;display:flex;gap:14px;align-items:center;padding:15px;
-  background:linear-gradient(120deg,rgba(199,164,77,.14),rgba(199,164,77,.03) 55%),var(--surface-2);
-  border:1px solid rgba(199,164,77,.3)}
+  background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 14px 36px -22px rgba(0,0,0,.7)}
 .totw .trophy{display:grid;place-items:center;filter:drop-shadow(0 3px 9px rgba(199,164,77,.3))}
 .totw .trophy svg{width:25px;height:25px;color:var(--gold);fill:none;stroke:currentColor;stroke-width:1.5}
 .totw .meta small{display:block;font-size:11px}
@@ -407,8 +410,8 @@ a{color:inherit;text-decoration:none}
    COMMUNITY
    ========================================================= */
 .totw-big{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:22px 20px;margin-top:14px;
-  background:linear-gradient(160deg,rgba(199,164,77,.2),rgba(199,164,77,.02) 60%),var(--surface-2);
-  border:1px solid rgba(199,164,77,.32);box-shadow:var(--sh-2);text-align:center}
+  background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 48px -24px rgba(0,0,0,.8);text-align:center}
 .totw-big .shine{position:absolute;top:-40%;left:-30%;width:80%;height:180%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);transform:rotate(18deg);animation:shine 5s ease-in-out infinite}
 @keyframes shine{0%,100%{left:-40%}50%{left:90%}}
 .totw-big .crown{display:grid;place-items:center}
@@ -456,7 +459,7 @@ a{color:inherit;text-decoration:none}
    ========================================================= */
 .hub{position:relative;overflow:hidden;border-radius:var(--r-xl);margin-bottom:14px;border:1px solid var(--line);background:var(--surface-2);box-shadow:var(--sh-2)}
 .hub-img{position:relative;height:152px;background-size:cover;background-position:center}
-.hub-img-g{position:absolute;inset:0;background:linear-gradient(to top,var(--surface-2) 0%,rgba(8,8,11,.9) 9%,rgba(8,8,11,.55) 30%,rgba(8,8,11,.05) 58%,rgba(8,8,11,.2) 100%)}
+.hub-img-g{position:absolute;inset:0;background:linear-gradient(to top,#0b0c11 0%,rgba(8,8,11,.9) 9%,rgba(8,8,11,.55) 30%,rgba(8,8,11,.05) 58%,rgba(8,8,11,.2) 100%)}
 .hub .next{position:absolute;top:12px;right:12px;z-index:2}
 .hub .next .pill{background:rgba(8,8,11,.6);backdrop-filter:blur(8px);border-color:rgba(199,164,77,.45);color:var(--gold-hi)}
 .hub-cap{position:absolute;left:16px;right:16px;bottom:9px;z-index:2}
@@ -535,6 +538,8 @@ a{color:inherit;text-decoration:none}
 /* signals — telegram channels */
 .chan{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--line);margin-bottom:11px;box-shadow:var(--sh-1);transition:transform .15s;cursor:pointer}
 .chan:active{transform:scale(.99)}
+/* frost the standalone glass surfaces (Liquid Glass redesign) */
+.marketbar,.stat,.lb-row,.notif,.chan{backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-color:var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 14px 36px -22px rgba(0,0,0,.7)}
 .chan-mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:15px;flex:none;color:#120d02;background:var(--gold-foil);background-size:160% auto}
 .chan-mark.quiet{background:var(--surface-3);color:var(--gold);border:1px solid var(--line-2)}
 .chan-mark.bot{background:linear-gradient(145deg,#1d2733,#0f1620);border:1px solid rgba(127,208,255,.25);font-size:22px}
@@ -566,9 +571,9 @@ a{color:inherit;text-decoration:none}
 .took-btn.down.on{background:rgba(240,86,91,.14);border-color:rgba(240,86,91,.4);color:var(--down)}
 
 /* circle: segmented control */
-.seg{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-full);padding:4px;margin:4px 0 16px}
+.seg{display:flex;gap:4px;background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:var(--r-full);padding:4px;margin:4px 0 16px}
 .seg-btn{flex:1;height:38px;border-radius:var(--r-full);font-family:var(--display);font-weight:600;font-size:13px;color:var(--muted);transition:color .25s,background .25s}
-.seg-btn.on{background:var(--gold-foil);background-size:200% auto;color:#1a1407;box-shadow:var(--glow-gold)}
+.seg-btn.on{background:rgba(199,164,77,.16);color:var(--gold);border:1px solid rgba(199,164,77,.32);box-shadow:0 0 22px -8px rgba(199,164,77,.5),inset 0 1px 0 rgba(246,227,172,.18)}
 
 /* journal stats + equity */
 .jstats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
