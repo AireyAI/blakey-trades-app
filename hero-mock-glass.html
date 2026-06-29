@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Blakey Trades — Liquid Glass redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --gold:#C7A44D;--gold-hi:#F1D98C;--text:#F5F5F2;--muted:#9D9DA8;--faint:#62626E;
+    --up:#46D08A;--down:#F0565B;--live:#FF4D4D;
+    --display:"Sora",system-ui,sans-serif;--body:"Outfit",system-ui,sans-serif;--mono:"JetBrains Mono",monospace;
+    --glass:rgba(255,255,255,0.045);--glass-2:rgba(255,255,255,0.07);
+    --glass-bd:rgba(255,255,255,0.11);--glass-hi:rgba(255,255,255,0.18);
+    --blur:blur(30px) saturate(165%);
+  }
+  body{font-family:var(--body);color:var(--text);background:#050507;-webkit-font-smoothing:antialiased;letter-spacing:-.006em}
+  .phone{position:relative;width:390px;min-height:844px;margin:0 auto;overflow:hidden;background:#050507}
+  /* ambient aurora backdrop — the depth that makes glass read */
+  .aurora{position:fixed;inset:0;width:390px;margin:0 auto;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60% 38% at 82% 8%, rgba(199,164,77,.30), transparent 70%),
+      radial-gradient(55% 32% at 10% 24%, rgba(120,90,40,.22), transparent 72%),
+      radial-gradient(70% 40% at 50% 108%, rgba(40,70,90,.20), transparent 70%),
+      #07070b;}
+  .grain{position:fixed;inset:0;width:390px;margin:0 auto;z-index:0;opacity:.5;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E")}
+  .scroll{position:relative;z-index:2;padding:0 18px 120px}
+  /* status bar */
+  .status{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 12px;font-family:var(--mono);font-size:14px;font-weight:600}
+  .status .dots{display:flex;gap:6px;align-items:center;opacity:.9}
+  .status .dots span{font-size:12px}
+  /* header */
+  .head{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+  .who{display:flex;align-items:center;gap:12px}
+  .av{width:46px;height:46px;border-radius:50%;background:linear-gradient(145deg,#E8CE86,#9A7B2E);display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#15100400;color:#1a1407;font-size:16px;box-shadow:0 6px 18px -6px rgba(199,164,77,.5)}
+  .who small{display:block;font-size:12.5px;color:var(--muted);font-weight:500}
+  .who b{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+  .iconbtn{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+    border:1px solid var(--glass-bd);display:grid;place-items:center;box-shadow:inset 0 1px 0 var(--glass-hi)}
+  .iconbtn svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:1.7}
+  .iconbtn .dot{position:absolute;margin:-14px 0 0 14px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px #0a0a0e}
+  /* glass card base */
+  .card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+    border:1px solid var(--glass-bd);border-radius:26px;
+    box-shadow:inset 0 1px 0 var(--glass-hi),0 24px 50px -24px rgba(0,0,0,.8)}
+  .eyebrow{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+  /* HERO live card */
+  .hero{position:relative;margin-top:22px;padding:22px;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-40px;top:-50px;width:200px;height:200px;border-radius:50%;
+    background:radial-gradient(circle,rgba(199,164,77,.35),transparent 65%);filter:blur(8px)}
+  .hero .row{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+  .livepill{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 13px;border-radius:999px;
+    background:rgba(255,77,77,.16);border:1px solid rgba(255,77,77,.4);color:#ff9b9b;font-size:11.5px;font-weight:700}
+  .livepill i{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 10px 1px var(--live)}
+  .hero h2{font-family:var(--display);font-weight:700;font-size:25px;line-height:1.08;letter-spacing:-.03em;margin:16px 0 5px;position:relative;z-index:2}
+  .hero .by{font-size:13px;color:var(--muted);position:relative;z-index:2}
+  .cd{display:flex;gap:9px;margin-top:18px;position:relative;z-index:2}
+  .cd .cell{flex:1;background:rgba(0,0,0,.28);border:1px solid var(--glass-bd);border-radius:16px;padding:11px 0;text-align:center}
+  .cd .cell b{font-family:var(--mono);font-size:23px;font-weight:700;display:block;line-height:1}
+  .cd .cell span{font-size:9px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+  .cta{display:flex;gap:11px;margin-top:18px;position:relative;z-index:2}
+  .btn{flex:1;height:54px;border-radius:999px;font-family:var(--display);font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:9px}
+  .btn-gold{background:linear-gradient(135deg,#7E631F,#C7A44D 28%,#F6E3AC 52%,#C7A44D 74%,#7E631F);color:#1a1206;box-shadow:0 12px 30px -12px rgba(199,164,77,.6)}
+  .btn-ghost{background:var(--glass-2);border:1px solid var(--glass-bd);color:var(--text);flex:0 0 130px}
+  /* ticker */
+  .ticker{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:13px 17px}
+  .ticker .l{display:flex;align-items:center;gap:9px}
+  .ticker .l i{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  .ticker .sym{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.04em}
+  .ticker .px{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--gold)}
+  .ticker .chg{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--up)}
+  .ticker .ses{font-size:11px;color:var(--muted);font-weight:600}
+  /* stat row */
+  .stats{display:flex;gap:11px;margin-top:14px}
+  .stat{flex:1;padding:15px 14px}
+  .stat .k{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+  .stat .k.up{color:var(--up)}
+  .stat small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+  /* section head */
+  .sh{display:flex;align-items:baseline;justify-content:space-between;margin:30px 4px 14px}
+  .sh h3{font-family:var(--display);font-size:19px;font-weight:700;letter-spacing:-.02em}
+  .sh a{font-size:12.5px;color:var(--muted);font-weight:600}
+  /* signal card */
+  .sig{padding:17px}
+  .sig .top{display:flex;align-items:center;justify-content:space-between}
+  .sig .pair{display:flex;align-items:center;gap:10px}
+  .sig .pair b{font-family:var(--display);font-size:17px;font-weight:700}
+  .tag{font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px}
+  .tag.long{background:rgba(70,208,138,.16);color:var(--up)}
+  .tag.gold{background:rgba(199,164,77,.16);color:var(--gold)}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  .lv{background:rgba(0,0,0,.22);border:1px solid var(--glass-bd);border-radius:14px;padding:10px 12px}
+  .lv small{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .lv b{font-family:var(--mono);font-size:15px;font-weight:700;margin-top:3px;display:block}
+  .lv.sl b{color:var(--down)} .lv.tp b{color:var(--up)}
+  /* learn card */
+  .vid{padding:0;overflow:hidden}
+  .vid .thumb{height:150px;background:linear-gradient(135deg,#1a1206,#0c1418);position:relative;display:grid;place-items:center}
+  .vid .thumb .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);border:1px solid var(--glass-hi);display:grid;place-items:center}
+  .vid .thumb .play svg{width:22px;height:22px;fill:#fff;margin-left:3px}
+  .vid .meta{padding:15px 17px}
+  .vid .meta b{font-family:var(--display);font-size:15.5px;font-weight:600}
+  .vid .meta small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+  /* liquid glass tab bar */
+  .tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;width:362px;height:66px;z-index:20;
+    display:flex;align-items:center;justify-content:space-around;padding:0 6px;border-radius:28px;
+    background:rgba(18,18,23,.5);backdrop-filter:blur(34px) saturate(190%);-webkit-backdrop-filter:blur(34px) saturate(190%);
+    border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 20px 46px -14px rgba(0,0,0,.75)}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);font-size:9.5px;font-weight:600}
+  .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7}
+  .tab .cl{position:relative;display:grid;place-items:center;width:50px;height:30px;border-radius:999px}
+  .tab.on{color:var(--gold)}
+  .tab.on .cl{background:rgba(199,164,77,.15);border:1px solid rgba(199,164,77,.3);box-shadow:0 0 22px -6px rgba(199,164,77,.6)}
+  .label{position:fixed;top:10px;left:10px;z-index:50;font-family:var(--mono);font-size:10px;color:var(--gold);background:rgba(0,0,0,.5);padding:4px 9px;border-radius:8px;border:1px solid var(--glass-bd)}
+</style></head>
+<body>
+<div class="phone">
+  <div class="aurora"></div><div class="grain"></div>
+  <div class="label">REDESIGN · Liquid Glass</div>
+  <div class="scroll">
+    <div class="status"><span>9:41</span><div class="dots"><span>●●●</span><span>📶</span><span>🔋</span></div></div>
+
+    <div class="head">
+      <div class="who">
+        <div class="av">JH</div>
+        <div><small>Good morning,</small><b>Jordan Hale</b></div>
+      </div>
+      <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot"></span></button>
+    </div>
+
+    <!-- HERO -->
+    <div class="card hero">
+      <div class="row">
+        <span class="eyebrow">London Session</span>
+        <span class="livepill"><i></i> Live in 11m</span>
+      </div>
+      <h2>London Open —<br>Gold Game Plan</h2>
+      <div class="by">Hosted by Arron Blakey · XAUUSD</div>
+      <div class="cd">
+        <div class="cell"><b>00</b><span>Hrs</span></div>
+        <div class="cell"><b>11</b><span>Min</span></div>
+        <div class="cell"><b>38</b><span>Sec</span></div>
+      </div>
+      <div class="cta">
+        <div class="btn btn-gold"><svg viewBox="0 0 24 24" width="18" height="18" fill="#1a1206"><path d="M8 5v14l11-7z"/></svg> Join live</div>
+        <div class="btn btn-ghost">Remind me</div>
+      </div>
+    </div>
+
+    <!-- ticker -->
+    <div class="card ticker">
+      <div class="l"><i></i><span class="sym">XAU/USD</span><span class="px">4,090.60</span><span class="chg">+0.42%</span></div>
+      <span class="ses">London · NY</span>
+    </div>
+
+    <!-- stats -->
+    <div class="stats">
+      <div class="card stat"><div class="k up">+7.5R</div><small>This week</small></div>
+      <div class="card stat"><div class="k">64%</div><small>Win rate</small></div>
+      <div class="card stat"><div class="k">18</div><small>Day streak</small></div>
+    </div>
+
+    <!-- signal -->
+    <div class="sh"><h3>Today's signal</h3><a>All signals ›</a></div>
+    <div class="card sig">
+      <div class="top">
+        <div class="pair"><b>XAUUSD</b><span class="tag long">▲ LONG</span></div>
+        <span class="tag gold">VIP</span>
+      </div>
+      <div class="levels">
+        <div class="lv"><small>Entry</small><b>2,946.5</b></div>
+        <div class="lv sl"><small>Stop</small><b>2,934.0</b></div>
+        <div class="lv tp"><small>Target</small><b>2,984.0</b></div>
+      </div>
+    </div>
+
+    <!-- learn -->
+    <div class="sh"><h3>Continue learning</h3><a>Library ›</a></div>
+    <div class="card vid">
+      <div class="thumb"><div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+      <div class="meta"><b>The London Open Framework</b><small>Arron Blakey · 38 min · 72% watched</small></div>
+    </div>
+  </div>
+
+  <!-- liquid glass tab bar -->
+  <div class="tabs">
+    <div class="tab on"><span class="cl"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg></span>Home</div>
+    <div class="tab"><span class="cl"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/></svg></span>Signals</div>
+    <div class="tab"><span class="cl"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/></svg></span>Live</div>
+    <div class="tab"><span class="cl"><svg viewBox="0 0 24 24"><path d="M3 7.5 12 4l9 3.5-9 3.5z"/><path d="M7 10v4.5c0 1.4 2.5 2.5 5 2.5s5-1.1 5-2.5V10"/></svg></span>Learn</div>
+    <div class="tab"><span class="cl"><svg viewBox="0 0 24 24"><path d="M5 4h14v16l-7-3-7 3z"/></svg></span>Journal</div>
+    <div class="tab"><span class="cl"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg></span>Hubs</div>
+  </div>
+</div>
+</body></html>
