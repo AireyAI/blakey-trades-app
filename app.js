@@ -136,6 +136,22 @@
       return price;
     } catch (e) { return price; }
   }
+  // fire price alerts off the live gold feed (XAU only — the one symbol with a real price here).
+  // arms on the first read so an already-passed level doesn't fire on load; re-arms when price leaves it.
+  let alertsArmed = false;
+  function checkAlerts(px) {
+    if (px == null || !D.alerts) return;
+    D.alerts.forEach(a => {
+      if (!/^XAU/.test(a.sym)) return;                       // DXY etc. have no live price yet
+      const lvl = parseFloat(String(a.price).replace(/,/g, ""));
+      if (!isFinite(lvl)) return;
+      const met = a.cond === "above" ? px >= lvl : px <= lvl;
+      if (!alertsArmed) { a._armed = !met; return; }         // don't fire pre-existing states on load
+      if (a.on && met && a._armed) { a._armed = false; a.on = false; toast(`${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price} — ${a.note}`, "i-bell"); } // one-shot, like a real price alert
+      if (!met) a._armed = true;                             // re-arm once price moves back off the level
+    });
+    alertsArmed = true;
+  }
   function mountMarketBar() {
     const allOf = sel => [...document.querySelectorAll(sel)];
     const paintSession = () => { const s = sessionInfo(); allOf(".mb-sess").forEach(e => e.textContent = s.label); allOf(".mb-next").forEach(e => e.textContent = " · " + s.next); };
@@ -148,6 +164,7 @@
         const t = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
         allOf(".mb-chg").forEach(c => { c.textContent = t; c.className = "mb-chg num " + (pct >= 0 ? "up" : "down"); });
       }
+      checkAlerts(mbPrice);
     };
     let mock = null;
     const startMock = () => { // only if the live feed never answers — never show an empty bar
@@ -1022,23 +1039,39 @@
   function openPath(id) {
     const p = D.paths.find(x => x.id === id) || D.paths[0];
     const rows = Array.from({ length: p.lessons }, (_, i) => { const done = i < p.done, t = LESSON_POOL[i % LESSON_POOL.length]; return `<div class="lesson ${done ? "done" : ""}"><span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span><span class="les-t">${t}</span>${done ? "" : ic("i-play", "ic")}</div>`; }).join("");
-    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${p.done}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} Take the path quiz</button>`);
-    const q = $("#path-quiz"); if (q) q.onclick = openQuiz;
+    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${p.done}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} ${p.name} quiz</button>`);
+    const q = $("#path-quiz"); if (q) q.onclick = () => openQuiz(p.id);
   }
-  function openQuiz() {
-    const qs = [
-      { q: "What's the core BT long trigger?", a: ["Reclaim &amp; hold a level", "Buy every dip", "Round numbers"], c: 0 },
-      { q: "+2R means…", a: ["2% of account", "Twice what you risked", "Two lots"], c: 1 },
-      { q: "Gold usually moves ___ the US dollar.", a: ["With", "Inverse to", "Unrelated to"], c: 1 },
-    ];
-    openModal(`<h3 class="sheet-title">Quick quiz</h3><p class="sheet-sub">3 questions — lock in what you learned.</p><div class="quiz">${qs.map((q, i) => `<div class="quiz-q"><b>${i + 1}. ${q.q}</b>${q.a.map((opt, j) => `<button class="quiz-opt" data-c="${q.c}" data-j="${j}">${opt}</button>`).join("")}</div>`).join("")}</div><div id="quiz-score"></div>`);
-    let answered = 0, correct = 0;
-    [...document.querySelectorAll(".quiz-opt")].forEach(b => b.onclick = () => {
-      const qd = b.closest(".quiz-q"); if (qd.classList.contains("done")) return;
-      qd.classList.add("done"); answered++; if (+b.dataset.j === +b.dataset.c) correct++;
-      [...qd.querySelectorAll(".quiz-opt")].forEach(o => { o.disabled = true; if (+o.dataset.j === +o.dataset.c) o.classList.add("right"); else if (o === b) o.classList.add("wrong"); });
-      if (answered === 3) { const s = $("#quiz-score"); if (s) s.innerHTML = `<div class="qs-card">${ic("i-trophy", "ic")} You scored <b class="gold-text">${correct}/3</b> — ${correct === 3 ? "nailed it!" : "review & retry."}</div>`; }
-    });
+  function openQuiz(pathId) {
+    const path = D.paths.find(p => p.id === pathId);
+    const bank = (D.quizzes && (D.quizzes[pathId] || D.quizzes.found)) || { pass: 1, qs: [] };
+    const title = path ? path.name : "Quick";
+    const render = () => {
+      // shuffle options each render so the correct answer is never in a fixed slot
+      const prepared = bank.qs.map(q => {
+        const opts = q.a.map((opt, j) => ({ opt, correct: j === q.c }));
+        for (let i = opts.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [opts[i], opts[k]] = [opts[k], opts[i]]; }
+        return { q: q.q, why: q.why, opts };
+      });
+      const body = prepared.map((q, i) => `<div class="quiz-q"><span class="quiz-prog">Question ${i + 1} of ${prepared.length}</span><b>${q.q}</b>${q.opts.map(o => `<button class="quiz-opt" data-correct="${o.correct ? 1 : 0}">${o.opt}</button>`).join("")}<div class="quiz-why">${q.why}</div></div>`).join("");
+      openModal(`<h3 class="sheet-title">${title} quiz</h3><p class="sheet-sub">${prepared.length} questions · ${bank.pass}/${prepared.length} to pass.</p><div class="quiz">${body}</div><div id="quiz-score"></div>`);
+      let answered = 0, correct = 0;
+      [...document.querySelectorAll(".quiz-opt")].forEach(b => b.onclick = () => {
+        const qd = b.closest(".quiz-q"); if (qd.classList.contains("done")) return;
+        qd.classList.add("done"); answered++;
+        if (b.dataset.correct === "1") correct++;
+        [...qd.querySelectorAll(".quiz-opt")].forEach(o => { o.disabled = true; if (o.dataset.correct === "1") o.classList.add("right"); else if (o === b) o.classList.add("wrong"); });
+        const why = qd.querySelector(".quiz-why"); if (why) why.classList.add("show");
+        if (answered === prepared.length) finish(correct, prepared.length);
+      });
+    };
+    const finish = (correct, total) => {
+      const passed = correct >= bank.pass, s = $("#quiz-score"); if (!s) return;
+      s.innerHTML = `<div class="qs-card ${passed ? "pass" : "fail"}">${ic(passed ? "i-trophy" : "i-target", "ic")}<div>You scored <b class="gold-text">${correct}/${total}</b> — ${passed ? "passed · +60 XP" : `${bank.pass}/${total} needed — review &amp; retry.`}</div></div><button class="btn ${passed ? "btn-ghost" : "btn-gold"} btn-block" id="quiz-retry" style="margin-top:12px">${passed ? "Retake quiz" : "Try again"}</button>`;
+      if (passed) toast("Quiz passed · +60 XP", "i-trophy");
+      const r = $("#quiz-retry"); if (r) r.onclick = render;
+    };
+    render();
   }
   function trackRecordCard() {
     const closed = D.ideas.filter(i => i.status === "tp" || i.status === "sl");
