@@ -1188,7 +1188,15 @@
     render();
   }
 
+  // scale the desktop phone-frame down to fit short windows (so the bottom — onboarding
+  // button, tab bar — is never clipped). Disabled on real phones (fullscreen, see CSS).
+  function fitDevice() {
+    const s = Math.min(1, (window.innerHeight - 56) / 868, (window.innerWidth - 28) / 414);
+    document.documentElement.style.setProperty("--fit", (s > 0 ? s : 1).toFixed(3));
+  }
+  window.addEventListener("resize", fitDevice);
   function boot() {
+    fitDevice();
     // Demo phase: no SW caching — always serve fresh. Nuke any stale SW + caches from earlier loads.
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
