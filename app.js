@@ -236,6 +236,55 @@
     </div>`;
   }
 
+  // ============================ PROFILE STATE (persisted, client-side) ============================
+  // Makes the prototype cohesive: a logged trade feeds win-rate / R:R / streak / leaderboard / badges,
+  // all saved on the device. (True cross-device sync + real auth is the production app.)
+  const PSTORE = "bt_profile_v1";
+  function pState() { try { return JSON.parse(localStorage.getItem(PSTORE) || "null") || {}; } catch (e) { return {}; } }
+  function pSave(s) { try { localStorage.setItem(PSTORE, JSON.stringify(s)); } catch (e) {} }
+  function pSet(patch) { const s = pState(); Object.assign(s, patch); pSave(s); return s; }
+  function hydrateProfile() { // first run seeds storage with the demo journal; thereafter it's the source of truth
+    const s = pState();
+    if (Array.isArray(s.journal)) D.journal = s.journal;
+    else pSet({ journal: D.journal, streak: D.user.streak, lbPoints: 3480 });
+  }
+  // journalStats() is the canonical one defined below — extended with winRate + avgRR for these helpers
+  function profStreak() { const s = pState(); return s.streak != null ? s.streak : D.user.streak; }
+  function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
+  function recordLog() { // a logged trade earns points + extends the streak once per day, and persists the journal
+    const s = pState(), today = new Date().toLocaleDateString("en-CA");
+    if (s.lastLogDay && s.lastLogDay !== today) s.streak = (s.streak != null ? s.streak : D.user.streak) + 1;
+    else if (s.streak == null) s.streak = D.user.streak;
+    s.lastLogDay = today;
+    s.lbPoints = (s.lbPoints != null ? s.lbPoints : 3480) + 50;
+    s.journal = D.journal;
+    pSave(s);
+  }
+  function liveLeaderboard() { // inject your real points, re-sort, re-rank
+    const rows = D.leaderboard.map(r => ({ ...r, _p: r.me ? lbPoints() : parseInt(String(r.pts).replace(/,/g, ""), 10) || 0 }));
+    rows.sort((a, b) => b._p - a._p);
+    rows.forEach((r, i) => { r.rank = i + 1; r.pts = r._p.toLocaleString("en-US"); r.top = i < 3; });
+    return rows;
+  }
+  function myRank() { const me = liveLeaderboard().find(r => r.me); return me ? me.rank : 99; }
+  function liveBadges() { // unlock from real stats where computable
+    const st = journalStats(), streak = profStreak(), rank = myRank();
+    const cond = { "18-day streak": streak >= 18, "60% win rate": st.winRate >= 60, "Journaled 40": st.count >= 40, "Top 10": rank <= 10, "100 trades": st.count >= 100 };
+    return D.badges.map(b => ({ ...b, on: (b.name in cond) ? cond[b.name] : b.on }));
+  }
+  function liveHomeStats() {
+    const st = journalStats();
+    return [
+      { ic: "flame", value: String(profStreak()), label: "Day streak" },
+      { ic: "target", value: st.winRate + "%", label: "Win rate" },
+      { ic: "chart", value: st.avgRR.toFixed(1) + "R", label: "Avg R:R" },
+    ];
+  }
+  // ── believable demo sign-in (persisted session) ──
+  function isSignedIn() { const s = pState(); return !!(s.session && s.session.signedIn); }
+  function setSignedIn(provider) { pSet({ session: { provider: provider || "phone", signedIn: true, at: Date.now() } }); }
+  function signOut() { const s = pState(); delete s.session; pSave(s); location.href = location.pathname; } // drop ?screen= so it returns to login
+
   // ============================ HOME ============================
   SCREENS.home = function () {
     const v = D.live;
@@ -264,7 +313,7 @@
       </div>
 
       <div class="stat-row reveal" style="animation-delay:.05s">
-        ${D.homeStats.map(s => `<div class="stat">${ic("i-" + s.ic, "ic")}<b class="num">${s.value}</b><small>${s.label}</small></div>`).join("")}
+        ${liveHomeStats().map(s => `<div class="stat">${ic("i-" + s.ic, "ic")}<b class="num">${s.value}</b><small>${s.label}</small></div>`).join("")}
       </div>
 
       ${toolsRow()}
@@ -548,7 +597,9 @@
     const decided = wins + losses, wr = decided ? Math.round(wins / decided * 100) : 0;
     const netR = J.reduce((a, j) => a + j.r, 0);
     const gW = J.filter(j => j.r > 0).reduce((a, j) => a + j.r, 0), gL = Math.abs(J.filter(j => j.r < 0).reduce((a, j) => a + j.r, 0));
-    return { wins, losses, wr, netR, pf: gL ? gW / gL : gW, count: J.length };
+    const winR = J.filter(j => j.outcome === "win").map(j => Math.abs(j.r)).filter(x => x > 0);
+    const avgRR = winR.length ? winR.reduce((a, b) => a + b, 0) / winR.length : 0;
+    return { wins, losses, wr, winRate: wr, netR, pf: gL ? gW / gL : gW, count: J.length, avgRR };
   }
   function journalCard(j) {
     const pill = j.outcome === "win" ? `<span class="pill pill-up">${resStr(j)}</span>` : j.outcome === "loss" ? `<span class="pill pill-down">${resStr(j)}</span>` : `<span class="pill">BE</span>`;
@@ -609,9 +660,9 @@
         <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>June challenge</b><small>${D.challenge.done}/${D.challenge.total} days</small></span></button>
       </div>
       <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
-      ${D.leaderboard.map(lbRow).join("")}
+      ${liveLeaderboard().map(lbRow).join("")}
       <div class="section-head"><span class="h2">Your badges</span></div>
-      <div class="badges">${D.badges.map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
+      <div class="badges">${liveBadges().map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
       <div class="section-head"><span class="h2">From the floor</span></div>
       ${D.posts.map(post).join("")}
       <div class="spacer"></div>`;
@@ -681,8 +732,9 @@
         tags: oc === "win" ? ["Followed plan"] : oc === "loss" ? ["Review"] : ["Managed well"],
         note: $("#f-note").value || "No notes added.",
       });
+      recordLog(); // persist journal + extend streak + earn leaderboard points
       closeModal(); journalFilter = "All";
-      setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged", "i-check"); }, 320);
+      setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged · +50 pts", "i-check"); }, 320);
     };
   }
   function lbRow(r) {
@@ -771,8 +823,8 @@
       </div>
 
       <div class="stat-row" style="margin-top:13px">
-        <div class="stat">${ic("i-flame","ic")}<b class="num">${u.streak}</b><small>Day streak</small></div>
-        <div class="stat">${ic("i-target","ic")}<b class="num">${u.winRate}%</b><small>Win rate</small></div>
+        <div class="stat">${ic("i-flame","ic")}<b class="num">${profStreak()}</b><small>Day streak</small></div>
+        <div class="stat">${ic("i-target","ic")}<b class="num">${journalStats().winRate}%</b><small>Win rate</small></div>
         <div class="stat">${ic("i-live","ic")}<b class="num">${u.sessions}</b><small>Calls joined</small></div>
       </div>
 
@@ -801,11 +853,13 @@
         ${settingRow("i-shield","Account & security","",false)}
         ${settingRow("i-book","Help & support","",false,null,true)}
       </div>
+      <button class="btn btn-ghost btn-block" id="sign-out" style="margin-top:14px">Sign out</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:16px;color:var(--faint)">Member since 2025 · Educational content only. Not financial advice.</p>
       <div class="spacer"></div>
     `);
     [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => { const on = t.classList.toggle("on"); toast(on ? "Turned on" : "Turned off", on ? "i-check" : null); });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
+    const so = $("#sign-out"); if (so) so.onclick = signOut;
     wireCommon();
   };
   function settingRow(icon, label, val, toggle, id, last) {
@@ -971,7 +1025,7 @@
   function toolsRow() {
     const tools = [
       { act: "calc", ic: "i-calc", label: "Risk calc" },
-      { act: "calendar", ic: "i-cal", label: "Calendar" },
+      { act: "calendar", ic: "i-cal", label: "News" },
       { act: "alerts", ic: "i-bell", label: "Alerts" },
       { act: "watchlist", ic: "i-dollar", label: "Gold price" },
     ];
@@ -1034,7 +1088,7 @@
   function openCalendar() {
     const live = !!(liveCal && liveCal.length);
     const subLive = `<span class="cal-live">● Live</span> · news that moves gold · times UK`;
-    openModal(`<h3 class="sheet-title">Economic calendar</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
+    openModal(`<h3 class="sheet-title">Market news</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
     if (!live) loadCalendar().then(d => { const box = $("#cal-list"); if (d && box) { box.innerHTML = calRowsHtml(d); const s = box.parentElement.querySelector(".sheet-sub"); if (s) s.innerHTML = subLive; } });
   }
   function openAlerts() {
@@ -1111,7 +1165,7 @@
     const j = $("#chal-join"); if (j) j.onclick = () => { c.joined = true; j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
   }
   function openMembers() {
-    const rows = D.leaderboard.map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
+    const rows = liveLeaderboard().map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
     openModal(`<h3 class="sheet-title">Members</h3><p class="sheet-sub">${(4200).toLocaleString()}+ on the floor — follow traders you rate.</p><div class="mem">${rows}</div>`);
     [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
   }
@@ -1253,7 +1307,18 @@
       setTimeout(() => { el.remove(); showOnboarding(); }, 420);
     };
     $("#enter").onclick = enter;
-    [...el.querySelectorAll("[data-soc]")].forEach(b => b.onclick = enter);
+    const provs = ["Apple", "Google", "Telegram"]; // believable demo sign-in: connect → land in the app, stay signed in
+    [...el.querySelectorAll("[data-soc]")].forEach((b, i) => b.onclick = () => {
+      const prov = provs[i] || "account";
+      [...el.querySelectorAll("[data-soc]")].forEach(x => x.disabled = true);
+      b.classList.add("loading");
+      toast(`Connecting to ${prov}…`, "i-check");
+      setSignedIn(prov);
+      setTimeout(() => {
+        el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateY(-10px)";
+        setTimeout(() => { el.remove(); renderTabbar(); go("home"); setTimeout(() => toast(`Signed in with ${prov}`, "i-check"), 450); }, 420);
+      }, 750);
+    });
   }
 
   // ---------- onboarding (first-run after login) ----------
@@ -1314,7 +1379,7 @@
       [...el.querySelectorAll("[data-lv]")].forEach(b => b.onclick = () => { level = b.dataset.lv; [...el.querySelectorAll("#ob-lv .ob-level")].forEach(x => x.classList.toggle("on", x === b)); });
       const cal = el.querySelector("[data-cal]"); if (cal) cal.onclick = () => { cal.textContent = "Added to calendar ✓"; toast("Added — see you at the open", "i-check"); };
     }
-    function finish() { el.style.transition = "opacity .4s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 420); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome, ${D.user.first} 👋`, "i-check"), 500); }
+    function finish() { setSignedIn("phone"); el.style.transition = "opacity .4s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 420); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome, ${D.user.first} 👋`, "i-check"), 500); }
     render();
   }
 
@@ -1327,6 +1392,7 @@
   window.addEventListener("resize", fitDevice);
   function boot() {
     fitDevice();
+    hydrateProfile(); // journal + streak + points from device storage (seeds the demo journal first run)
     // hydrate the economic calendar from cache (instant), then refresh from the live proxy
     try { const c = JSON.parse(localStorage.getItem("bt_cal") || "null"); if (c && c.d && c.d.length && (Date.now() - c.t) < 12 * 36e5) liveCal = c.d; } catch (e) {}
     loadCalendar();
@@ -1344,7 +1410,7 @@
     setTimeout(() => {
       const sp = $("#screen-splash");
       sp.style.transition = "opacity .5s"; sp.style.opacity = "0";
-      setTimeout(() => { sp.remove(); showLogin(); }, 520);
+      setTimeout(() => { sp.remove(); if (isSignedIn()) { renderTabbar(); go("home"); } else showLogin(); }, 520);
     }, 1700);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
