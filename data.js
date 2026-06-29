@@ -209,4 +209,58 @@ window.DATA = {
 
   // full country list for onboarding "where are you based?" — United Kingdom is the default
   countries: ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo (Brazzaville)","Congo (Kinshasa)","Costa Rica","Côte d'Ivoire","Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","São Tomé and Príncipe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"],
+
+  // ── economic calendar (gold-impact news) ──
+  calendar: [
+    { day:"Today", time:"13:30", cur:"USD", impact:"high", event:"Core CPI m/m" },
+    { day:"Today", time:"13:30", cur:"USD", impact:"high", event:"CPI y/y" },
+    { day:"Today", time:"15:00", cur:"USD", impact:"med",  event:"Fed Williams Speaks" },
+    { day:"Today", time:"08:00", cur:"GBP", impact:"low",  event:"BoE Bailey Speaks" },
+    { day:"Tomorrow", time:"13:30", cur:"USD", impact:"med", event:"Unemployment Claims" },
+    { day:"Tomorrow", time:"15:00", cur:"USD", impact:"high", event:"FOMC Member Speaks" },
+    { day:"Friday", time:"13:30", cur:"USD", impact:"high", event:"Non-Farm Payrolls" },
+    { day:"Friday", time:"13:30", cur:"USD", impact:"high", event:"Unemployment Rate" },
+    { day:"Friday", time:"13:30", cur:"USD", impact:"med",  event:"Avg Hourly Earnings" },
+  ],
+  // ── watchlist (gold + correlated) ──
+  watchlist: [
+    { sym:"XAU/USD", name:"Gold Spot", chg:"+0.42%", dir:"up", seed:7, live:true },
+    { sym:"DXY", name:"US Dollar Index", px:"104.18", chg:"-0.18%", dir:"down", seed:21 },
+    { sym:"XAG/USD", name:"Silver", px:"31.92", chg:"+0.61%", dir:"up", seed:14 },
+    { sym:"US100", name:"Nasdaq 100", px:"20,438", chg:"+0.33%", dir:"up", seed:9 },
+    { sym:"BTC/USD", name:"Bitcoin", px:"68,240", chg:"-0.74%", dir:"down", seed:33 },
+    { sym:"EUR/USD", name:"Euro", px:"1.0872", chg:"+0.12%", dir:"up", seed:5 },
+  ],
+  // ── price alerts ──
+  alerts: [
+    { sym:"XAUUSD", cond:"above", price:"2,982.0", note:"Range cap — breakout watch", on:true },
+    { sym:"XAUUSD", cond:"below", price:"2,945.0", note:"Demand zone", on:true },
+    { sym:"DXY", cond:"below", price:"104.00", note:"Dollar weakness = gold tailwind", on:false },
+  ],
+  // ── academy learning paths ──
+  paths: [
+    { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:8, color:"#3ECB86", desc:"Markets, candles & risk basics — start here." },
+    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:6, color:"#C7A44D", desc:"Liquidity, the London open & the 3 entry models." },
+    { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:2, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
+    { id:"pro", name:"Pro Execution", level:"Advanced", lessons:9, done:0, color:"#C06AFF", desc:"Scaling, sessions & a repeatable edge." },
+  ],
+  // ── glossary ──
+  glossary: [
+    { term:"Liquidity", def:"Resting orders (stops/limits) price is drawn toward — often above highs / below lows." },
+    { term:"Reclaim & hold", def:"Price breaks back above a level and holds it — the core BT long trigger." },
+    { term:"R / R-multiple", def:"Reward measured in units of risk. +2R = you made twice what you risked." },
+    { term:"Supply / Demand zone", def:"An area where price previously reversed sharply; a decision point." },
+    { term:"DXY", def:"US Dollar Index. Gold usually moves inverse to the dollar." },
+    { term:"NFP", def:"Non-Farm Payrolls — high-impact US jobs data, a big gold mover (first Friday)." },
+    { term:"SL / TP", def:"Stop Loss / Take Profit — where you exit for a loss / at target." },
+    { term:"Spread", def:"The gap between buy and sell price — your cost to enter a trade." },
+  ],
+  // ── monthly challenge ──
+  challenge: { name:"June: Journal Every Trade", desc:"Log all your trades for 30 days — build the habit that builds consistency.", done:18, total:30, reward:"Disciplined badge + leaderboard boost", joined:true },
+  // ── announcements from the team ──
+  announcements: [
+    { from:"Arron Blakey", role:"Founder", time:"2h ago", text:"New York session was textbook today — replay's up in Learn. Watch how we managed the runner." },
+    { from:"Team", role:"Blakey Trades", time:"Yesterday", text:"Dubai meetup tickets are live — 12 spots left. See you on the floor." },
+    { from:"Arron Blakey", role:"Founder", time:"2 days ago", text:"Big week ahead — CPI Wednesday + NFP Friday. Plan your risk; don't force trades around the news." },
+  ],
 };

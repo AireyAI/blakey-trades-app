@@ -213,6 +213,8 @@
         ${D.homeStats.map(s => `<div class="stat">${ic("i-" + s.ic, "ic")}<b class="num">${s.value}</b><small>${s.label}</small></div>`).join("")}
       </div>
 
+      ${toolsRow()}
+
       <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
       ${ideaCard(ideas)}
 
@@ -712,6 +714,16 @@
         <div class="stat">${ic("i-live","ic")}<b class="num">${u.sessions}</b><small>Calls joined</small></div>
       </div>
 
+      <div class="section-head"><span class="h2">Community & tools</span></div>
+      <div class="card card-pad">
+        ${hubRow("i-flame","Monthly challenge","June · journal every trade","challenge")}
+        ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
+        ${hubRow("i-share","Invite a trader","Grow the community","invite")}
+        ${hubRow("i-book","Trading glossary","Key terms, explained","glossary")}
+        ${hubRow("i-bell","Notifications","Choose what pings you","settings")}
+        ${hubRow("i-chart","Announcements","From Arron & the team","announce",true)}
+      </div>
+
       <div class="section-head"><span class="h2">Trade journal</span><span class="more" data-act="journal">Open journal ›</span></div>
       <div class="card card-pad">
         ${D.journal.slice(0,4).map((j,i)=>`<div class="journal" ${i===3?'style="border-bottom:none"':''}>
@@ -737,6 +749,9 @@
   function settingRow(icon, label, val, toggle, id, last) {
     return `<div class="settings-row"${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
       ${toggle ? `<div class="toggle on" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
+  }
+  function hubRow(icon, title, sub, act, last) {
+    return `<button class="hub-row${last ? " last" : ""}" data-act="${act}">${ic(icon, "ic")}<div class="hr-body"><b>${title}</b><small>${sub}</small></div>${ic("i-chev", "ic")}</button>`;
   }
 
   // ============================ MODALS (player + idea) ============================
@@ -888,6 +903,99 @@
   }
 
   // ---------- shared wiring ----------
+  // ============================ TRADING TOOLS ============================
+  function toolsRow() {
+    const tools = [
+      { act: "calc", ic: "i-calc", label: "Risk calc" },
+      { act: "calendar", ic: "i-cal", label: "Calendar" },
+      { act: "alerts", ic: "i-bell", label: "Alerts" },
+      { act: "watchlist", ic: "i-chart", label: "Watchlist" },
+    ];
+    return `<div class="tools-row">${tools.map(t => `<button class="tool-tile" data-act="${t.act}">${ic(t.ic)}<span>${t.label}</span></button>`).join("")}</div>`;
+  }
+  function openCalc() {
+    openModal(`
+      <h3 class="sheet-title">Risk calculator</h3><p class="sheet-sub">Position size from your risk — XAUUSD.</p>
+      <label class="flabel">Account balance ($)</label><input class="finput num" id="c-bal" inputmode="decimal" value="10000">
+      <label class="flabel">Risk per trade (%)</label><input class="finput num" id="c-risk" inputmode="decimal" value="1">
+      <div class="calc-2"><div><label class="flabel">Entry</label><input class="finput num" id="c-entry" inputmode="decimal" value="2946.5"></div><div><label class="flabel">Stop loss</label><input class="finput num" id="c-sl" inputmode="decimal" value="2934.0"></div></div>
+      <div id="calc-out"></div>`);
+    const calc = () => {
+      const bal = parseFloat($("#c-bal").value) || 0, risk = parseFloat($("#c-risk").value) || 0;
+      const entry = parseFloat($("#c-entry").value) || 0, sl = parseFloat($("#c-sl").value) || 0;
+      const riskUSD = bal * risk / 100, dist = Math.abs(entry - sl), perLot = dist * 100;
+      const lots = perLot > 0 ? riskUSD / perLot : 0;
+      const out = $("#calc-out"); if (!out) return;
+      out.innerHTML = `<div class="calc-card">
+        <div class="cc-row"><span>Risk amount</span><b class="num up">$${riskUSD.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b></div>
+        <div class="cc-row"><span>Stop distance</span><b class="num">${dist.toFixed(1)} pts</b></div>
+        <div class="cc-row big"><span>Position size</span><b class="num gold-text">${lots.toFixed(2)} lots</b></div>
+        <div class="cc-row"><span>≈ units</span><b class="num">${Math.round(lots * 100).toLocaleString()} oz</b></div>
+      </div><p class="calc-note">${ic("i-shield", "ic")} Educational tool — always confirm sizing with your broker.</p>`;
+    };
+    ["#c-bal", "#c-risk", "#c-entry", "#c-sl"].forEach(s => { const e = $(s); if (e) e.oninput = calc; });
+    calc();
+  }
+  function openCalendar() {
+    const byDay = {}; D.calendar.forEach(e => (byDay[e.day] = byDay[e.day] || []).push(e));
+    const rows = Object.keys(byDay).map(d => `<div class="cal-day">${d}</div>${byDay[d].map(e => `<div class="cal-row"><span class="cal-time num">${e.time}</span><span class="cal-cur">${e.cur}</span><span class="cal-ev">${e.event}</span><span class="cal-imp imp-${e.impact}">${e.impact}</span></div>`).join("")}`).join("");
+    openModal(`<h3 class="sheet-title">Economic calendar</h3><p class="sheet-sub">High-impact news that moves gold · times UK.</p><div class="cal">${rows}</div>`);
+  }
+  function openAlerts() {
+    const list = () => D.alerts.map((a, i) => `<div class="alert-row"><div class="alert-body"><b class="num">${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price}</b><small>${a.note}</small></div><button class="tgl ${a.on ? "on" : ""}" data-al="${i}"><span></span></button></div>`).join("");
+    openModal(`<h3 class="sheet-title">Price alerts</h3><p class="sheet-sub">Get pinged when gold hits your level.</p><div id="alert-list">${list()}</div><label class="flabel" style="margin-top:16px">New gold alert</label><div class="calc-2"><input class="finput num" id="al-px" inputmode="decimal" placeholder="e.g. 2,960"><button class="btn btn-gold" id="al-add" style="height:50px;flex:none;padding:0 18px">${ic("i-plus")} Add</button></div>`);
+    const wire = () => [...document.querySelectorAll("[data-al]")].forEach(b => b.onclick = () => { const a = D.alerts[+b.dataset.al]; a.on = !a.on; b.classList.toggle("on", a.on); });
+    wire();
+    const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
+  }
+  function openWatchlist() {
+    const rows = D.watchlist.map(w => `<div class="wl-row"><canvas class="wl-spark" data-chart="thumb" data-seed="${w.seed}"></canvas><div class="wl-body"><b>${w.sym}</b><small>${w.name}</small></div><div class="wl-px"><b class="num">${w.live ? `<span id="wl-xau">—</span>` : w.px}</b><small class="num ${w.dir}">${w.chg}</small></div></div>`).join("");
+    openModal(`<h3 class="sheet-title">Watchlist</h3><p class="sheet-sub">Gold and what moves it.</p><div class="wl">${rows}</div>`);
+    requestAnimationFrame(() => { const x = $("#wl-xau"); if (x) x.textContent = (mbPrice != null ? mbPrice : 4090.6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); });
+  }
+
+  // ============================ COMMUNITY / PROFILE FEATURES ============================
+  function openGlossary() {
+    openModal(`<h3 class="sheet-title">Trading glossary</h3><p class="sheet-sub">Plain-English definitions.</p><div class="gloss">${D.glossary.map(g => `<div class="gloss-row"><b>${g.term}</b><span>${g.def}</span></div>`).join("")}</div>`);
+  }
+  function openInvite() {
+    openModal(`<div class="invite"><div class="invite-ic">${ic("i-share")}</div>
+      <h3 class="sheet-title" style="text-align:center">Invite a trader</h3>
+      <p class="sheet-sub" style="text-align:center">Bring someone to the floor — it's free. The community grows when you do.</p>
+      <div class="invite-code"><span class="num">JORDAN-22</span><button class="invite-copy" id="inv-copy">Copy</button></div>
+      <button class="btn btn-gold btn-block" id="inv-share" style="margin-top:14px">${ic("i-share")} Share invite link</button>
+      <div class="invite-stat"><b class="num gold-text">3</b> joined · VIP badge unlocks at 5</div></div>`);
+    const c = $("#inv-copy"); if (c) c.onclick = () => { c.textContent = "Copied ✓"; toast("Invite code copied", "i-check"); };
+    const s = $("#inv-share"); if (s) s.onclick = () => toast("Share to anyone", "i-share");
+  }
+  function openSettings() {
+    const opts = ["New signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
+    const def = [1, 1, 1, 0, 1, 1];
+    openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${def[i] ? "on" : ""}" data-set></button></div>`).join("")}</div>`);
+    [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => b.classList.toggle("on"));
+  }
+  function openAnnouncements() {
+    openModal(`<h3 class="sheet-title">Announcements</h3><p class="sheet-sub">From Arron & the team.</p><div class="ann">${D.announcements.map(a => `<div class="ann-row">${av(a.from === "Team" ? "BT" : "AB", 38)}<div><div class="ann-top"><b>${a.from}</b><span class="vchk">✓</span><span class="ann-time">${a.time}</span></div><p>${a.text}</p></div></div>`).join("")}</div>`);
+  }
+  function openChallenge() {
+    const c = D.challenge, pct = Math.round(c.done / c.total * 100);
+    openModal(`<h3 class="sheet-title">Monthly challenge</h3><div class="chal"><div class="chal-ic">${ic("i-flame")}</div>
+      <b class="chal-name">${c.name}</b><p class="chal-desc">${c.desc}</p>
+      <div class="chal-bar"><i style="width:${pct}%"></i></div><div class="chal-meta"><span class="num gold-text">${c.done}/${c.total}</span> days · ${pct}%</div>
+      <div class="chal-reward">${ic("i-trophy", "ic")} ${c.reward}</div>
+      <button class="btn ${c.joined ? "btn-ghost" : "btn-gold"} btn-block" id="chal-join" style="margin-top:16px">${c.joined ? "You're in ✓" : "Join challenge"}</button></div>`);
+    const j = $("#chal-join"); if (j) j.onclick = () => { c.joined = true; j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
+  }
+  function openMembers() {
+    const rows = D.leaderboard.map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
+    openModal(`<h3 class="sheet-title">Members</h3><p class="sheet-sub">${(4200).toLocaleString()}+ on the floor — follow traders you rate.</p><div class="mem">${rows}</div>`);
+    [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
+  }
+  function openChat() {
+    const msgs = D.chatScript.slice(0, 8);
+    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat">${msgs.map(m => `<div class="cmsg ${m.host ? "host" : ""}">${av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : ""}</b>${m.text}</div></div>`).join("")}</div><div class="cchat-in"><input class="finput" placeholder="Message the floor…"><button class="btn btn-gold" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
+  }
+
   function wireCommon() {
     [...document.querySelectorAll("[data-tab]")].forEach(n => n.addEventListener("click", e => { e.stopPropagation(); go(n.dataset.tab); }));
     [...document.querySelectorAll("[data-video]")].forEach(n => n.addEventListener("click", () => openPlayer(n.dataset.video)));
@@ -897,6 +1005,17 @@
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
     [...document.querySelectorAll("[data-act=search]")].forEach(n => n.onclick = () => toast("Search the library", "i-search"));
+    [...document.querySelectorAll("[data-act=calc]")].forEach(n => n.onclick = openCalc);
+    [...document.querySelectorAll("[data-act=calendar]")].forEach(n => n.onclick = openCalendar);
+    [...document.querySelectorAll("[data-act=alerts]")].forEach(n => n.onclick = openAlerts);
+    [...document.querySelectorAll("[data-act=watchlist]")].forEach(n => n.onclick = openWatchlist);
+    [...document.querySelectorAll("[data-act=invite]")].forEach(n => n.onclick = openInvite);
+    [...document.querySelectorAll("[data-act=glossary]")].forEach(n => n.onclick = openGlossary);
+    [...document.querySelectorAll("[data-act=settings]")].forEach(n => n.onclick = openSettings);
+    [...document.querySelectorAll("[data-act=announce]")].forEach(n => n.onclick = openAnnouncements);
+    [...document.querySelectorAll("[data-act=challenge]")].forEach(n => n.onclick = openChallenge);
+    [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
+    [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
     wireTook();
   }
 
