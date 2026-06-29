@@ -963,10 +963,41 @@
     ["#c-bal", "#c-risk", "#c-entry", "#c-sl"].forEach(s => { const e = $(s); if (e) e.oninput = calc; });
     calc();
   }
+  // ── economic calendar: live gold-impact news via the Cloudflare Worker proxy (KV-cached → ForexFactory feed) ──
+  // CORS-enabled; falls back to the mock D.calendar so the sheet is never empty/broken.
+  const CAL_API = "https://blakey-cal.kyleairey.workers.dev";
+  let liveCal = null;
+  async function loadCalendar() {
+    try {
+      const r = await fetch(CAL_API, { cache: "no-store" });
+      if (!r.ok) throw 0;
+      const d = await r.json();
+      if (Array.isArray(d) && d.length) {
+        liveCal = d;
+        try { localStorage.setItem("bt_cal", JSON.stringify({ t: Date.now(), d })); } catch (e) {}
+        return d;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function fmtCalItem(e) { // live rows carry an ISO `date` → render day/time in UK time; mock rows pass through
+    if (!e.date) return { day: e.day, time: e.time, cur: e.cur, impact: e.impact, event: e.event, forecast: e.forecast || "", previous: e.previous || "" };
+    const d = new Date(e.date), tz = "Europe/London";
+    const time = d.toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+    const key = x => x.toLocaleDateString("en-GB", { timeZone: tz });
+    const now = new Date(), tom = new Date(now.getTime() + 864e5), ek = key(d);
+    const day = ek === key(now) ? "Today" : ek === key(tom) ? "Tomorrow" : d.toLocaleDateString("en-GB", { timeZone: tz, weekday: "long" });
+    return { day, time, cur: e.cur, impact: e.impact, event: e.event, forecast: e.forecast || "", previous: e.previous || "" };
+  }
+  function calRowsHtml(list) {
+    const byDay = {}; list.map(fmtCalItem).forEach(e => (byDay[e.day] = byDay[e.day] || []).push(e));
+    return Object.keys(byDay).map(d => `<div class="cal-day">${d}</div>${byDay[d].map(e => `<div class="cal-row"><span class="cal-time num">${e.time}</span><span class="cal-cur">${e.cur}</span><span class="cal-ev">${e.event}${(e.forecast || e.previous) ? `<small class="cal-fp num">Forecast ${e.forecast || "–"} · Prev ${e.previous || "–"}</small>` : ""}</span><span class="cal-imp imp-${e.impact}">${e.impact}</span></div>`).join("")}`).join("");
+  }
   function openCalendar() {
-    const byDay = {}; D.calendar.forEach(e => (byDay[e.day] = byDay[e.day] || []).push(e));
-    const rows = Object.keys(byDay).map(d => `<div class="cal-day">${d}</div>${byDay[d].map(e => `<div class="cal-row"><span class="cal-time num">${e.time}</span><span class="cal-cur">${e.cur}</span><span class="cal-ev">${e.event}</span><span class="cal-imp imp-${e.impact}">${e.impact}</span></div>`).join("")}`).join("");
-    openModal(`<h3 class="sheet-title">Economic calendar</h3><p class="sheet-sub">High-impact news that moves gold · times UK.</p><div class="cal">${rows}</div>`);
+    const live = !!(liveCal && liveCal.length);
+    const subLive = `<span class="cal-live">● Live</span> · news that moves gold · times UK`;
+    openModal(`<h3 class="sheet-title">Economic calendar</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
+    if (!live) loadCalendar().then(d => { const box = $("#cal-list"); if (d && box) { box.innerHTML = calRowsHtml(d); const s = box.parentElement.querySelector(".sheet-sub"); if (s) s.innerHTML = subLive; } });
   }
   function openAlerts() {
     const list = () => D.alerts.map((a, i) => `<div class="alert-row"><div class="alert-body"><b class="num">${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price}</b><small>${a.note}</small></div><button class="tgl ${a.on ? "on" : ""}" data-al="${i}"><span></span></button></div>`).join("");
@@ -1230,6 +1261,9 @@
   window.addEventListener("resize", fitDevice);
   function boot() {
     fitDevice();
+    // hydrate the economic calendar from cache (instant), then refresh from the live proxy
+    try { const c = JSON.parse(localStorage.getItem("bt_cal") || "null"); if (c && c.d && c.d.length && (Date.now() - c.t) < 12 * 36e5) liveCal = c.d; } catch (e) {}
+    loadCalendar();
     // Demo phase: no SW caching — always serve fresh. Nuke any stale SW + caches from earlier loads.
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});

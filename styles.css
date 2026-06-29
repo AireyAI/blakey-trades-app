@@ -457,6 +457,8 @@ a{color:inherit;text-decoration:none}
 .cal-imp.imp-high{background:rgba(240,86,91,.16);color:var(--down)}
 .cal-imp.imp-med{background:rgba(199,164,77,.16);color:var(--gold)}
 .cal-imp.imp-low{background:var(--surface-3);color:var(--muted)}
+.cal-fp{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;letter-spacing:.02em}
+.cal-live{color:var(--up);font-weight:700}
 /* alerts */
 .alert-row{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}
 .alert-body{flex:1}.alert-body b{font-size:14px;display:block}.alert-body small{font-size:11.5px;color:var(--muted)}
