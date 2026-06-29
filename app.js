@@ -280,6 +280,23 @@
       { ic: "chart", value: st.avgRR.toFixed(1) + "R", label: "Avg R:R" },
     ];
   }
+  // ── XP & levelling, earned from real actions (log a trade, pass a quiz, join a live call) ──
+  const TIERS = [[12, "Master"], [10, "Elite"], [8, "Sharp"], [6, "Disciplined"], [4, "Consistent"], [2, "Developing"], [0, "Rookie"]];
+  function tierName(lv) { for (const [t, n] of TIERS) if (lv >= t) return n; return "Rookie"; }
+  function profLevel() { const s = pState(); return s.level != null ? s.level : D.user.level; }
+  function profXp() { const s = pState(); return s.xp != null ? s.xp : D.user.xp; }
+  function profXpNext() { const s = pState(); return s.xpNext != null ? s.xpNext : D.user.xpNext; }
+  function addXp(n) {
+    const s = pState();
+    let xp = (s.xp != null ? s.xp : D.user.xp) + n;
+    let level = s.level != null ? s.level : D.user.level;
+    let xpNext = s.xpNext != null ? s.xpNext : D.user.xpNext;
+    let leveled = false;
+    while (xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.round(xpNext * 1.2 / 50) * 50; leveled = true; }
+    s.xp = xp; s.level = level; s.xpNext = xpNext; pSave(s);
+    if (leveled) setTimeout(() => toast(`Level up! You're Level ${level} · ${tierName(level)}`, "i-trophy"), 650);
+    return leveled;
+  }
   // ── believable demo sign-in (persisted session) ──
   function isSignedIn() { const s = pState(); return !!(s.session && s.session.signedIn); }
   function setSignedIn(provider) { pSet({ session: { provider: provider || "phone", signedIn: true, at: Date.now() } }); }
@@ -732,7 +749,7 @@
         tags: oc === "win" ? ["Followed plan"] : oc === "loss" ? ["Review"] : ["Managed well"],
         note: $("#f-note").value || "No notes added.",
       });
-      recordLog(); // persist journal + extend streak + earn leaderboard points
+      recordLog(); addXp(40); // persist journal + streak + leaderboard points + XP
       closeModal(); journalFilter = "All";
       setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged · +50 pts", "i-check"); }, 320);
     };
@@ -813,13 +830,13 @@
         ${av(u.initials, 64)}
         <div class="name">${u.name}</div>
         <div class="handle num">${u.handle}</div>
-        <div style="margin-top:10px"><span class="pill pill-gold">⭐ Level ${u.level} · ${u.levelName}</span></div>
+        <div style="margin-top:10px"><span class="pill pill-gold">⭐ Level ${profLevel()} · ${tierName(profLevel())}</span></div>
       </div>
 
       <div class="card level">
-        <div class="kv"><span>Progress to Level ${u.level+1}</span><b>${u.xp.toLocaleString()} / ${u.xpNext.toLocaleString()} XP</b></div>
-        <div class="level-bar"><i style="width:${Math.round(u.xp/u.xpNext*100)}%"></i></div>
-        <div class="kv"><span>${u.xpNext-u.xp} XP to go — show up to today's live call for +50</span></div>
+        <div class="kv"><span>Progress to Level ${profLevel()+1}</span><b>${profXp().toLocaleString()} / ${profXpNext().toLocaleString()} XP</b></div>
+        <div class="level-bar"><i style="width:${Math.round(profXp()/profXpNext()*100)}%"></i></div>
+        <div class="kv"><span>${profXpNext()-profXp()} XP to go — log a trade for +40, pass a path quiz for +60</span></div>
       </div>
 
       <div class="stat-row" style="margin-top:13px">
@@ -1219,7 +1236,7 @@
     const finish = (correct, total) => {
       const passed = correct >= bank.pass, s = $("#quiz-score"); if (!s) return;
       s.innerHTML = `<div class="qs-card ${passed ? "pass" : "fail"}">${ic(passed ? "i-trophy" : "i-target", "ic")}<div>You scored <b class="gold-text">${correct}/${total}</b> — ${passed ? "passed · +60 XP" : `${bank.pass}/${total} needed — review &amp; retry.`}</div></div><button class="btn ${passed ? "btn-ghost" : "btn-gold"} btn-block" id="quiz-retry" style="margin-top:12px">${passed ? "Retake quiz" : "Try again"}</button>`;
-      if (passed) toast("Quiz passed · +60 XP", "i-trophy");
+      if (passed) { addXp(60); toast("Quiz passed · +60 XP", "i-trophy"); }
       const r = $("#quiz-retry"); if (r) r.onclick = render;
     };
     render();
