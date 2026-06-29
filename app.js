@@ -165,6 +165,7 @@
         allOf(".mb-chg").forEach(c => { c.textContent = t; c.className = "mb-chg num " + (pct >= 0 ? "up" : "down"); });
       }
       checkAlerts(mbPrice);
+      paintBrief();
     };
     let mock = null;
     const startMock = () => { // only if the live feed never answers — never show an empty bar
@@ -187,15 +188,51 @@
     const t1 = setInterval(pull, 12000), t2 = setInterval(paintSession, 20000), t0 = setTimeout(startMock, 2500);
     cleanups.push(() => { clearInterval(t1); clearInterval(t2); clearTimeout(t0); });
   }
-  function morningBriefCard() {
-    const b = D.morningBrief;
-    return `<div class="card brief reveal">
-      <div class="brief-head"><span class="eyebrow">${ic("i-chart", "ic")} Morning brief</span><span class="brief-time num">6:30 BST</span></div>
-      <div class="brief-bias">${b.bias}</div>
+  // next high-impact event from the live calendar (drives the brief's "On watch")
+  function nextCalEvent() {
+    if (!liveCal || !liveCal.length) return null;
+    const now = Date.now();
+    const fut = liveCal.filter(e => e.impact === "high" && new Date(e.date).getTime() > now).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!fut.length) return null;
+    const e = fut[0], f = fmtCalItem(e);
+    return `${e.event} · ${e.cur} · ${f.day} ${f.time}`;
+  }
+  // derive the brief from live data (real spot $, intraday move, price-anchored levels, today's news); neutral fallback until the price lands
+  function briefData() {
+    const g = mbPrice, pct = (g != null && mbBase) ? (g - mbBase) / mbBase * 100 : null;
+    if (g == null) return D.morningBrief;
+    const price = g.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const step = 25, support = Math.floor(g / step) * step, resistance = Math.ceil((g + 0.01) / step) * step;
+    const f0 = n => n.toLocaleString("en-US");
+    const bias = pct == null ? "Balanced" : pct > 0.15 ? "Firm" : pct < -0.15 ? "Soft" : "Balanced";
+    const day = new Date().toLocaleDateString("en-GB", { weekday: "long" });
+    const headline = pct == null ? `Gold at $${price} into ${day}'s session`
+      : `Gold ${pct >= 0 ? "firm" : "soft"} at $${price} — ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(2)}% into ${day}'s session`;
+    const ev = nextCalEvent();
+    return {
+      bias,
+      headline,
+      points: [
+        { ic: "i-dollar", label: "Spot gold", text: `$${price} · ${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct || 0).toFixed(2)}% today` },
+        { ic: "i-target", label: "Key levels", text: `Support $${f0(support)} · Resistance $${f0(resistance)}` },
+        { ic: "i-cal", label: "On watch", text: ev || "No tier-1 data due — technicals lead today" },
+      ],
+    };
+  }
+  function briefBodyHtml() {
+    const b = briefData();
+    return `<div class="brief-bias">${b.bias}</div>
       <h3 class="brief-h">${b.headline}</h3>
       <div class="brief-points">
         ${b.points.map(p => `<div class="brief-pt">${ic(p.ic, "bp-ic")}<div class="bp-tx"><b>${p.label}</b><span>${p.text}</span></div></div>`).join("")}
-      </div>
+      </div>`;
+  }
+  function paintBrief() { const el = document.getElementById("brief-body"); if (el) el.innerHTML = briefBodyHtml(); }
+  function morningBriefCard() {
+    const today = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    return `<div class="card brief reveal">
+      <div class="brief-head"><span class="eyebrow">${ic("i-chart", "ic")} Morning brief</span><span class="brief-time num">${today}</span></div>
+      <div id="brief-body">${briefBodyHtml()}</div>
     </div>`;
   }
 
@@ -975,6 +1012,7 @@
       if (Array.isArray(d) && d.length) {
         liveCal = d;
         try { localStorage.setItem("bt_cal", JSON.stringify({ t: Date.now(), d })); } catch (e) {}
+        paintBrief(); // refresh the brief's "On watch" once the calendar lands
         return d;
       }
     } catch (e) {}

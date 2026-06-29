@@ -34,13 +34,14 @@ window.DATA = {
     { ic:"chart", value:"2.7R", label:"Avg R:R" },
   ],
 
+  // neutral fallback only — the real brief is derived live from spot gold + the economic calendar (see briefData() in app.js)
   morningBrief: {
-    bias: "Cautiously bullish",
-    headline: "Gold coiling under 2,980 — London could expand the range",
+    bias: "Loading",
+    headline: "Mapping today's gold session…",
     points: [
-      { ic:"i-dollar", label:"Dollar (DXY)", text:"Softening into the open — a tailwind for gold" },
-      { ic:"i-target", label:"Key levels", text:"2,945 demand holds the bias · 2,982 is the cap" },
-      { ic:"i-cal", label:"On watch", text:"US data at 13:30 BST — expect a volatility spike" },
+      { ic:"i-dollar", label:"Spot gold", text:"Fetching the live price…" },
+      { ic:"i-target", label:"Key levels", text:"Calculating from spot…" },
+      { ic:"i-cal", label:"On watch", text:"Checking today's economic calendar…" },
     ],
   },
 
