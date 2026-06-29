@@ -53,6 +53,48 @@
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
 
+  // ---------- live-call schedule (real weekly timetable) ----------
+  const DAY_IDX = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+  const DAY_FULL = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday", Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
+  function nextCall() {
+    const now = new Date();
+    let best = null, bestMs = Infinity;
+    for (const c of (D.schedule || [])) {
+      const [h, m] = c.time.split(":").map(Number);
+      const dd = (DAY_IDX[c.day] - now.getDay() + 7) % 7;
+      const dt = new Date(now); dt.setDate(now.getDate() + dd); dt.setHours(h, m, 0, 0);
+      if (dt.getTime() <= now.getTime()) dt.setDate(dt.getDate() + 7);
+      const diff = dt.getTime() - now.getTime();
+      if (diff < bestMs) { bestMs = diff; best = c; }
+    }
+    return best ? { ...best, startsIn: Math.floor(bestMs / 1000) } : null;
+  }
+  function scheduleSection() {
+    const nc = nextCall();
+    const key = c => c.day + c.time + c.session;
+    const nk = nc ? key(nc) : "";
+    const order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    let rows = "";
+    for (const d of order) {
+      const calls = (D.schedule || []).filter(c => c.day === d);
+      if (!calls.length) {
+        rows += `<div class="sch-row off"><div class="sch-day">${DAY_FULL[d]}</div><div class="sch-time">—</div><div class="sch-sess"><b>Off</b></div></div>`;
+      } else calls.forEach((c, i) => {
+        const isNext = key(c) === nk;
+        rows += `<div class="sch-row${isNext ? " next" : ""}">
+          <div class="sch-day">${i === 0 ? DAY_FULL[d] : ""}</div>
+          <div class="sch-time num">${c.at}</div>
+          <div class="sch-sess"><b>${c.session}</b><small>with ${c.host}</small></div>
+          ${isNext ? `<span class="sch-tag">NEXT</span>` : ""}
+        </div>`;
+      });
+    }
+    return `<div class="card sched reveal">
+      <div class="sch-head"><span class="eyebrow">${ic("i-cal", "ic")} This week · live calls</span><span class="sch-count num">${(D.schedule || []).length} calls</span></div>
+      ${rows}
+    </div>`;
+  }
+
   // ---------- live market bar (XAU/USD price + session clock) ----------
   function sessionInfo() {
     const now = new Date();
@@ -134,6 +176,7 @@
   // ============================ HOME ============================
   SCREENS.home = function () {
     const v = D.live;
+    const nc = nextCall() || { session: v.title, host: v.host, day: "Mon", at: "", startsIn: v.startsIn };
     const ideas = D.ideas[0];
     const watching = D.videos.filter(x => x.progress > 0);
     setScreen(`
@@ -144,11 +187,11 @@
         <canvas class="market-bg" data-chart="ambient" data-seed="7"></canvas>
         <div class="lb-inner">
           <div class="lb-row">
-            <span class="eyebrow">${v.session} session</span>
-            <span class="pill pill-live"><span class="dot-live"></span> Goes live</span>
+            <span class="eyebrow">Next live call · ${DAY_FULL[nc.day]} ${nc.at}</span>
+            <span class="pill pill-live"><span class="dot-live"></span> Live call</span>
           </div>
-          <h3>${v.title}</h3>
-          <div class="sub" style="font-size:12.5px">Hosted by ${v.host} · ${v.pair}</div>
+          <h3>${nc.session}</h3>
+          <div class="sub" style="font-size:12.5px">Hosted by ${nc.host}</div>
           <div class="countdown" id="cd"></div>
           <div style="display:flex;gap:10px;margin-top:15px">
             <button class="btn btn-gold" style="flex:1" data-act="joinlive">${ic("i-live")} Join live</button>
@@ -176,12 +219,13 @@
       ${D.hubs.slice(0, 1).map(hubMini).join("")}
       <div class="spacer"></div>
     `);
-    // countdown
-    let left = v.startsIn;
+    // countdown to the next scheduled call
+    let left = nc.startsIn;
     const cd = $("#cd");
     const paint = () => {
-      const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
-      cd.innerHTML = [["Hrs", h], ["Min", m], ["Sec", s]].map(([l, n]) =>
+      const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+      const cells = d > 0 ? [["Days", d], ["Hrs", h], ["Min", m]] : [["Hrs", h], ["Min", m], ["Sec", s]];
+      cd.innerHTML = cells.map(([l, n]) =>
         `<div class="cd-cell"><b class="num">${String(n).padStart(2, "0")}</b><span>${l}</span></div>`).join("");
     };
     paint();
@@ -314,6 +358,7 @@
         <p class="sub">Arron is mapping the London open in real time — liquidity, the entry model, and live risk management on ${v.pair}.</p>
         <div class="section-head"><span class="h3">Covering today</span></div>
         ${["Where London liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}
+        ${scheduleSection()}
         <div class="section-head"><span class="h3">Recent replays</span><span class="more" data-tab="learn">All ›</span></div>
         <div class="rail rail-pad">${D.videos.filter(x=>x.cat==="Session Replays"||x.host==="Arron Blakey").slice(0,4).map(vCard).join("")}</div>
         <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Educational content only. Not financial advice.</p>

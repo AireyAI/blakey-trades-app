@@ -251,6 +251,21 @@ a{color:inherit;text-decoration:none}
 .cd-cell b{font-family:var(--mono);font-size:21px;font-weight:700;display:block;line-height:1}
 .cd-cell span{font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
 
+/* live-call schedule timetable */
+.sched{margin-top:14px;padding:4px 6px 8px}
+.sch-head{display:flex;align-items:center;justify-content:space-between;padding:11px 10px 9px}
+.sch-count{font-size:11px;color:var(--muted);font-weight:700}
+.sch-row{display:flex;align-items:center;gap:10px;padding:11px 10px;border-top:1px solid var(--line)}
+.sch-row.next{background:rgba(199,164,77,.07);border-radius:12px;border-top-color:transparent}
+.sch-day{width:82px;flex:none;font-family:var(--display);font-size:12.5px;font-weight:700;letter-spacing:-.01em}
+.sch-time{width:60px;flex:none;font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--gold)}
+.sch-sess{flex:1;min-width:0}
+.sch-sess b{display:block;font-size:13px;font-weight:600;line-height:1.2}
+.sch-sess small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.sch-tag{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;color:var(--gold);background:rgba(199,164,77,.14);border:1px solid rgba(199,164,77,.32);padding:3px 7px;border-radius:999px;flex:none}
+.sch-row.off{opacity:.5}
+.sch-row.off .sch-time{color:var(--faint)}
+
 .stat-row{display:flex;gap:10px;margin-top:14px}
 .stat{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 13px 12px}
 .stat b{font-family:var(--mono);font-size:20px;font-weight:700;display:block}

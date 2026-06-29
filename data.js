@@ -16,6 +16,17 @@ window.DATA = {
     entry: "2,946.50", sl: "2,934.00", tp: "2,984.00", bias: "Long bias",
   },
 
+  // weekly live-call timetable (client's "Upcoming Zoom Calls" schedule; times = UK)
+  schedule: [
+    { day:"Mon", time:"18:00", at:"6:00 PM", session:"New Starter Call", host:"Nick" },
+    { day:"Mon", time:"19:00", at:"7:00 PM", session:"Swing Trades Education", host:"Georgie" },
+    { day:"Tue", time:"19:00", at:"7:00 PM", session:"Trade Management", host:"Oscar" },
+    { day:"Wed", time:"19:00", at:"7:00 PM", session:"Live Trading on Signal IQ", host:"Blakey & Scott" },
+    { day:"Thu", time:"19:00", at:"7:00 PM", session:"Swing Trades Education", host:"Georgie" },
+    { day:"Thu", time:"20:00", at:"8:00 PM", session:"Tutorial & Live Scalps", host:"SN" },
+    { day:"Sun", time:"19:00", at:"7:00 PM", session:"Mindset", host:"Blakey" },
+  ],
+
   // Home stats
   homeStats: [
     { ic:"flame", value:"18", label:"Day streak" },
