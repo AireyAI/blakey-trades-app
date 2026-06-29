@@ -822,12 +822,29 @@
   }
 
   // ============================ PROFILE ============================
+  // ── profile: real "Your numbers" + next-milestone, derived from the journal + leaderboard ──
+  function sessionStats() {
+    const J = D.journal || [];
+    return ["London", "New York", "Asia"].map(s => {
+      const es = J.filter(j => j.session === s), wins = es.filter(j => j.outcome === "win").length;
+      const dec = wins + es.filter(j => j.outcome === "loss").length;
+      return { session: s, count: es.length, wr: dec ? Math.round(wins / dec * 100) : 0 };
+    }).filter(s => s.count > 0);
+  }
+  function bestTrade() { const J = D.journal || []; return J.length ? Math.max(...J.map(j => j.r || 0)) : 0; }
+  function nextUp() {
+    const st = journalStats(), lb = liveLeaderboard(), me = lb.findIndex(r => r.me), out = [];
+    const goals = [{ name: "Journaled 40 trades", t: 40 }, { name: "100 trades logged", t: 100 }].filter(g => st.count < g.t);
+    if (goals.length) { const g = goals.sort((a, b) => (a.t - st.count) - (b.t - st.count))[0]; out.push({ label: g.name, val: `${st.count} / ${g.t}`, pct: Math.round(st.count / g.t * 100) }); }
+    if (me > 0) { const ab = lb[me - 1], gap = ab._p - lb[me]._p; out.push({ label: `Overtake ${ab.name.split(" ")[0]} for #${me}`, val: `${gap} pts to go`, pct: Math.round(lb[me]._p / ab._p * 100) }); }
+    return out;
+  }
   SCREENS.profile = function () {
-    const u = D.user;
+    const u = D.user, js = journalStats();
     setScreen(`
       ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
       <div class="profile-head reveal">
-        ${av(u.initials, 64)}
+        <div class="av-ring" style="background:conic-gradient(var(--gold) ${Math.round(profXp()/profXpNext()*360)}deg, var(--surface-3) 0)">${av(u.initials, 64)}</div>
         <div class="name">${u.name}</div>
         <div class="handle num">${u.handle}</div>
         <div style="margin-top:10px"><span class="pill pill-gold">⭐ Level ${profLevel()} · ${tierName(profLevel())}</span></div>
@@ -844,6 +861,24 @@
         <div class="stat">${ic("i-target","ic")}<b class="num">${journalStats().winRate}%</b><small>Win rate</small></div>
         <div class="stat">${ic("i-live","ic")}<b class="num">${u.sessions}</b><small>Calls joined</small></div>
       </div>
+
+      <div class="section-head"><span class="h2">Your numbers</span><span class="more" data-act="journal">Journal ›</span></div>
+      <div class="card card-pad">
+        <div class="num-grid">
+          <div class="num-cell"><b class="num ${js.netR>=0?'up':'down'}">${js.netR>=0?'+':''}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
+          <div class="num-cell"><b class="num">${js.avgRR.toFixed(1)}R</b><small>Avg win</small></div>
+          <div class="num-cell"><b class="num">${js.pf.toFixed(1)}</b><small>Profit factor</small></div>
+          <div class="num-cell"><b class="num ${bestTrade()>=0?'up':''}">${bestTrade()>=0?'+':''}${bestTrade().toFixed(1)}R</b><small>Best trade</small></div>
+        </div>
+        <div class="sess-block"><div class="sess-h">Win rate by session</div>
+          ${sessionStats().map(s => `<div class="sess-row"><span class="sess-name">${s.session}</span><div class="sess-bar"><i style="width:${s.wr}%"></i></div><span class="sess-pct num">${s.wr}%</span></div>`).join("")}
+        </div>
+      </div>
+
+      ${nextUp().length ? `<div class="section-head"><span class="h2">Next up</span></div>
+      <div class="card card-pad">
+        ${nextUp().map(n => `<div class="nu-row"><div class="nu-top"><span class="nu-label">${n.label}</span><span class="nu-val num">${n.val}</span></div><div class="nu-bar"><i style="width:${Math.min(100,n.pct)}%"></i></div></div>`).join("")}
+      </div>` : ""}
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">

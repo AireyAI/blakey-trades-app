@@ -665,6 +665,29 @@ a{color:inherit;text-decoration:none}
    ========================================================= */
 .profile-head{text-align:center;padding:18px 0 6px}
 .profile-head .av{margin:0 auto 13px}
+.av-ring{width:82px;height:82px;border-radius:50%;display:grid;place-items:center;margin:0 auto 13px;position:relative}
+.av-ring::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#0c0d12}
+.profile-head .av-ring .av{margin:0;position:relative;z-index:1}
+/* profile — your numbers + next up */
+.num-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.num-cell{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.num-cell b{font-size:18px;display:block}
+.num-cell small{font-size:11px;color:var(--muted)}
+.sess-block{margin-top:15px}
+.sess-h{font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:.02em}
+.sess-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.sess-row:last-child{margin-bottom:0}
+.sess-name{font-size:12.5px;width:66px;flex:none}
+.sess-bar{flex:1;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.sess-bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
+.sess-pct{font-size:12px;font-weight:700;width:34px;text-align:right;flex:none}
+.nu-row{margin-bottom:13px}
+.nu-row:last-child{margin-bottom:0}
+.nu-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.nu-label{font-size:13px;font-weight:600}
+.nu-val{font-size:11.5px;color:var(--muted)}
+.nu-bar{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.nu-bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
 .profile-head .name{font-family:var(--display);font-weight:800;font-size:23px}
 .profile-head .handle{font-family:var(--mono);font-size:12px;color:var(--gold);margin-top:3px}
 .level{margin-top:18px;padding:15px}
