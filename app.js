@@ -33,6 +33,7 @@
 
   const SCREENS = {};
   function go(tab) {
+    const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab;
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.tab === tab));

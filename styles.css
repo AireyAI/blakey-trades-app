@@ -103,7 +103,7 @@ a{color:inherit;text-decoration:none}
 /* ---------- Tab bar ---------- */
 /* Liquid-glass floating tab bar (Revolut / iOS-26 material) */
 .tabbar{
-  position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 12px);z-index:40;
+  position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 12px);z-index:90;
   height:66px;
   display:flex;align-items:center;justify-content:space-around;
   padding:0 6px;
@@ -114,6 +114,7 @@ a{color:inherit;text-decoration:none}
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.18),inset 0 -1px 0 rgba(0,0,0,0.35),0 20px 46px -14px rgba(0,0,0,0.72);
 }
 /* top sheen — the "liquid" highlight */
+.tabbar:empty{display:none} /* hidden during splash/login until renderTabbar populates it */
 .tabbar::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0) 42%)}
 .tab{
@@ -157,9 +158,10 @@ a{color:inherit;text-decoration:none}
   transition:transform .2s var(--ease-spring),box-shadow .25s,filter .25s,opacity .25s;
   -webkit-tap-highlight-color:transparent;user-select:none}
 .btn:active{transform:scale(.97)}
-.btn-gold{background:var(--gold-foil);color:#190f02;box-shadow:0 10px 34px -12px rgba(199,164,77,.42)}
-.btn-gold:hover{filter:brightness(1.06)}
-.btn-gold:active{filter:brightness(1.02)}
+.btn-gold{background:linear-gradient(180deg,#ECD295 0%,#D0AA50 50%,#BD9740 100%);color:#241704;
+  box-shadow:0 8px 22px -8px rgba(199,164,77,.5),inset 0 1px 0 rgba(255,248,225,.6),inset 0 -1px 0 rgba(120,90,30,.45)}
+.btn-gold:hover{filter:brightness(1.04)}
+.btn-gold:active{transform:scale(.985);filter:brightness(.99)}
 .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--line-2)}
 .btn-block{display:flex;width:100%}
 .btn-sm{height:40px;font-size:13px;padding:0 16px}
@@ -401,7 +403,7 @@ a{color:inherit;text-decoration:none}
 .modal{position:absolute;inset:0;z-index:80;background:rgba(2,2,4,.7);backdrop-filter:blur(6px);display:flex;flex-direction:column;justify-content:flex-end;
   opacity:0;pointer-events:none;transition:opacity .3s}
 .modal.open{opacity:1;pointer-events:auto}
-.sheet{background:var(--surface);border-radius:26px 26px 0 0;border-top:1px solid var(--line-2);padding:8px 18px calc(26px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .42s cubic-bezier(.2,.8,.2,1);max-height:90%;overflow-y:auto;scrollbar-width:none}
+.sheet{background:var(--surface);border-radius:26px 26px 0 0;border-top:1px solid var(--line-2);padding:8px 18px calc(98px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .42s cubic-bezier(.2,.8,.2,1);max-height:90%;overflow-y:auto;scrollbar-width:none}
 .sheet::-webkit-scrollbar{display:none}
 .modal.open .sheet{transform:none}
 .sheet-grab{display:block;width:100%;height:30px;border:none;background:none;cursor:pointer;position:relative;margin-bottom:6px}
