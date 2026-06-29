@@ -833,11 +833,17 @@
     mountMarketBar();
   };
   function openIdeas() { go("signals"); } // alias for the Home link / notifications
+  function chanMark(c, extra) {
+    const cls = `chan-mark ${c.tone || ""}${extra ? " " + extra : ""}${c.img ? " has-img" : ""}`;
+    return c.img
+      ? `<div class="${cls}"><img src="${c.img}" alt="${c.name}" loading="lazy"></div>`
+      : `<div class="${cls}">${c.mark}</div>`;
+  }
   function channelCard(c) {
     const items = D.ideas.filter(i => i.channel === c.id);
     const latest = items[0];
     return `<button class="chan" data-chan="${c.id}">
-      <div class="chan-mark ${c.tone}">${c.mark}</div>
+      ${chanMark(c)}
       <div class="chan-body">
         <div class="chan-top"><b>${c.name}</b><span class="tg-badge">${ic("i-tg")} Telegram</span></div>
         <div class="chan-desc">${c.desc}</div>
@@ -855,7 +861,7 @@
     setScreen(`
       ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
       <div class="chan-head">
-        <div class="chan-mark ${c.tone} big">${c.mark}</div>
+        ${chanMark(c, "big")}
         <div><div class="chan-title">${c.name}${c.bot ? ` <span class="pill pill-gold" style="height:20px;font-size:10px">🤖 Mechanical</span>` : ""}</div><div class="chan-handle num">${c.handle}</div></div>
       </div>
       <p class="sub" style="margin:11px 2px">${c.desc}</p>

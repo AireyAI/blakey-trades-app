@@ -94,10 +94,10 @@ window.DATA = {
 
   // Telegram channels the signals are posted to (mirrored into the app)
   channels: [
-    { id:"vip", name:"BT VIP", handle:"@bt_vip", mark:"BT", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
-    { id:"swing", name:"BT Swing Trades", handle:"@bt_swing", mark:"BT", tone:"quiet", members:"1,940", today:1, desc:"Multi-day swing setups for the bigger moves." },
-    { id:"zones", name:"BT Zones", handle:"@bt_zones", mark:"BT", tone:"quiet", members:"2,480", today:2, desc:"Key supply & demand zones to watch each session." },
-    { id:"scalps", name:"SN Scalps", handle:"@sn_scalps", mark:"SN", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
+    { id:"vip", name:"BT VIP", handle:"@bt_vip", mark:"BT", img:"assets/channels/vip.jpg", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
+    { id:"swing", name:"BT Swing Trades", handle:"@bt_swing", mark:"BT", img:"assets/channels/swing.jpg", tone:"quiet", members:"1,940", today:1, desc:"Multi-day swing setups for the bigger moves." },
+    { id:"zones", name:"BT Zones", handle:"@bt_zones", mark:"BT", img:"assets/channels/zones.jpg", tone:"quiet", members:"2,480", today:2, desc:"Key supply & demand zones to watch each session." },
+    { id:"scalps", name:"SN Scalps", handle:"@sn_scalps", mark:"SN", img:"assets/channels/scalps.jpg", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
     { id:"iq", name:"Signal IQ", handle:"@signal_iq", mark:"🤖", tone:"bot", members:"1,120", today:6, bot:true, desc:"Automated mechanical signals, 24/5. No emotion, fixed risk." },
   ],
 
