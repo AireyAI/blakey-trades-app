@@ -112,11 +112,17 @@
     const mins = Math.max(0, Math.round((next[0] - h) * 60));
     return { label, next: `${next[1]} ${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, "0")}m` };
   }
+  function mbSeg() {
+    return `<span class="mb-seg">
+      <span class="mb-live"></span><span class="mb-sym">XAU/USD</span><span class="mb-price num">—</span><span class="mb-chg num"></span>
+      <span class="mb-sep">•</span>
+      <span class="mb-dot"></span><span class="mb-sess">—</span><span class="mb-next num"></span>
+      <span class="mb-sep">•</span>
+    </span>`;
+  }
   function marketBar() {
-    return `<div class="marketbar">
-      <div class="mb-item"><span class="mb-live" title="Live spot price"></span><span class="mb-sym">XAU/USD</span><span class="mb-price num" id="mb-price">—</span><span class="mb-chg num" id="mb-chg"></span></div>
-      <div class="mb-item mb-session"><span class="mb-dot"></span><span id="mb-sess">—</span><span class="mb-next num" id="mb-next"></span></div>
-    </div>`;
+    // scrolling ticker — duplicated segment so the loop is seamless
+    return `<div class="marketbar" aria-label="Live market ticker"><div class="mb-track">${mbSeg()}${mbSeg()}</div></div>`;
   }
   // real spot gold (XAU/USD) — free, no-key, CORS-enabled feed; price cached across screens
   let mbPrice = null, mbBase = null;
@@ -131,14 +137,16 @@
     } catch (e) { return price; }
   }
   function mountMarketBar() {
-    const paintSession = () => { const s = sessionInfo(); const se = $("#mb-sess"), ne = $("#mb-next"); if (se) se.textContent = s.label; if (ne) ne.textContent = " · " + s.next; };
+    const allOf = sel => [...document.querySelectorAll(sel)];
+    const paintSession = () => { const s = sessionInfo(); allOf(".mb-sess").forEach(e => e.textContent = s.label); allOf(".mb-next").forEach(e => e.textContent = " · " + s.next); };
     const renderPrice = () => {
-      const el = $("#mb-price"); if (!el || mbPrice == null) return;
-      el.textContent = mbPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const c = $("#mb-chg"); if (c && mbBase) {
+      if (mbPrice == null) return;
+      const txt = mbPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      allOf(".mb-price").forEach(e => e.textContent = txt);
+      if (mbBase) {
         const pct = (mbPrice - mbBase) / mbBase * 100;
-        c.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
-        c.className = "mb-chg num " + (pct >= 0 ? "up" : "down");
+        const t = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+        allOf(".mb-chg").forEach(c => { c.textContent = t; c.className = "mb-chg num " + (pct >= 0 ? "up" : "down"); });
       }
     };
     let mock = null;
