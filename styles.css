@@ -368,8 +368,9 @@ a{color:inherit;text-decoration:none}
 .cd-cell{background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line-2);border-radius:13px;padding:9px 13px;min-width:56px;backdrop-filter:var(--glass-blur);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -1px 0 rgba(0,0,0,.26),0 12px 30px -20px rgba(7,5,2,.72)}
 .cd-cell b{font-family:var(--mono);font-size:23px;font-weight:700;display:block;line-height:1;color:var(--gold)}
 .cd-cell small{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:3px;display:block}
-.lobby-actions{display:flex;gap:10px;justify-content:center}
-.lobby-actions .btn{flex:none;height:46px;padding:0 16px;font-size:13px}
+.lobby-actions{display:flex;flex-wrap:wrap;gap:10px}
+.lobby-actions .btn{flex:1 1 calc(50% - 5px);min-width:0;height:46px;padding:0 12px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lobby-actions .btn[data-act="remind-call"]{flex-basis:100%}
 .live-exit{position:absolute;top:14px;right:14px;z-index:4;background:rgba(0,0,0,.55);border:1px solid var(--line-2);color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:5px 11px;backdrop-filter:blur(8px)}
 .live-grad{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent 22%,transparent 55%,rgba(4,4,6,.92))}
 .live-hud{position:absolute;left:14px;right:14px;top:14px;display:flex;align-items:center;justify-content:space-between;z-index:3}
@@ -863,11 +864,11 @@ a{color:inherit;text-decoration:none}
 .you-tag{font-family:var(--mono);font-size:9px;font-weight:700;color:#120d02;background:var(--gold);padding:1px 6px;border-radius:999px;margin-left:5px;vertical-align:middle}
 
 /* signal card chart + source label + verified badge + risk banner */
-.sig-chart{position:relative;height:94px;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:12px 0;background:radial-gradient(120% 100% at 50% 0,#101218,#0a0a0e)}
+.sig-chart{position:relative;height:102px;border-radius:12px;overflow:hidden;border:1px solid var(--line-2);margin:12px 0;background:linear-gradient(180deg,#12141a 0%,#0a0a0e 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)}
 .sig-chart canvas{position:absolute;inset:0;width:100%;height:100%}
-.sig-src{position:absolute;top:7px;left:8px;font-size:10px;font-weight:600;color:var(--text);background:rgba(8,8,11,.62);backdrop-filter:blur(6px);border:1px solid var(--line);padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+.sig-src{position:absolute;top:7px;left:8px;font-size:10px;font-weight:600;color:var(--text);background:rgba(8,8,11,.62);backdrop-filter:blur(6px);border:1px solid var(--line);padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;z-index:2}
 .sig-src.bot{color:#8fd0ff;border-color:rgba(127,208,255,.32)}
-.sig-live{position:absolute;top:7px;right:8px;font-size:10px;font-weight:700;color:var(--gold);background:rgba(8,8,11,.62);backdrop-filter:blur(6px);border:1px solid var(--gold-line);padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}
+.sig-live{position:absolute;top:7px;right:8px;font-size:10px;font-weight:700;color:var(--gold);background:rgba(8,8,11,.62);backdrop-filter:blur(6px);border:1px solid var(--gold-line);padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;z-index:2}
 .sig-live .ic{width:12px;height:12px}
 .vchk{display:inline-grid;place-items:center;width:13px;height:13px;border-radius:50%;background:var(--gold);color:#120d02;font-size:8.5px;font-weight:800;flex:none}
 .tg-link{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:14px;color:#5ab6e8;font-size:12.5px;font-weight:600;padding:8px;background:none}

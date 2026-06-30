@@ -153,44 +153,95 @@
     drawCandles(ctx, w, h, candles, { grid: false, marker: false });
   }
 
-  // compact signal chart — bold gold area chart zoomed to the price action (levels are in the ticket below)
+  // compact signal chart — mini candlesticks framed to entry / SL / TP (broker-ticket vernacular)
+  function drawSignalChart(ctx, w, h, candles, levels, bnd, dir) {
+    const padT = 16, padB = 10, padL = 6, padR = 10;
+    const { hi, lo } = bnd;
+    const Y = p => padT + (hi - p) / (hi - lo) * (h - padT - padB);
+    ctx.clearRect(0, 0, w, h);
+
+    // faint horizontal grid
+    ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 1;
+    for (let i = 0; i <= 3; i++) {
+      const y = padT + (h - padT - padB) * i / 3;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    }
+
+    const yE = Y(levels.find(l => l.type === "e").price);
+    if (dir > 0) {
+      ctx.fillStyle = "rgba(55,190,126,0.06)"; ctx.fillRect(padL, padT, w - padL - padR, Math.max(0, yE - padT));
+      ctx.fillStyle = "rgba(240,86,91,0.06)"; ctx.fillRect(padL, yE, w - padL - padR, Math.max(0, h - padB - yE));
+    } else {
+      ctx.fillStyle = "rgba(55,190,126,0.06)"; ctx.fillRect(padL, yE, w - padL - padR, Math.max(0, h - padB - yE));
+      ctx.fillStyle = "rgba(240,86,91,0.06)"; ctx.fillRect(padL, padT, w - padL - padR, Math.max(0, yE - padT));
+    }
+
+    // SL · Entry · TP guides (ticket below carries prices — lines only here)
+    for (const lv of levels) {
+      const y = Y(lv.price);
+      ctx.save(); ctx.setLineDash(lv.type === "e" ? [5, 4] : [3, 4]); ctx.lineWidth = 1;
+      ctx.strokeStyle = lv.type === "tp" ? "rgba(55,190,126,0.55)" : lv.type === "sl" ? "rgba(240,86,91,0.55)" : "rgba(224,178,60,0.65)";
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke(); ctx.restore();
+    }
+
+    // candles
+    const n = candles.length, cw = (w - padL - padR) / n, bw = Math.max(2, cw * 0.58);
+    for (let i = 0; i < n; i++) {
+      const c = candles[i], x = padL + cw * i + cw / 2;
+      const up = c.c >= c.o, col = up ? UP : DOWN;
+      const isLast = i === n - 1;
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, Y(c.h)); ctx.lineTo(x, Y(c.l)); ctx.stroke();
+      const yo = Y(c.o), yc = Y(c.c), topC = Math.min(yo, yc), bh = Math.max(1, Math.abs(yc - yo));
+      ctx.globalAlpha = isLast ? 1 : 0.88; ctx.fillRect(x - bw / 2, topC, bw, bh); ctx.globalAlpha = 1;
+    }
+
+    // current price tick (subtle — no heavy bloom)
+    const last = candles[n - 1], yLast = Y(last.c);
+    ctx.strokeStyle = "rgba(224,178,60,0.45)"; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, yLast); ctx.lineTo(w - padR, yLast); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(w - padR + 2, yLast, 2.2, 0, 7); ctx.fill();
+  }
+
   function initSignal(cv) {
     const { ctx, w, h } = fit(cv);
     const seed = +cv.dataset.seed || 5;
-    const e = parseFloat(cv.dataset.e) || 2940, sl = parseFloat(cv.dataset.sl) || 2930, tp = parseFloat(cv.dataset.tp) || 2960;
-    const dir = tp >= e ? 1 : -1, risk = Math.abs(e - sl) || 8;
-    // smooth path that trends from ~1R below entry to ~0.55R into profit (down for shorts)
-    const r = rng(seed), n = 60, pts = [];
-    const startP = e - dir * risk * 1.0, endP = e + dir * risk * 0.55;
-    let v = startP;
-    for (let i = 0; i < n; i++) { const t = i / (n - 1); const drift = startP + (endP - startP) * t; v += (drift - v) * 0.2 + (r() - 0.5) * risk * 0.32; pts.push(v); }
-    pts[n - 1] = endP;
-    // visible range = the price action only (so the line fills the frame), entry kept in view
-    let lo = Math.min(e, ...pts), hi = Math.max(e, ...pts);
-    const pad = (hi - lo) * 0.26 || 1; hi += pad; lo -= pad;
-    const padT = 6, padB = 4, X = i => (w * i) / (n - 1), Y = p => padT + (hi - p) / (hi - lo) * (h - padT - padB);
-    ctx.clearRect(0, 0, w, h);
-    // subtle profit/risk tint split at entry
-    const yE = Y(e);
-    ctx.fillStyle = "rgba(55,190,126,.07)"; ctx.fillRect(0, 0, w, Math.max(0, yE));
-    ctx.fillStyle = "rgba(240,86,91,.07)"; ctx.fillRect(0, Math.max(0, yE), w, h - Math.max(0, yE));
-    // entry line
-    ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(224,178,60,.7)"; ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(w, yE); ctx.stroke(); ctx.restore();
-    // bold gradient area fill
-    const grad = ctx.createLinearGradient(0, padT, 0, h);
-    grad.addColorStop(0, "rgba(216,182,90,.38)"); grad.addColorStop(1, "rgba(216,182,90,0)");
-    ctx.beginPath(); ctx.moveTo(0, Y(pts[0]));
-    for (let i = 1; i < n; i++) ctx.lineTo(X(i), Y(pts[i]));
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    // bold glowing price line
-    ctx.save(); ctx.shadowColor = "rgba(216,182,90,.55)"; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(0, Y(pts[0]));
-    for (let i = 1; i < n; i++) ctx.lineTo(X(i), Y(pts[i]));
-    ctx.strokeStyle = GOLD_HI; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke(); ctx.restore();
-    // glowing endpoint dot
-    const ey = Y(pts[n - 1]);
-    ctx.save(); ctx.shadowColor = GOLD_HI; ctx.shadowBlur = 11; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(w - 4, ey, 2.4, 0, 7); ctx.fill();
-    ctx.shadowBlur = 0; ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(w - 4, ey, 3.4, 0, 7); ctx.globalAlpha = .35; ctx.fill(); ctx.restore();
+    const e = parseFloat(cv.dataset.e) || 2940;
+    const sl = parseFloat(cv.dataset.sl) || 2930;
+    const tp = parseFloat(cv.dataset.tp) || 2960;
+    const dir = cv.dataset.dir === "short" ? -1 : 1;
+    const risk = Math.abs(e - sl) || 8;
+    const r = rng(seed);
+    const n = 28;
+    const levels = [{ price: e, type: "e" }, { price: sl, type: "sl" }, { price: tp, type: "tp" }];
+
+    // narrative: probe toward SL, reclaim entry, push into profit (mirrored for shorts)
+    const candles = [];
+    let price = e - dir * risk * 0.35;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      let anchor;
+      if (t < 0.35) anchor = e - dir * risk * (0.55 - t * 0.4);
+      else if (t < 0.55) anchor = e - dir * risk * 0.08 + (e - (e - dir * risk * 0.55)) * ((t - 0.35) / 0.2);
+      else anchor = e + dir * risk * 0.15 + (tp - e) * 0.35 * ((t - 0.55) / 0.45);
+      const noise = (r() - 0.5) * risk * 0.14;
+      const o = price;
+      const c = o + (anchor - o) * 0.38 + noise;
+      const wick = risk * (0.08 + r() * 0.12);
+      candles.push({ o, c, h: Math.max(o, c) + wick * r(), l: Math.min(o, c) - wick * r() });
+      price = c;
+    }
+    candles[n - 1].c = e + dir * risk * 0.42;
+    candles[n - 1].o = candles[n - 2].c;
+    candles[n - 1].h = Math.max(candles[n - 1].o, candles[n - 1].c) + risk * 0.06;
+    candles[n - 1].l = Math.min(candles[n - 1].o, candles[n - 1].c) - risk * 0.04;
+
+    const pad = risk * 0.22;
+    const bnd = {
+      hi: Math.max(e, tp, sl, ...candles.map(c => c.h)) + pad,
+      lo: Math.min(e, tp, sl, ...candles.map(c => c.l)) - pad,
+    };
+    drawSignalChart(ctx, w, h, candles, levels, bnd, dir);
   }
 
   function initPlayer(cv) {
