@@ -542,7 +542,7 @@
         ${watching.map(vCard).join("")}
       </div>
 
-      <div class="section-head"><span class="h2">Next meetups</span><span class="more" data-tab="hubs">Hubs ›</span></div>
+      <div class="section-head"><span class="h2">Training Hub</span><span class="more" data-tab="hubs">Hubs ›</span></div>
       ${D.hubs.slice(0, 1).map(hubMini).join("")}
       <div class="spacer"></div>
     `);
@@ -642,6 +642,12 @@
   }
 
   function hubMini(h) {
+    if (h.real) return `<div class="card" data-tab="hubs" style="display:flex;align-items:center;gap:13px;padding:13px;overflow:hidden">
+      <div style="flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--gold-soft);border:1px solid var(--gold-line);color:var(--gold)">${ic("i-pin","ic")}</div>
+      <div style="flex:1;min-width:0">
+        <b style="font-family:var(--display);font-size:14px;display:block">${h.city} Training Hub</b>
+        <small style="font-size:11.5px;color:var(--muted)">${h.flag} ${h.access} · ${h.hours}</small>
+      </div>${ic("i-chev","ic")}</div>`;
     return `<div class="card" data-tab="hubs" style="display:flex;align-items:center;gap:13px;padding:13px;overflow:hidden">
       <div style="text-align:center;font-family:var(--mono);flex:none">
         <b style="font-size:19px;color:var(--gold);display:block;line-height:1">${h.event.d}</b>
