@@ -1568,7 +1568,7 @@
     setTimeout(() => {
       const sp = $("#screen-splash");
       sp.style.transition = "opacity .5s"; sp.style.opacity = "0";
-      setTimeout(() => { sp.remove(); if (isSignedIn()) { renderTabbar(); go("home"); } else showLogin(); }, 520);
+      setTimeout(() => { sp.remove(); showLogin(); }, 520);
     }, 1700);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
