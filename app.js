@@ -648,16 +648,18 @@
       return mins >= -5 && mins <= 75;
     });
   }
-  function liveStageHtml(v) {
+  function liveStageHtml(v, preview) {
     const ci = liveCallInfo() || { host: v.host, initials: v.hostInitials, session: v.session };
-    return `<div id="live-stage">
+    return `<div id="live-stage"${preview ? ' class="is-preview"' : ''}>
         <canvas id="live-canvas" data-chart="live"></canvas>
         <div class="live-grad"></div>
         <div class="live-hud">
-          <span class="pill pill-live"><span class="dot-live"></span> LIVE</span>
-          <span class="live-watchers">${ic("i-comm","ic")} <span id="watchers">${v.watchers.toLocaleString()}</span> watching</span>
+          ${preview
+            ? `<span class="pill pill-preview"><span class="dot-prev"></span> PREVIEW</span>`
+            : `<span class="pill pill-live"><span class="dot-live"></span> LIVE</span>
+          <span class="live-watchers">${ic("i-comm","ic")} <span id="watchers">${v.watchers.toLocaleString()}</span> watching</span>`}
         </div>
-        ${livePreview ? `<button class="live-exit" id="live-exit">Preview · exit ✕</button>` : ""}
+        ${preview ? `<button class="live-exit" id="live-exit">Exit preview ✕</button>` : ""}
         <div class="live-levels">
           <span class="lvl tp">TP ${v.tp}</span>
           <span class="lvl e">Entry ${v.entry}</span>
@@ -691,13 +693,13 @@
       </div>`;
   }
   SCREENS.live = function () {
-    const v = D.live, live = isLiveNow() || livePreview, nc = nextCall(), cInfo = liveCallInfo() || { session: v.session, host: v.host, initials: v.hostInitials };
+    const v = D.live, realLive = isLiveNow(), preview = livePreview && !realLive, live = realLive || preview, nc = nextCall(), cInfo = liveCallInfo() || { session: v.session, host: v.host, initials: v.hostInitials };
     setScreen(`
-      ${live ? liveStageHtml(v) : liveLobbyHtml(nc)}
+      ${live ? liveStageHtml(v, preview) : liveLobbyHtml(nc)}
       <div style="padding-top:16px">
-        ${live ? `<span class="eyebrow">${cInfo.session} · live now</span>
+        ${live ? `<span class="eyebrow">${cInfo.session} · ${preview ? "preview" : "live now"}</span>
         <h2 class="h2" style="margin:8px 0 4px">${cInfo.session}</h2>
-        <p class="sub">${cInfo.host} is leading ${cInfo.session} live — liquidity, the entry model, and live risk management on ${v.pair}.</p>
+        <p class="sub">${preview ? `A look inside the live room. When ${cInfo.session} goes live, members join free — ${cInfo.host} walks the charts, the entry model and live risk on ${v.pair} in real time.` : `${cInfo.host} is leading ${cInfo.session} live — liquidity, the entry model, and live risk management on ${v.pair}.`}</p>
         <div class="section-head"><span class="h3">Covering today</span></div>
         ${["Where the liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}` : `<p class="sub" style="margin-top:2px">The room opens automatically when the call starts — free for members. Set a reminder so you don't miss the open.</p>`}
         ${scheduleSection()}
@@ -721,7 +723,7 @@
     }
     // watchers ticker
     let w = v.watchers;
-    const wt = setInterval(() => { w += Math.floor(Math.random() * 9) - 3; $("#watchers").textContent = w.toLocaleString(); }, 2600);
+    const wt = setInterval(() => { const el = $("#watchers"); if (el) { w += Math.floor(Math.random() * 9) - 3; el.textContent = w.toLocaleString(); } }, 2600);
     // chat playback
     const chat = $("#chat"); let ci = 0;
     function push() {

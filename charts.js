@@ -8,7 +8,7 @@
   function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
   function makeSeries(n, seed, vol, start) {
-    const r = rng(seed); const out = []; let price = start || 2940;
+    const r = rng(seed); const out = []; let price = start || 4020;
     for (let i = 0; i < n; i++) {
       const drift = (r() - 0.48) * vol;
       const o = price;
@@ -110,7 +110,7 @@
     const seed = +cv.dataset.seed || 99;
     let { ctx, w, h } = fit(cv);
     const r = rng(seed); const N = 60; let pts = [];
-    let base = 2940; for (let i = 0; i < N; i++) { base += (r() - 0.46) * 6; pts.push(base); }
+    let base = 4020; for (let i = 0; i < N; i++) { base += (r() - 0.46) * 6; pts.push(base); }
     if (reduce) { drawAmbient(ctx, w, h, pts, 0); return; }
     let off = 0, acc = 0;
     const chart = { cv, tick(dt) {
@@ -125,12 +125,12 @@
 
   function initLive(cv) {
     let { ctx, w, h } = fit(cv);
-    let candles = makeSeries(34, (Date.now() & 0xffff) || 7, 7, 2946);
+    let candles = makeSeries(34, (Date.now() & 0xffff) || 7, 7, 4026);
     const lv = (window.DATA && DATA.live) || {};
     const levels = [
-      { price: parseFloat((lv.entry || "2946").replace(/,/g, "")), type: "e" },
-      { price: parseFloat((lv.sl || "2934").replace(/,/g, "")), type: "sl" },
-      { price: parseFloat((lv.tp || "2984").replace(/,/g, "")), type: "tp" },
+      { price: parseFloat((lv.entry || "4026").replace(/,/g, "")), type: "e" },
+      { price: parseFloat((lv.sl || "4014").replace(/,/g, "")), type: "sl" },
+      { price: parseFloat((lv.tp || "4064").replace(/,/g, "")), type: "tp" },
     ];
     const bnd = (() => { const b = bounds(candles); const ps = levels.map(l => l.price); return { hi: Math.max(b.hi, ...ps) + 4, lo: Math.min(b.lo, ...ps) - 4 }; })();
     if (reduce) { drawCandles(ctx, w, h, candles, { grid: true, levels, bounds: bnd }); return; }
@@ -149,7 +149,7 @@
   function initThumb(cv) {
     const { ctx, w, h } = fit(cv);
     const seed = +cv.dataset.seed || 5;
-    const candles = makeSeries(26, seed, 6, 2900 + seed);
+    const candles = makeSeries(26, seed, 6, 3980 + seed);
     drawCandles(ctx, w, h, candles, { grid: false, marker: false });
   }
 
@@ -206,9 +206,9 @@
   function initSignal(cv) {
     const { ctx, w, h } = fit(cv);
     const seed = +cv.dataset.seed || 5;
-    const e = parseFloat(cv.dataset.e) || 2940;
-    const sl = parseFloat(cv.dataset.sl) || 2930;
-    const tp = parseFloat(cv.dataset.tp) || 2960;
+    const e = parseFloat(cv.dataset.e) || 4020;
+    const sl = parseFloat(cv.dataset.sl) || 4010;
+    const tp = parseFloat(cv.dataset.tp) || 4040;
     const dir = cv.dataset.dir === "short" ? -1 : 1;
     const risk = Math.abs(e - sl) || 8;
     const r = rng(seed);
