@@ -1798,38 +1798,65 @@
     const path = D.paths.find(p => p.id === pathId);
     const bank = (D.quizzes && (D.quizzes[pathId] || D.quizzes.found)) || { pass: 1, qs: [] };
     const title = path ? path.name : "Quick";
-    const render = () => {
-      // shuffle options each render so the correct answer is never in a fixed slot
-      const prepared = bank.qs.map(q => {
+    let prepared = [], idx = 0, correct = 0, locked = false;
+    function build() {
+      prepared = bank.qs.map(q => {
         const opts = q.a.map((opt, j) => ({ opt, correct: j === q.c }));
         for (let i = opts.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [opts[i], opts[k]] = [opts[k], opts[i]]; }
         return { q: q.q, why: q.why, opts };
       });
-      const body = prepared.map((q, i) => `<div class="quiz-q"><span class="quiz-prog">Question ${i + 1} of ${prepared.length}</span><b>${q.q}</b>${q.opts.map(o => `<button class="quiz-opt" data-correct="${o.correct ? 1 : 0}">${o.opt}</button>`).join("")}<div class="quiz-why">${q.why}</div></div>`).join("");
-      openModal(`<h3 class="sheet-title">${title} quiz</h3><p class="sheet-sub">${prepared.length} questions · ${bank.pass}/${prepared.length} to pass.</p><div class="quiz">${body}</div><div id="quiz-score"></div>`);
-      let answered = 0, correct = 0;
+      idx = 0; correct = 0; renderQ();
+    }
+    function renderQ() {
+      const q = prepared[idx], n = prepared.length, last = idx + 1 >= n; locked = false;
+      openModal(`
+        <div class="quiz-head">
+          <div class="quiz-bar"><i style="width:${Math.round(idx / n * 100)}%"></i></div>
+          <div class="quiz-meta"><span>${title} quiz</span><span class="num">${idx + 1} / ${n}</span></div>
+        </div>
+        <b class="quiz-question">${q.q}</b>
+        <div class="quiz-opts">${q.opts.map(o => `<button class="quiz-opt" data-correct="${o.correct ? 1 : 0}">${o.opt}</button>`).join("")}</div>
+        <div class="quiz-why">${q.why}</div>
+        <button class="btn btn-gold btn-block quiz-next" id="quiz-next" hidden>${last ? "See results" : "Next question"}</button>
+        <div class="spacer"></div>`);
       [...document.querySelectorAll(".quiz-opt")].forEach(b => b.onclick = () => {
-        const qd = b.closest(".quiz-q"); if (qd.classList.contains("done")) return;
-        qd.classList.add("done"); answered++;
-        if (b.dataset.correct === "1") correct++;
-        [...qd.querySelectorAll(".quiz-opt")].forEach(o => { o.disabled = true; if (o.dataset.correct === "1") o.classList.add("right"); else if (o === b) o.classList.add("wrong"); });
-        const why = qd.querySelector(".quiz-why"); if (why) why.classList.add("show");
-        if (answered === prepared.length) finish(correct, prepared.length);
+        if (locked) return; locked = true;
+        const ok = b.dataset.correct === "1"; if (ok) correct++;
+        haptic(ok ? 12 : 22);
+        [...document.querySelectorAll(".quiz-opt")].forEach(o => { o.disabled = true; if (o.dataset.correct === "1") o.classList.add("right"); else if (o === b) o.classList.add("wrong"); });
+        const w = document.querySelector(".quiz-why"); if (w) w.classList.add("show");
+        const nx = $("#quiz-next"); if (nx) { nx.hidden = false; nx.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
       });
-    };
-    const finish = (correct, total) => {
-      const passed = correct >= bank.pass, s = $("#quiz-score"); if (!s) return;
+      const nx = $("#quiz-next"); if (nx) nx.onclick = () => { if (idx + 1 < prepared.length) { idx++; renderQ(); } else finish(); };
+    }
+    function finish() {
+      const total = prepared.length, passed = correct >= bank.pass, pct = Math.round(correct / total * 100);
       const ps = pState(), already = !!(ps.quizzesPassed && ps.quizzesPassed[pathId]);
-      const xpNote = passed ? (already ? "passed again" : "passed · +60 XP") : `${bank.pass}/${total} needed — review &amp; retry.`;
-      s.innerHTML = `<div class="qs-card ${passed ? "pass" : "fail"}">${ic(passed ? "i-trophy" : "i-target", "ic")}<div>You scored <b class="gold-text">${correct}/${total}</b> — ${xpNote}</div></div><button class="btn ${passed ? "btn-ghost" : "btn-gold"} btn-block" id="quiz-retry" style="margin-top:12px">${passed ? "Retake quiz" : "Try again"}</button>`;
+      const best = Math.max((ps.quizBest && ps.quizBest[pathId]) || 0, correct);
+      pSet({ quizBest: { ...(ps.quizBest || {}), [pathId]: best } });
       if (passed && !already) {
-        addXp(60); toast("Quiz passed · +60 XP", "i-trophy");
-        pSet({ quizzesPassed: { ...(ps.quizzesPassed || {}), [pathId]: true } });
+        addXp(60); pSet({ quizzesPassed: { ...(ps.quizzesPassed || {}), [pathId]: true } });
         if (path) { const cur = pathDone(pathId); if (cur < path.lessons) setPathDone(pathId, cur + 1); }
-      } else if (passed) toast("Quiz passed again — no extra XP", "i-check");
-      const r = $("#quiz-retry"); if (r) r.onclick = render;
-    };
-    render();
+        toast("Quiz passed · +60 XP", "i-trophy");
+      } else if (passed) { toast("Passed again — no extra XP", "i-check"); }
+      else { haptic(30); }
+      const sub = passed
+        ? (already ? `Sharp as ever — your best is ${best}/${total}.` : `+60 XP earned and your path moved forward. Best: ${best}/${total}.`)
+        : `You need ${bank.pass}/${total} to pass. Review the lessons and run it back — you've got this.`;
+      openModal(`
+        <div class="quiz-result ${passed ? "pass" : "fail"}">
+          <div class="qr-ring" style="background:conic-gradient(${passed ? "var(--gold)" : "var(--down)"} ${pct}%, var(--line-2) 0)"><div class="qr-ring-in">${ic(passed ? "i-trophy" : "i-target", "ic")}</div></div>
+          <div class="qr-score"><b class="gold-text">${correct}</b><span>/ ${total}</span></div>
+          <div class="qr-verdict">${passed ? "Passed" : "Not quite"}</div>
+          <p class="qr-sub">${sub}</p>
+        </div>
+        <button class="btn btn-gold btn-block" id="quiz-retry">${passed ? "Retake quiz" : "Try again"}</button>
+        <button class="btn btn-ghost btn-block" id="quiz-back" style="margin-top:10px">Back to ${title}</button>
+        <div class="spacer"></div>`);
+      const r = $("#quiz-retry"); if (r) r.onclick = build;
+      const bk = $("#quiz-back"); if (bk) bk.onclick = () => openPath(pathId);
+    }
+    build();
   }
   function trackRecordCard() {
     const closed = D.ideas.filter(i => i.status === "tp" || i.status === "sl");

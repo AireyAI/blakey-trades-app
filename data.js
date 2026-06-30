@@ -264,33 +264,41 @@ window.DATA = {
   ],
   // ── path quizzes (one bank per learning path; `c` = correct index, `why` teaches after answering) ──
   quizzes: {
-    found: { pass:4, qs:[
+    found: { pass:5, qs:[
       { q:"What does a stop-loss actually do?", a:["Closes the trade at a set level to cap the loss","Guarantees you exit in profit","Locks the spread in your favour","Adds to the position if price drops"], c:0, why:"A stop-loss is a pre-set exit so one losing trade can't damage the account." },
       { q:"XAUUSD is the price of…", a:["One ounce of gold in US dollars","Gold in British pounds per gram","A percentage move of the dollar","A basket of precious metals"], c:0, why:"XAUUSD = the US-dollar price of one troy ounce of gold." },
       { q:"Gold usually moves ___ the US dollar (DXY).", a:["Inverse to","In lockstep with","Faster than, same direction","Completely unrelated to"], c:0, why:"A stronger dollar makes gold pricier abroad, so gold and DXY tend to move opposite." },
       { q:"A 'demand zone' is…", a:["An area where buyers previously stepped in hard","The single highest price of the day","A level price can never break","Where the spread is always widest"], c:0, why:"It's a decision area where buying turned price up before — something to watch, not a guarantee." },
       { q:"Before risking real money, the smart first step is to…", a:["Practise the plan on demo or tiny size","Use maximum leverage to learn faster","Copy every signal with no thought","Only trade during news spikes"], c:0, why:"Reps on demo or small size build the habit without risking the account." },
+      { q:"Risking 1% of a £2,000 account, how much is at risk on the trade?", a:["£20","£200","£2","£100"], c:0, why:"1% of £2,000 is £20. Fixed-percent risk keeps every trade the same size relative to the account." },
+      { q:"Why is gold (XAUUSD) a sound market to learn on?", a:["It's deeply liquid and respects clear technical levels","It can only ever go up over time","Brokers pay you just to hold it","It only moves for one hour a day"], c:0, why:"Gold's liquidity and clean reaction to levels suit a patient, rules-based approach." },
     ]},
-    gold: { pass:4, qs:[
+    gold: { pass:5, qs:[
       { q:"What is the core Blakey Trades long trigger?", a:["Price reclaims a level and holds it","Any dip in price","A round number gets hit","An indicator turns green"], c:0, why:"Reclaim-and-hold shows buyers have taken control before you commit — the BT long." },
       { q:"Why does the London open matter for gold?", a:["It often expands the range and sets the day's liquidity","Gold only trades during London hours","Spreads drop to zero then","The dollar stops moving at the open"], c:0, why:"London brings the volume and volatility that frequently defines the day's range." },
       { q:"'Liquidity' resting above the highs is best described as…", a:["Clustered stop / limit orders price is drawn toward","A guaranteed wall of resistance","A period of very low volume","A fee your broker charges"], c:0, why:"Liquidity is pooled orders; price is often drawn to it before reversing." },
       { q:"A liquidity sweep is when price…", a:["Spikes past a high/low, grabs orders, then reverses","Trends smoothly in one direction all day","Gaps higher at the weekly open","Sits dead flat in a tight range"], c:0, why:"The sweep takes resting liquidity beyond a level then reverses — a trap-and-go." },
       { q:"Where does your stop belong?", a:["Beyond the structure that invalidates the idea","As tight as possible, structure aside","At a fixed distance every single trade","Just above entry on a long"], c:0, why:"Stops go beyond the level that proves you wrong — inside it, you get wicked out." },
+      { q:"'Premium' in a trading range means price is…", a:["In the expensive upper half — favour selling","In the cheap lower half — favour buying","Exactly on the midpoint","Outside the range entirely"], c:0, why:"Above the range's 50% is premium (look to sell); below it is discount (look to buy)." },
+      { q:"A fair value gap (FVG / imbalance) is…", a:["A fast 3-candle gap price often returns to fill","A guaranteed reversal point","A type of broker fee","The day's high minus its low"], c:0, why:"Price moved so fast it left an imbalance; it frequently returns to rebalance before continuing." },
     ]},
-    risk: { pass:4, qs:[
+    risk: { pass:5, qs:[
       { q:"Risking 1% per trade, a 5-trade losing streak costs roughly…", a:["About 5% of the account","Half the account","Exactly 1% in total","Nothing — the stop refunds it"], c:0, why:"1% × 5 ≈ a 5% drawdown — survivable. Fixed-fractional risk keeps you in the game." },
       { q:"A +2R winning trade means you made…", a:["Twice what you risked on it","2% of your whole account","Two standard lots","Two pips of profit"], c:0, why:"R is your risk unit, so +2R = profit equal to twice the amount risked." },
       { q:"'Revenge trading' is…", a:["Forcing trades to win back a loss","Only taking A+ setups","Journaling every entry","Banking partial profits early"], c:0, why:"Chasing a loss off-plan turns a bad day into a bad month. Name it, then stop it." },
       { q:"Position size should be set by…", a:["Your risk % and the stop distance","How confident the trade feels","The size of your last winner","A fixed lot, every time"], c:0, why:"Size = account risk ÷ stop distance. Confidence isn't a sizing input." },
       { q:"You've hit your daily loss limit. The right move is to…", a:["Stop trading for the day","Double size to win it back","Pull your stops and wait","Switch to a more volatile pair"], c:0, why:"The daily limit protects you from yourself — when it's hit, you're done for the day." },
+      { q:"You moved your stop to breakeven, then price drifts back to entry. The result is…", a:["A breakeven scratch — no loss","A full −1R loss","A +1R win","A margin call"], c:0, why:"At breakeven the worst case is a scratch — the downside is already off the table." },
+      { q:"Two trades risk the same %, but one has a wider stop. Its position size is…", a:["Smaller than the tighter-stop trade","Larger than the tighter-stop trade","Exactly the same","Always zero"], c:0, why:"Size = risk ÷ stop distance, so a wider stop means a smaller position for the same risk." },
     ]},
-    pro: { pass:4, qs:[
+    pro: { pass:5, qs:[
       { q:"'Scaling out' of a position means…", a:["Taking partial profit as price moves your way","Adding size on every tick","Sliding the stop further from price","Only ever closing at the full target"], c:0, why:"Scaling out banks partials and de-risks while leaving runners for the bigger move." },
       { q:"Moving your stop to breakeven does what?", a:["Removes the downside risk on an open winner","Guarantees the full take-profit","Widens your risk on the trade","Increases your position size"], c:0, why:"At breakeven the worst case is a scratch — the loss is off the table, not the target locked." },
       { q:"Why trade the same sessions consistently?", a:["A repeatable edge needs a comparable sample","Other sessions are against the rules","Brokers require a fixed schedule","To dodge volatility entirely"], c:0, why:"Same conditions make results comparable — that's how an edge becomes measurable." },
       { q:"A trading 'edge' is best described as…", a:["Positive expectancy repeated over many trades","One enormous winning trade","A secret indicator nobody has","Never taking a single loss"], c:0, why:"Edge = positive expectancy across a large sample, not the outcome of any one trade." },
       { q:"Two valid setups appear at once. The pro move is to…", a:["Take the higher-quality A+ setup","Trade both at full size","Skip trading for a week","Double size on the riskier one"], c:0, why:"Capital and focus are finite — concentrate on the highest-probability setup." },
+      { q:"'Trading on tilt' usually shows up as…", a:["Forcing extra, off-plan trades after a big win or loss","Following your checklist exactly","Sitting on your hands during chop","Journalling every trade"], c:0, why:"Tilt is emotional, off-plan trading after a strong result — the journal is how you catch it." },
+      { q:"A trading journal is most valuable because it…", a:["Turns your real results into feedback you can act on","Guarantees winning trades","Removes the need for a stop","Predicts the next candle"], c:0, why:"Reviewing real outcomes is how a process actually improves over time." },
     ]},
   },
   // ── glossary ──
