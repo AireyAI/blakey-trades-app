@@ -572,7 +572,8 @@
         ${st}
       </div>
       <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas>
-        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : 'Arron Blakey <span class="vchk">✓</span>'}</span></div>
+        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : 'Arron Blakey <span class="vchk">✓</span>'}</span>
+        <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
         <div class="cell"><small>Entry</small><b class="num">${i.entry}</b></div>
         <div class="cell sl"><small>Stop</small><b class="num">${i.sl}</b></div>
