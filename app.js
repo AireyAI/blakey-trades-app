@@ -1266,7 +1266,7 @@
   function openIdea(id) {
     const i = D.ideas.find(x => x.id === id) || D.ideas[0];
     openModal(`
-      <div class="player" style="height:170px"><canvas data-chart="player" data-seed="${i.id.charCodeAt(1)*5}"></canvas></div>
+      <div class="tv-chart" id="tv-${i.id}"><div class="tv-load">${ic("i-chart","ic")} Loading live chart…</div></div>
       <div class="idea-top" style="margin-top:16px">
         <div class="idea-pair">${ic("i-chart","ic")}<span class="sym" style="font-family:var(--display);font-weight:800;font-size:19px">${i.pair}</span>
           <span class="idea-dir ${i.dir}">${i.dir==="long"?"▲ LONG":"▼ SHORT"}</span></div>
@@ -1281,9 +1281,38 @@
       <span class="eyebrow" style="display:block;margin:6px 0 6px">The reasoning</span>
       <p class="sub">${i.note}</p>
       ${tookRow(i)}
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Educational content only. Not financial advice.</p>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Live chart by TradingView · Educational content only. Not financial advice.</p>
     `);
     wireTook();
+    mountTV("tv-" + i.id);
+  }
+  // lazy-load TradingView's widget lib once, then mount a clean dark live XAUUSD chart
+  function loadTV() {
+    if (window._tvP) return window._tvP;
+    window._tvP = new Promise((res, rej) => {
+      if (window.TradingView) return res();
+      const s = document.createElement("script"); s.src = "https://s3.tradingview.com/tv.js";
+      s.onload = () => res(); s.onerror = rej; document.head.appendChild(s);
+    });
+    return window._tvP;
+  }
+  function mountTV(cid) {
+    loadTV().then(() => {
+      const el = document.getElementById(cid);
+      if (!el || !window.TradingView) return;
+      el.innerHTML = "";
+      new TradingView.widget({
+        container_id: cid, symbol: "OANDA:XAUUSD", interval: "60", timezone: "Europe/London",
+        theme: "dark", style: "1", locale: "en", autosize: true, enable_publishing: false,
+        hide_top_toolbar: true, hide_legend: true, hide_side_toolbar: true, allow_symbol_change: false, save_image: false,
+        backgroundColor: "#0b0c11", gridColor: "rgba(255,255,255,0.04)",
+        overrides: {
+          "mainSeriesProperties.candleStyle.upColor": "#37BE7E", "mainSeriesProperties.candleStyle.downColor": "#F0565B",
+          "mainSeriesProperties.candleStyle.borderUpColor": "#37BE7E", "mainSeriesProperties.candleStyle.borderDownColor": "#F0565B",
+          "mainSeriesProperties.candleStyle.wickUpColor": "#37BE7E", "mainSeriesProperties.candleStyle.wickDownColor": "#F0565B"
+        }
+      });
+    }).catch(() => { const el = document.getElementById(cid); if (el) el.innerHTML = `<div class="tv-load">Live chart unavailable — check connection</div>`; });
   }
 
   // ---------- notifications ----------
