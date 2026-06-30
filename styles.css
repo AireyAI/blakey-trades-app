@@ -243,6 +243,7 @@ a{color:inherit;text-decoration:none}
    APP HEADER (in-screen)
    ========================================================= */
 .app-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 12px}
+.tb-actions{display:flex;align-items:center;gap:10px}
 .brand-word{height:24px;width:auto;opacity:.95}
 .app-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 2px}
 .app-head .who{display:flex;align-items:center;gap:11px}

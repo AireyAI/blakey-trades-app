@@ -44,7 +44,7 @@
     return `<div class="app-topbar"><img class="brand-word" src="assets/blakey-logo.png" alt="Blakey Trades">${right || ""}</div>`;
   }
   function header(title, sub) {
-    return topbar(`<button class="icon-btn" data-act="notif">${ic("i-bell")}<span class="badge"></span></button>`) +
+    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif">${ic("i-bell")}<span class="badge"></span></button></div>`) +
       `<div class="app-head">
       <div class="who" data-act="profile" style="cursor:pointer">
         ${av(D.user.initials, 44)}
@@ -1774,6 +1774,7 @@
     [...document.querySelectorAll("[data-video]")].forEach(n => n.addEventListener("click", () => openPlayer(n.dataset.video)));
     [...document.querySelectorAll("[data-idea]")].forEach(n => n.addEventListener("click", () => openIdea(n.dataset.idea)));
     [...document.querySelectorAll("[data-act=notif]")].forEach(n => n.onclick = openNotifications);
+    [...document.querySelectorAll("[data-act=theme-top]")].forEach(n => n.onclick = () => { const t = toggleTheme(); n.innerHTML = ic(t === "light" ? "i-moon" : "i-sun"); toast(t === "light" ? "Light mode" : "Dark mode", "i-moon"); });
     [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
