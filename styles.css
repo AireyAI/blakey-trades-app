@@ -356,7 +356,7 @@ a{color:inherit;text-decoration:none}
 /* =========================================================
    LIVE
    ========================================================= */
-#live-stage{position:relative;background:#000;border-radius:0 0 26px 26px;overflow:hidden;margin:0 -18px;aspect-ratio:9/13}
+#live-stage{position:relative;background:#000;border-radius:18px;overflow:hidden;margin:0 -2px;height:236px}
 #live-canvas{position:absolute;inset:0;width:100%;height:100%}
 /* live lobby (between calls) */
 #live-lobby{position:relative;margin:0 -18px;border-radius:0 0 26px 26px;overflow:hidden;min-height:340px;display:grid;place-items:center;background:radial-gradient(120% 90% at 50% 0,#14161d,#0a0b0f);border-bottom:1px solid var(--line-2)}
@@ -397,6 +397,16 @@ a{color:inherit;text-decoration:none}
   padding:12px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--ink) 70%,transparent)}
 .live-input{flex:1;height:44px;border-radius:var(--r-full);background:var(--surface-2);border:1px solid var(--line-2);padding:0 16px;display:flex;align-items:center;color:var(--muted);font-size:13.5px}
 .react-btn{width:44px;height:44px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line-2);display:grid;place-items:center;font-size:19px}
+/* live chat panel — below the chart, no overlap (kills the flicker) */
+.live-chatbox{margin-top:14px}
+.live-chat2{max-height:230px;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:9px;padding:2px 2px 0}
+.live-chat2::-webkit-scrollbar{display:none}
+.live-chat2 .chat-msg{display:flex;gap:8px;align-items:flex-start;animation:chatIn .35s cubic-bezier(.2,.8,.2,1) both}
+.live-chat2 .chat-msg .ct{background:var(--surface-2);border:1px solid var(--line);border-radius:4px 13px 13px 13px;padding:8px 11px;font-size:12.5px;line-height:1.4;color:#dcdce0}
+.live-chat2 .chat-msg .ct b{display:block;font-size:11px;color:var(--muted);margin:0 0 2px}
+.live-chat2 .chat-msg.host .ct{background:rgba(199,164,77,.1);border-color:var(--gold-line)}
+.live-chat2 .chat-msg.host .ct b{color:var(--gold)}
+.live-compose2{display:flex;gap:9px;align-items:center;margin-top:12px}
 .react-fly{position:absolute;z-index:6;font-size:24px;pointer-events:none;animation:fly 2.4s ease-out forwards}
 @keyframes fly{0%{opacity:0;transform:translateY(0) scale(.6)}12%{opacity:1}80%{opacity:.9}100%{opacity:0;transform:translateY(-180px) scale(1.25) rotate(var(--rot,8deg))}}
 
@@ -853,7 +863,7 @@ a{color:inherit;text-decoration:none}
 .you-tag{font-family:var(--mono);font-size:9px;font-weight:700;color:#120d02;background:var(--gold);padding:1px 6px;border-radius:999px;margin-left:5px;vertical-align:middle}
 
 /* signal card chart + source label + verified badge + risk banner */
-.sig-chart{position:relative;height:76px;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:12px 0;background:#0a0a0e}
+.sig-chart{position:relative;height:94px;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:12px 0;background:radial-gradient(120% 100% at 50% 0,#101218,#0a0a0e)}
 .sig-chart canvas{position:absolute;inset:0;width:100%;height:100%}
 .sig-src{position:absolute;top:7px;left:8px;font-size:10px;font-weight:600;color:var(--text);background:rgba(8,8,11,.62);backdrop-filter:blur(6px);border:1px solid var(--line);padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
 .sig-src.bot{color:#8fd0ff;border-color:rgba(127,208,255,.32)}

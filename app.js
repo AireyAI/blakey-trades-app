@@ -648,8 +648,10 @@
           <span class="lvl sl">SL ${v.sl}</span>
         </div>
         <div class="live-host">${av(v.hostInitials, 36)}<div><b>${v.host} <span class="vchk">✓</span></b><small>${v.hostRole} · Hosting</small></div></div>
-        <div class="live-chat"><div class="live-chat-inner" id="chat"></div></div>
-        <div class="live-compose">
+      </div>
+      <div class="live-chatbox">
+        <div class="live-chat2" id="chat"></div>
+        <div class="live-compose2">
           <div class="live-input">Say something to the floor…</div>
           <button class="react-btn" data-react="🔥">🔥</button>
           <button class="react-btn" data-react="💎">💎</button>
@@ -714,7 +716,8 @@
         ? `<div class="ct"><b>${m.name} · Host</b>${m.text}</div>`
         : `${av(m.initials, 28, "quiet")}<div class="ct"><b>${m.name}</b>${m.text}</div>`;
       chat.appendChild(node);
-      while (chat.children.length > 7) chat.removeChild(chat.firstChild);
+      while (chat.children.length > 14) chat.removeChild(chat.firstChild);
+      chat.scrollTop = chat.scrollHeight;
     }
     push(); push(); push();
     const ct = setInterval(push, 2400);
