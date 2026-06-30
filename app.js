@@ -15,8 +15,30 @@
   function toast(msg, iconId) {
     const t = $("#toast");
     t.innerHTML = (iconId ? ic(iconId) : "") + `<span>${msg}</span>`;
-    t.classList.add("show"); clearTimeout(toastT);
+    haptic(14); t.classList.add("show"); clearTimeout(toastT);
     toastT = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  // ---------- premium feel: haptics + count-up ----------
+  function reduceMotion() { try { return window.matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; } }
+  let _interacted = false;
+  try { window.addEventListener("pointerdown", () => { _interacted = true; }, { once: true, capture: true }); } catch (e) {}
+  function haptic(p) { if (!_interacted) return; try { if (navigator.vibrate) navigator.vibrate(p || 8); } catch (e) {} } // Android web; no-op on iOS Safari; only after first user gesture
+  function countUp(el) {
+    if (!el || reduceMotion()) return;
+    const raw = (el.textContent || "").trim();
+    const m = raw.match(/^([^\d-]*)(-?[\d,]+(?:\.\d+)?)(.*)$/);
+    if (!m) return;
+    const pre = m[1], orig = m[2], suf = m[3], clean = orig.replace(/,/g, ""), target = parseFloat(clean);
+    if (!isFinite(target)) return;
+    const dec = (clean.split(".")[1] || "").length, comma = orig.includes(","), dur = 600, t0 = performance.now();
+    const fmt = v => pre + (comma ? (+v.toFixed(dec)).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec }) : v.toFixed(dec)) + suf;
+    function frame(t) {
+      const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(target * e);
+      if (p < 1) requestAnimationFrame(frame); else el.textContent = pre + orig + suf;
+    }
+    requestAnimationFrame(frame);
   }
 
   // ---------- router ----------
@@ -28,11 +50,12 @@
     const s = $("#screen");
     s.innerHTML = html; s.classList.remove("screen-enter"); void s.offsetWidth; s.classList.add("screen-enter");
     $("#screen-scroll").scrollTop = 0;
-    requestAnimationFrame(() => Charts.initIn(s));
+    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b").forEach(countUp); });
   }
 
   const SCREENS = {};
   function go(tab) {
+    haptic(8);
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
     SCREENS[tab]();
@@ -259,13 +282,14 @@
     const bias = pct == null ? "Balanced" : pct > 0.15 ? "Firm" : pct < -0.15 ? "Soft" : "Balanced";
     const day = new Date().toLocaleDateString("en-GB", { weekday: "long" });
     const headline = pct == null ? `Gold at $${price} into ${day}'s session`
+      : bias === "Balanced" ? `Gold holding around $${price} into ${day}'s session`
       : `Gold ${pct >= 0 ? "firm" : "soft"} at $${price} — ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(2)}% into ${day}'s session`;
     const ev = nextCalEvent();
     return {
       bias,
       headline,
       points: [
-        { ic: "i-dollar", label: "Spot gold", text: `$${price} · ${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct || 0).toFixed(2)}% today` },
+        { ic: "i-dollar", label: "Spot gold", text: pct != null && Math.abs(pct) < 0.05 ? `$${price} · flat today` : `$${price} · ${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct || 0).toFixed(2)}% today` },
         { ic: "i-target", label: "Key levels", text: `Support $${f0(support)} · Resistance $${f0(resistance)}` },
         { ic: "i-cal", label: "On watch", text: ev || "No tier-1 data due — technicals lead today" },
       ],
