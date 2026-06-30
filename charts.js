@@ -153,17 +153,42 @@
     drawCandles(ctx, w, h, candles, { grid: false, marker: false });
   }
 
-  // compact signal chart — candles + entry/SL/TP level lines
+  // compact signal chart — clean price line + shaded risk/reward zones + entry/SL/TP levels
   function initSignal(cv) {
     const { ctx, w, h } = fit(cv);
     const seed = +cv.dataset.seed || 5;
     const e = parseFloat(cv.dataset.e) || 2940, sl = parseFloat(cv.dataset.sl) || 2930, tp = parseFloat(cv.dataset.tp) || 2960;
-    const risk = Math.abs(e - sl) || 8;
-    const candles = makeSeries(24, seed, Math.max(2, risk * 0.45), e);
-    const levels = [{ price: e, type: "e" }, { price: sl, type: "sl" }, { price: tp, type: "tp" }];
-    const b = bounds(candles), ps = [e, sl, tp];
-    const bnd = { hi: Math.max(b.hi, ...ps) + risk * 0.5, lo: Math.min(b.lo, ...ps) - risk * 0.5 };
-    drawCandles(ctx, w, h, candles, { grid: false, levels, bounds: bnd, marker: false });
+    const dir = tp >= e ? 1 : -1, risk = Math.abs(e - sl) || 8;
+    // smooth price path: drifts up to ~1R below entry, then progresses ~0.45R toward target
+    const r = rng(seed), n = 48, pts = [];
+    const startP = e - dir * risk * 1.1, endP = e + dir * risk * 0.45;
+    let v = startP;
+    for (let i = 0; i < n; i++) { const t = i / (n - 1); const drift = startP + (endP - startP) * t; v += (drift - v) * 0.26 + (r() - 0.5) * risk * 0.4; pts.push(v); }
+    pts[n - 1] = endP;
+    let hi = Math.max(tp, sl, ...pts), lo = Math.min(tp, sl, ...pts);
+    const pad = (hi - lo) * 0.14 || 1; hi += pad; lo -= pad;
+    const padT = 6, padB = 6, X = i => (w * i) / (n - 1), Y = p => padT + (hi - p) / (hi - lo) * (h - padT - padB);
+    ctx.clearRect(0, 0, w, h);
+    // risk / reward zones
+    const yE = Y(e), yTP = Y(tp), ySL = Y(sl);
+    ctx.fillStyle = "rgba(55,190,126,.08)"; ctx.fillRect(0, Math.min(yE, yTP), w, Math.abs(yTP - yE));
+    ctx.fillStyle = "rgba(240,86,91,.08)"; ctx.fillRect(0, Math.min(yE, ySL), w, Math.abs(ySL - yE));
+    // level lines (entry gold · TP green · SL red)
+    const line = (price, col) => { const y = Y(price); ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); ctx.restore(); };
+    line(tp, "rgba(55,190,126,.6)"); line(sl, "rgba(240,86,91,.6)"); line(e, "rgba(199,164,77,.75)");
+    // gradient area under the price line
+    const grad = ctx.createLinearGradient(0, padT, 0, h);
+    grad.addColorStop(0, "rgba(199,164,77,.30)"); grad.addColorStop(1, "rgba(199,164,77,0)");
+    ctx.beginPath(); ctx.moveTo(0, Y(pts[0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(X(i), Y(pts[i]));
+    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    // price line
+    ctx.beginPath(); ctx.moveTo(0, Y(pts[0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(X(i), Y(pts[i]));
+    ctx.strokeStyle = GOLD_HI; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+    // glowing endpoint dot
+    const ey = Y(pts[n - 1]);
+    ctx.save(); ctx.shadowColor = GOLD; ctx.shadowBlur = 9; ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(w - 3, ey, 3, 0, 7); ctx.fill(); ctx.restore();
   }
 
   function initPlayer(cv) {
