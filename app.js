@@ -55,18 +55,54 @@
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
 
-  // ---------- live-call schedule (real weekly timetable) ----------
+  // ---------- live-call schedule (real weekly timetable, UK times) ----------
   const DAY_IDX = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
   const DAY_FULL = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday", Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
+  const TZ_UK = "Europe/London";
+  function ukDayShort(ms) { return new Intl.DateTimeFormat("en-GB", { timeZone: TZ_UK, weekday: "short" }).format(new Date(ms)).slice(0, 3); }
+  function ukYmd(ms) { return new Intl.DateTimeFormat("en-CA", { timeZone: TZ_UK, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)); }
+  function ukWallToUtc(isoLocal) {
+    const [date, time = "00:00:00"] = isoLocal.split("T");
+    const [Y, M, D] = date.split("-").map(Number);
+    const [hh, mm] = time.split(":").map(Number);
+    let lo = Date.UTC(Y, M - 1, D - 1), hi = Date.UTC(Y, M - 1, D + 1, 23, 59);
+    const parts = (t) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ_UK, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(t));
+    const g = (ps, ty) => +ps.find(x => x.type === ty).value;
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) >> 1; const ps = parts(mid);
+      const cmp = g(ps, "year") - Y || g(ps, "month") - M || g(ps, "day") - D || g(ps, "hour") - hh || g(ps, "minute") - mm;
+      if (cmp < 0) lo = mid + 1; else if (cmp > 0) hi = mid - 1; else return mid;
+    }
+    return lo;
+  }
+  function ukInstantForDay(dayKey, timeStr, fromMs) {
+    const [h, m] = timeStr.split(":").map(Number);
+    const target = DAY_IDX[dayKey];
+    for (let add = 0; add < 14; add++) {
+      const probe = fromMs + add * 86400000;
+      if (DAY_IDX[ukDayShort(probe)] !== target) continue;
+      const instant = ukWallToUtc(`${ukYmd(probe)}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+      if (instant > fromMs) return instant;
+    }
+    return null;
+  }
+  function ukInstantOnDay(dayKey, timeStr, refMs) {
+    const [h, m] = timeStr.split(":").map(Number);
+    const target = DAY_IDX[dayKey];
+    for (let add = 0; add < 8; add++) {
+      const probe = refMs - add * 86400000;
+      if (DAY_IDX[ukDayShort(probe)] !== target) continue;
+      return ukWallToUtc(`${ukYmd(probe)}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+    }
+    return null;
+  }
   function nextCall() {
-    const now = new Date();
+    const now = Date.now();
     let best = null, bestMs = Infinity;
     for (const c of (D.schedule || [])) {
-      const [h, m] = c.time.split(":").map(Number);
-      const dd = (DAY_IDX[c.day] - now.getDay() + 7) % 7;
-      const dt = new Date(now); dt.setDate(now.getDate() + dd); dt.setHours(h, m, 0, 0);
-      if (dt.getTime() <= now.getTime()) dt.setDate(dt.getDate() + 7);
-      const diff = dt.getTime() - now.getTime();
+      const ms = ukInstantForDay(c.day, c.time, now);
+      if (ms == null) continue;
+      const diff = ms - now;
       if (diff < bestMs) { bestMs = diff; best = c; }
     }
     return best ? { ...best, startsIn: Math.floor(bestMs / 1000) } : null;
@@ -249,6 +285,114 @@
     if (Array.isArray(s.journal)) D.journal = s.journal;
     else pSet({ journal: D.journal, streak: D.user.streak, lbPoints: 3480 });
     if (s.name) { D.user.name = s.name; D.user.first = s.first || s.name.split(/\s+/)[0]; D.user.initials = s.initials || D.user.initials; }
+    if (s.country) D.user.country = s.country;
+    if (s.pathDone) D.paths.forEach(p => { if (s.pathDone[p.id] != null) p.done = Math.min(s.pathDone[p.id], p.lessons); });
+    if (s.videoProgress) D.videos.forEach(v => { if (s.videoProgress[v.id] != null) v.progress = s.videoProgress[v.id]; });
+    if (s.challenge) Object.assign(D.challenge, s.challenge);
+    if (Array.isArray(s.alerts)) D.alerts = s.alerts;
+    if (Array.isArray(s.posts)) D.posts = s.posts;
+  }
+  function callKey(c) { return c.day + "|" + c.time + "|" + c.session; }
+  function getTook(id) { return (pState().took || {})[id] || null; }
+  function setTook(id, val) {
+    const took = { ...(pState().took || {}) };
+    if (val) took[id] = val; else delete took[id];
+    pSet({ took });
+  }
+  function isShared(id) { return (pState().sharedJournal || []).includes(id); }
+  function markShared(id) {
+    const a = new Set(pState().sharedJournal || []); a.add(id);
+    pSet({ sharedJournal: [...a] });
+  }
+  function liveChallenge() { const s = pState(); return { ...D.challenge, ...(s.challenge || {}) }; }
+  function saveChallenge(patch) {
+    const c = { ...liveChallenge(), ...patch };
+    pSet({ challenge: { name: c.name, desc: c.desc, done: c.done, total: c.total, reward: c.reward, joined: c.joined } });
+    Object.assign(D.challenge, c);
+  }
+  function pathDone(id) {
+    const p = D.paths.find(x => x.id === id); if (!p) return 0;
+    const stored = (pState().pathDone || {})[id];
+    return stored != null ? Math.min(stored, p.lessons) : p.done;
+  }
+  function setPathDone(id, n) {
+    const p = D.paths.find(x => x.id === id); if (!p) return;
+    const v = Math.min(Math.max(0, n), p.lessons);
+    p.done = v;
+    pSet({ pathDone: { ...(pState().pathDone || {}), [id]: v } });
+  }
+  function getVideoProgress(id) {
+    const v = D.videos.find(x => x.id === id);
+    const stored = (pState().videoProgress || {})[id];
+    return stored != null ? stored : (v ? v.progress : 0);
+  }
+  function setVideoProgress(id, prog) {
+    const v = D.videos.find(x => x.id === id); if (!v) return;
+    v.progress = Math.min(1, Math.max(0, prog));
+    pSet({ videoProgress: { ...(pState().videoProgress || {}), [id]: v.progress } });
+  }
+  function isReminded(c) { return (pState().reminders || []).includes(callKey(c)); }
+  function setReminder(c) {
+    const k = callKey(c), rs = new Set(pState().reminders || []);
+    if (rs.has(k)) return false;
+    rs.add(k); pSet({ reminders: [...rs] }); return true;
+  }
+  function remindBtnLabel(c) { return c && isReminded(c) ? "Reminder set ✓" : "Remind me"; }
+  function bumpChallengeDay() {
+    const c = liveChallenge(); if (!c.joined) return;
+    const s = pState(), today = new Date().toLocaleDateString("en-CA");
+    if (s.lastChallengeDay === today) return;
+    s.lastChallengeDay = today; pSave(s);
+    saveChallenge({ done: Math.min(c.done + 1, c.total) });
+  }
+  function saveAlerts() { pSet({ alerts: D.alerts }); }
+  function savePosts() { pSet({ posts: D.posts }); }
+  function getSetting(key, def) { const v = (pState().settings || {})[key]; return v != null ? v : def; }
+  function setSetting(key, val) { pSet({ settings: { ...(pState().settings || {}), [key]: val } }); }
+  function getNotifPrefs() {
+    const def = [1, 1, 1, 0, 1, 1];
+    const p = pState().notifPrefs;
+    return def.map((d, i) => (p && p[i] != null ? !!p[i] : !!d));
+  }
+  function setNotifPref(i, on) {
+    const prefs = getNotifPrefs(); prefs[i] = !!on;
+    pSet({ notifPrefs: prefs });
+  }
+  function savedVideos() { return pState().savedVideos || []; }
+  function isSaved(id) { return savedVideos().includes(id); }
+  function toggleSaved(id) {
+    const s = new Set(savedVideos());
+    if (s.has(id)) s.delete(id); else s.add(id);
+    pSet({ savedVideos: [...s] });
+    return s.has(id);
+  }
+  function icsStamp(ms) { return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z/, "Z"); }
+  function downloadCallIcs(call) {
+    const nc = call || nextCall(); if (!nc) { toast("No upcoming call to add", null); return; }
+    const start = ukInstantForDay(nc.day, nc.time, Date.now());
+    if (!start) { toast("Could not schedule this call", null); return; }
+    const end = start + 75 * 60000;
+    const uid = callKey(nc) + "@blakeytrades.com";
+    const body = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Blakey Trades//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VEVENT",
+      "UID:" + uid,
+      "DTSTAMP:" + icsStamp(Date.now()),
+      "DTSTART:" + icsStamp(start),
+      "DTEND:" + icsStamp(end),
+      "SUMMARY:" + nc.session.replace(/,/g, "\\,"),
+      "DESCRIPTION:Blakey Trades live call with " + nc.host + ". Free for members.",
+      "LOCATION:Blakey Trades App",
+      "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", "DESCRIPTION:Live call starts in 10 minutes", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR"
+    ].join("\r\n");
+    const blob = new Blob([body], { type: "text/calendar;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "blakey-trades-" + nc.session.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".ics";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 500);
+    toast("Calendar event downloaded", "i-cal");
   }
   function callsJoined() { const s = pState(); return s.calls != null ? s.calls : D.user.sessions; }
   function bumpCalls() { const s = pState(), today = new Date().toLocaleDateString("en-CA"); if (s.lastCallDay === today) return false; s.calls = (s.calls != null ? s.calls : D.user.sessions) + 1; s.lastCallDay = today; pSave(s); return true; }
@@ -257,12 +401,17 @@
   function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
   function recordLog() { // a logged trade earns points + extends the streak once per day, and persists the journal
     const s = pState(), today = new Date().toLocaleDateString("en-CA");
-    if (s.lastLogDay && s.lastLogDay !== today) s.streak = (s.streak != null ? s.streak : D.user.streak) + 1;
-    else if (s.streak == null) s.streak = D.user.streak;
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
+    if (s.lastLogDay !== today) {
+      if (s.lastLogDay === yesterday) s.streak = (s.streak != null ? s.streak : D.user.streak) + 1;
+      else if (s.lastLogDay) s.streak = 1;
+      else if (s.streak == null) s.streak = D.user.streak;
+    } else if (s.streak == null) s.streak = D.user.streak;
     s.lastLogDay = today;
     s.lbPoints = (s.lbPoints != null ? s.lbPoints : 3480) + 50;
     s.journal = D.journal;
     pSave(s);
+    bumpChallengeDay();
   }
   function liveLeaderboard() { // inject your real points, re-sort, re-rank
     const rows = D.leaderboard.map(r => ({ ...r, _p: r.me ? lbPoints() : parseInt(String(r.pts).replace(/,/g, ""), 10) || 0 }));
@@ -311,7 +460,7 @@
     const v = D.live;
     const nc = nextCall() || { session: v.title, host: v.host, day: "Mon", at: "", startsIn: v.startsIn };
     const ideas = D.ideas[0];
-    const watching = D.videos.filter(x => x.progress > 0);
+    const watching = D.videos.filter(x => getVideoProgress(x.id) > 0);
     setScreen(`
       ${header()}
       ${marketBar()}
@@ -328,7 +477,7 @@
           <div class="countdown" id="cd"></div>
           <div style="display:flex;gap:10px;margin-top:15px">
             <button class="btn btn-gold" style="flex:1" data-act="joinlive">${ic("i-live")} Join live</button>
-            <button class="btn btn-ghost btn-sm" data-act="remind" style="height:52px;padding:0 16px">Remind me</button>
+            <button class="btn btn-ghost btn-sm" data-act="remind" style="height:52px;padding:0 16px">${remindBtnLabel(nc)}</button>
           </div>
         </div>
       </div>
@@ -368,15 +517,14 @@
     cleanups.push(() => clearInterval(t));
     wireCommon();
     $("[data-act=joinlive]").onclick = () => { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } go("live"); };
-    $("[data-act=remind]").onclick = (e) => { e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
+    $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
     mountMarketBar();
   };
 
-  // user marks whether they took a signal (👍/👎) — persists across re-renders
-  const tookState = {};
+  // user marks whether they took a signal (👍/👎) — persisted in bt_profile_v1
   function tookBase(id) { let n = 0; for (const c of id) n += c.charCodeAt(0); return 24 + (n % 60); }
   function tookRow(i) {
-    const s = tookState[i.id];
+    const s = getTook(i.id);
     const cnt = tookBase(i.id) + (s === "up" ? 1 : 0);
     return `<div class="took">
       <span class="took-q">Did you take it?</span>
@@ -390,16 +538,17 @@
     [...document.querySelectorAll("[data-took]")].forEach(b => b.onclick = (e) => {
       e.stopPropagation(); // don't open the idea sheet
       const id = b.dataset.id, choice = b.dataset.took;
-      tookState[id] = tookState[id] === choice ? null : choice; // tap again to clear
+      const next = getTook(id) === choice ? null : choice;
+      setTook(id, next);
       const row = b.closest(".took");
       if (row) {
         const up = row.querySelector(".took-btn.up"), down = row.querySelector(".took-btn.down");
-        up.classList.toggle("on", tookState[id] === "up");
-        down.classList.toggle("on", tookState[id] === "down");
-        const n = up.querySelector(".num"); if (n) n.textContent = tookBase(id) + (tookState[id] === "up" ? 1 : 0);
+        up.classList.toggle("on", next === "up");
+        down.classList.toggle("on", next === "down");
+        const n = up.querySelector(".num"); if (n) n.textContent = tookBase(id) + (next === "up" ? 1 : 0);
       }
-      if (tookState[id] === "up") openLogTrade(signalPrefill(D.ideas.find(x => x.id === id))); // took it → drop it into the journal, pre-filled
-      else toast(tookState[id] === "down" ? "Marked as not taken" : "Cleared", null);
+      if (next === "up") openLogTrade(signalPrefill(D.ideas.find(x => x.id === id)));
+      else toast(next === "down" ? "Marked as not taken" : "Cleared", null);
     });
   }
   function signalPrefill(i) {
@@ -465,7 +614,7 @@
       <div class="thumb"><canvas data-chart="thumb" data-seed="${v.seed}"></canvas>
         <div class="play-mini"><span>${ic("i-play")}</span></div>
         <span class="dur num">${v.dur}</span>
-        ${v.progress ? `<div class="prog"><i style="width:${Math.round(v.progress*100)}%"></i></div>` : ""}
+        ${getVideoProgress(v.id) ? `<div class="prog"><i style="width:${Math.round(getVideoProgress(v.id)*100)}%"></i></div>` : ""}
       </div>
       <h4>${v.title}</h4>
       <div class="vmeta"><span>${v.cat}</span>·<span>${v.views} views</span></div>
@@ -474,12 +623,11 @@
 
   // ============================ LIVE ============================
   let livePreview = false; // demo: lets you peek into the live room when no call is on
-  function isLiveNow() { // true only inside a scheduled call window (device clock, UK times)
-    const now = new Date();
+  function isLiveNow() { // true only inside a scheduled call window (UK timetable)
+    const now = Date.now();
     return (D.schedule || []).some(c => {
-      if (DAY_IDX[c.day] !== now.getDay()) return false;
-      const [h, m] = c.time.split(":").map(Number);
-      const start = new Date(now); start.setHours(h, m, 0, 0);
+      const start = ukInstantOnDay(c.day, c.time, now);
+      if (start == null) return false;
       const mins = (now - start) / 60000;
       return mins >= -5 && mins <= 75;
     });
@@ -516,7 +664,8 @@
           <div class="lobby-host">${nc ? `with ${nc.host} · ${DAY_FULL[nc.day]} ${nc.at}` : "Schedule coming up"}</div>
           <div class="countdown lobby-cd" id="lobby-cd"></div>
           <div class="lobby-actions">
-            <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} Remind me</button>
+            <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} ${remindBtnLabel(nc)}</button>
+            <button class="btn btn-ghost" data-act="add-cal">${ic("i-cal")} Add to calendar</button>
             <button class="btn btn-ghost" id="live-preview">${ic("i-play")} Preview the room</button>
           </div>
         </div>
@@ -546,7 +695,8 @@
       const lt = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); if (left <= 0) go("live"); }, 1000);
       cleanups.push(() => clearInterval(lt));
       const pv = $("#live-preview"); if (pv) pv.onclick = () => { livePreview = true; SCREENS.live(); };
-      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => toast("We'll ping you 10 min before the call", "i-bell");
+      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) toast("We'll ping you 10 min before the call", "i-bell"); else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
+      const ac = $("[data-act=add-cal]"); if (ac) ac.onclick = () => downloadCallIcs(nc);
       wireCommon();
       return;
     }
@@ -612,10 +762,27 @@
     [...document.querySelectorAll("#chips .chip")].forEach(c => c.onclick = () => { learnCat = c.dataset.cat; [...document.querySelectorAll("#chips .chip")].forEach(x => x.classList.toggle("active", x === c)); renderLearnList(); });
     wireCommon();
   };
+  function openLearnSearch() {
+    openModal(`<h3 class="sheet-title">Search library</h3><p class="sheet-sub">${D.videos.length} lessons · type to filter</p>
+      <input class="finput" id="learn-q" placeholder="Search by title, category, or host…" autocomplete="off">
+      <div id="learn-search-results" style="margin-top:14px"></div>`);
+    const run = () => {
+      const box = $("#learn-search-results"), q = ($("#learn-q").value || "").trim().toLowerCase();
+      if (!box) return;
+      const hits = !q ? D.videos.slice(0, 6) : D.videos.filter(v => (v.title + " " + v.cat + " " + v.host).toLowerCase().includes(q));
+      box.innerHTML = hits.length
+        ? hits.map(vRow).join("")
+        : `<p class="sub" style="text-align:center;padding:24px 0">No lessons match “${($("#learn-q").value || "").replace(/</g, "")}”</p>`;
+      requestAnimationFrame(() => Charts.initIn(box));
+      [...box.querySelectorAll("[data-video]")].forEach(n => n.onclick = () => { closeModal(); openPlayer(n.dataset.video); });
+    };
+    const inp = $("#learn-q"); if (inp) { inp.oninput = run; inp.focus(); }
+    run();
+  }
   function renderLearnList() {
     const list = $("#learn-list"); if (!list) return;
     const items = learnCat === "For you" ? D.videos : D.videos.filter(v => v.cat === learnCat);
-    const watching = items.filter(v => v.progress > 0);
+    const watching = items.filter(v => getVideoProgress(v.id) > 0);
     list.innerHTML =
       (watching.length ? `<div class="section-head"><span class="h3">Continue watching</span></div><div class="rail rail-pad">${watching.map(vCard).join("")}</div>` : "") +
       `<div class="section-head"><span class="h3">${learnCat === "For you" ? "All lessons" : learnCat}</span><span class="more">${items.length} videos</span></div>` +
@@ -626,7 +793,7 @@
   function vRow(v) {
     return `<div class="vrow" data-video="${v.id}">
       <div class="thumb"><canvas data-chart="thumb" data-seed="${v.seed}"></canvas>
-        ${v.progress?`<div class="prog" style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.15);z-index:2"><i style="display:block;height:100%;width:${Math.round(v.progress*100)}%;background:var(--gold)"></i></div>`:""}</div>
+        ${getVideoProgress(v.id)?`<div class="prog" style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.15);z-index:2"><i style="display:block;height:100%;width:${Math.round(getVideoProgress(v.id)*100)}%;background:var(--gold)"></i></div>`:""}</div>
       <div class="info"><h4>${v.title}</h4>
         <div class="vmeta">${v.cat} · ${v.dur} · ${v.views} views</div></div>
       ${ic("i-play","ic")}</div>`;
@@ -660,7 +827,6 @@
 
   // ---- journal ----
   let journalFilter = "All";
-  const sharedEntries = new Set(); // journal entries posted to the community feed
   function resStr(j) { return j.outcome === "be" ? "BE" : (j.r > 0 ? "+" : "") + j.r.toFixed(1) + "R"; }
   function badTag(t) { return /FOMO|Chased|Off-plan|Counter|Review/i.test(t); }
   function journalStats() {
@@ -729,7 +895,7 @@
       </div>
       <div class="comm-actions">
         <button class="comm-act" data-act="chat">${ic("i-comm")}<span><b>Community chat</b><small>The floor, all day</small></span></button>
-        <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>June challenge</b><small>${D.challenge.done}/${D.challenge.total} days</small></span></button>
+        <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>June challenge</b><small>${liveChallenge().done}/${liveChallenge().total} days</small></span></button>
       </div>
       <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
       ${liveLeaderboard().map(lbRow).join("")}
@@ -747,7 +913,7 @@
   }
   function openJournalEntry(id) {
     const j = D.journal.find(x => x.id === id); if (!j) return;
-    const shared = sharedEntries.has(id);
+    const shared = isShared(id);
     openModal(`
       <div class="player" style="height:150px"><canvas data-chart="player" data-seed="${(j.dir === "long" ? 14 : 27) + j.id.length * 3}"></canvas></div>
       <div class="jc-top" style="margin-top:16px">
@@ -764,7 +930,7 @@
     const sh = $("[data-share]");
     if (sh && !shared) sh.onclick = () => {
       D.posts.unshift({ author: D.user.name, initials: D.user.initials, time: "now", me: true, body: j.note, tag: { pair: j.pair, dir: j.dir, rr: resStr(j) }, likes: 0, comments: 0, liked: false });
-      sharedEntries.add(id);
+      savePosts(); markShared(id);
       closeModal(); circleTab = "community";
       setTimeout(() => { if (activeTab === "community") SCREENS.community(); toast("Shared to the community", "i-check"); }, 320);
     };
@@ -848,7 +1014,10 @@
       <div class="spacer"></div>
     `);
     [...document.querySelectorAll("[data-rsvp]")].forEach(b => b.onclick = () => {
-      const on = b.classList.toggle("btn-gold"); b.classList.toggle("btn-ghost", !on);
+      const id = b.dataset.rsvp, rs = new Set(pState().rsvp || []), on = !rs.has(id);
+      if (on) rs.add(id); else rs.delete(id);
+      pSet({ rsvp: [...rs] });
+      b.classList.toggle("btn-gold", on); b.classList.toggle("btn-ghost", !on);
       b.textContent = on ? "Going ✓" : "RSVP";
       toast(on ? "You're going — see you there" : "RSVP cancelled", on ? "i-check" : null);
     });
@@ -872,7 +1041,7 @@
         <div class="going">
           <div class="faces">${h.faces.map(f => av(f, 28, "quiet")).join("")}</div>
           <small>${h.going} members going</small>
-          <button class="btn btn-ghost btn-sm rsvp" data-rsvp>RSVP</button>
+          <button class="btn ${(pState().rsvp||[]).includes(h.id)?"btn-gold":"btn-ghost"} btn-sm rsvp" data-rsvp="${h.id}">${(pState().rsvp||[]).includes(h.id)?"Going ✓":"RSVP"}</button>
         </div>
       </div></div>`;
   }
@@ -959,8 +1128,8 @@
 
       <div class="section-head"><span class="h2">Settings</span></div>
       <div class="card card-pad">
-        ${settingRow("i-bell","Push notifications","",true,"set1")}
-        ${settingRow("i-live","Live call reminders","",true,"set2")}
+        ${settingRow("i-bell","Push notifications","",true,"set1",false,getSetting("push",true))}
+        ${settingRow("i-live","Live call reminders","",true,"set2",false,getSetting("liveReminders",true))}
         ${settingRow("i-moon","Appearance","Dark",false)}
         ${settingRow("i-shield","Account & security","",false)}
         ${settingRow("i-book","Help & support","",false,null,true)}
@@ -969,7 +1138,12 @@
       <p class="sub" style="font-size:11px;text-align:center;margin-top:16px;color:var(--faint)">Member since 2025 · Educational content only. Not financial advice.</p>
       <div class="spacer"></div>
     `);
-    [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => { const on = t.classList.toggle("on"); toast(on ? "Turned on" : "Turned off", on ? "i-check" : null); });
+    [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
+      const on = t.classList.toggle("on");
+      if (t.id === "set1") setSetting("push", on);
+      else if (t.id === "set2") setSetting("liveReminders", on);
+      toast(on ? "Turned on" : "Turned off", on ? "i-check" : null);
+    });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
@@ -1007,11 +1181,19 @@
       </div>
       <button class="btn btn-gold btn-block" id="tc-share" style="margin-top:14px">${ic("i-share")} Share my card</button>
       <div class="spacer"></div>`);
-    const sh = $("#tc-share"); if (sh) sh.onclick = () => toast("Card ready to share", "i-share");
+    const sh = $("#tc-share"); if (sh) sh.onclick = async () => {
+      const text = `${D.user.name} · Level ${profLevel()} ${tierName(profLevel())} · ${js.winRate}% win rate · ${profStreak()}-day streak · Blakey Trades`;
+      const url = "https://blakey-trades.pages.dev/";
+      try {
+        if (navigator.share) await navigator.share({ title: "My Blakey Trades card", text, url });
+        else { await navigator.clipboard.writeText(text + "\n" + url); toast("Card copied to clipboard", "i-check"); }
+      } catch (e) { if (e && e.name !== "AbortError") toast("Card ready to share", "i-share"); }
+    };
   }
-  function settingRow(icon, label, val, toggle, id, last) {
+  function settingRow(icon, label, val, toggle, id, last, on) {
+    const isOn = on != null ? on : true;
     return `<div class="settings-row"${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
-      ${toggle ? `<div class="toggle on" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
+      ${toggle ? `<div class="toggle ${isOn ? "on" : ""}" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
   }
   function hubRow(icon, title, sub, act, last) {
     return `<button class="hub-row${last ? " last" : ""}" data-act="${act}">${ic(icon, "ic")}<div class="hr-body"><b>${title}</b><small>${sub}</small></div>${ic("i-chev", "ic")}</button>`;
@@ -1029,29 +1211,56 @@
 
   function openPlayer(id) {
     const v = D.videos.find(x => x.id === id) || D.videos[0];
+    let prog = getVideoProgress(v.id);
+    const pctLabel = Math.round(prog * 100);
     openModal(`
       <div class="player">
         <canvas data-chart="player" data-seed="${v.seed}"></canvas>
-        <div class="big-play" data-pp><span>${ic("i-play")}</span></div>
+        <div class="big-play" data-pp style="${prog >= 1 ? "display:none" : ""}"><span>${ic("i-play")}</span></div>
         <div class="controls">
-          <div class="bar"><i></i></div>
-          <div class="crow"><span>14:21</span><svg viewBox="0 0 24 24"><use href="#i-play"/></svg><span style="margin-left:auto">${v.dur}</span></div>
+          <div class="bar"><i id="vbar" style="width:${pctLabel}%"></i></div>
+          <div class="crow"><span id="vtime">${pctLabel}%</span><svg viewBox="0 0 24 24"><use href="#i-play"/></svg><span style="margin-left:auto">${v.dur}</span></div>
         </div>
       </div>
       <span class="eyebrow" style="margin-top:14px;display:block">${v.cat}</span>
       <h2 class="h2" style="margin:7px 0 5px">${v.title}</h2>
       <div class="sub" style="font-size:12.5px">${v.host} · ${v.views} views · ${v.date}</div>
       <div style="display:flex;gap:10px;margin:15px 0 4px">
-        <button class="btn btn-gold" style="flex:1" data-pp>${ic("i-play")} Resume</button>
-        <button class="btn btn-ghost btn-sm" style="height:52px" data-act="save">+ List</button>
+        <button class="btn btn-gold" style="flex:1" data-pp>${ic("i-play")} ${prog >= 1 ? "Replay" : prog > 0 ? "Resume" : "Play"}</button>
+        <button class="btn btn-ghost btn-sm" style="height:52px" data-act="save">${isSaved(v.id) ? "Saved ✓" : "+ List"}</button>
       </div>
       <div class="section-head"><span class="h3">Chapters</span></div>
       ${[["00:00","Why the London open matters"],["08:12","Mapping liquidity"],["19:40","The 3 entry models"],["31:05","Live risk management"],["38:20","Q&A from the floor"]]
         .map(([t,c])=>`<div class="chapter"><span class="t num">${t}</span><span class="c">${c}</span>${ic("i-play","ic")}</div>`).join("")}
       <p class="sub" style="font-size:11px;text-align:center;margin-top:16px;color:var(--faint)">Educational content only. Not financial advice.</p>
     `);
-    [...document.querySelectorAll("[data-pp]")].forEach(b => b.onclick = () => toast("Playing — " + v.title, "i-play"));
-    const sv = $("[data-act=save]"); if (sv) sv.onclick = () => toast("Saved to your list", "i-check");
+    let playing = false, tick;
+    const paint = () => {
+      prog = getVideoProgress(v.id);
+      const bar = $("#vbar"), tm = $("#vtime"), bp = document.querySelector(".big-play");
+      const p = Math.round(prog * 100);
+      if (bar) bar.style.width = p + "%";
+      if (tm) tm.textContent = p + "%";
+      if (bp) bp.style.display = prog >= 1 ? "none" : "";
+    };
+    const play = () => {
+      if (playing) return;
+      if (prog >= 1) { setVideoProgress(v.id, 0); prog = 0; paint(); }
+      playing = true;
+      toast("Playing — " + v.title, "i-play");
+      tick = setInterval(() => {
+        prog = Math.min(1, getVideoProgress(v.id) + 0.06);
+        setVideoProgress(v.id, prog);
+        paint();
+        if (prog >= 1) {
+          clearInterval(tick); playing = false;
+          toast("Lesson complete · saved to Continue watching", "i-check");
+          if (activeTab === "learn") SCREENS.learn(); else if (activeTab === "home") SCREENS.home();
+        }
+      }, 900);
+    };
+    [...document.querySelectorAll("[data-pp]")].forEach(b => b.onclick = play);
+    const sv = $("[data-act=save]"); if (sv) sv.onclick = () => { const on = toggleSaved(v.id); sv.textContent = on ? "Saved ✓" : "+ List"; toast(on ? "Saved to your list" : "Removed from list", on ? "i-check" : null); };
   }
 
   function openIdea(id) {
@@ -1085,6 +1294,9 @@
       const when = isLiveNow() ? "is live now" : h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
       out.push({ icon: "i-live", text: `${nc.session} ${when} — ${nc.host} hosting`, time: "now", unread: true, go: "live" });
     }
+    (D.schedule || []).forEach(c => {
+      if (isReminded(c)) out.push({ icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
+    });
     out.push({ icon: "i-trophy", text: `You're #${myRank()} on the weekly leaderboard`, time: "now", unread: true, go: "community" });
     return out;
   }
@@ -1252,9 +1464,9 @@
   function openAlerts() {
     const list = () => D.alerts.map((a, i) => `<div class="alert-row"><div class="alert-body"><b class="num">${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price}</b><small>${a.note}</small></div><button class="tgl ${a.on ? "on" : ""}" data-al="${i}"><span></span></button></div>`).join("");
     openModal(`<h3 class="sheet-title">Price alerts</h3><p class="sheet-sub">Get pinged when gold hits your level.</p><div id="alert-list">${list()}</div><label class="flabel" style="margin-top:16px">New gold alert</label><div class="calc-2"><input class="finput num" id="al-px" inputmode="decimal" placeholder="e.g. 2,960"><button class="btn btn-gold" id="al-add" style="height:50px;flex:none;padding:0 18px">${ic("i-plus")} Add</button></div>`);
-    const wire = () => [...document.querySelectorAll("[data-al]")].forEach(b => b.onclick = () => { const a = D.alerts[+b.dataset.al]; a.on = !a.on; b.classList.toggle("on", a.on); });
+    const wire = () => [...document.querySelectorAll("[data-al]")].forEach(b => b.onclick = () => { const a = D.alerts[+b.dataset.al]; a.on = !a.on; b.classList.toggle("on", a.on); saveAlerts(); });
     wire();
-    const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
+    const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); saveAlerts(); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
   }
   // ── Gold price tool: live spot gold in the community's currencies ──
   // USD = real spot (gold-api, shared with the market bar); GBP/EUR = ECB daily (frankfurter); AED = its fixed USD peg.
@@ -1306,21 +1518,21 @@
   }
   function openSettings() {
     const opts = ["New signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
-    const def = [1, 1, 1, 0, 1, 1];
-    openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${def[i] ? "on" : ""}" data-set></button></div>`).join("")}</div>`);
-    [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => b.classList.toggle("on"));
+    const prefs = getNotifPrefs();
+    openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${prefs[i] ? "on" : ""}" data-set="${i}"><span></span></button></div>`).join("")}</div>`);
+    [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("on"); setNotifPref(+b.dataset.set, on); });
   }
   function openAnnouncements() {
     openModal(`<h3 class="sheet-title">Announcements</h3><p class="sheet-sub">From Arron & the team.</p><div class="ann">${D.announcements.map(a => `<div class="ann-row">${av(a.from === "Team" ? "BT" : "AB", 38)}<div><div class="ann-top"><b>${a.from}</b><span class="vchk">✓</span><span class="ann-time">${a.time}</span></div><p>${a.text}</p></div></div>`).join("")}</div>`);
   }
   function openChallenge() {
-    const c = D.challenge, pct = Math.round(c.done / c.total * 100);
+    const c = liveChallenge(), pct = Math.round(c.done / c.total * 100);
     openModal(`<h3 class="sheet-title">Monthly challenge</h3><div class="chal"><div class="chal-ic">${ic("i-flame")}</div>
       <b class="chal-name">${c.name}</b><p class="chal-desc">${c.desc}</p>
       <div class="chal-bar"><i style="width:${pct}%"></i></div><div class="chal-meta"><span class="num gold-text">${c.done}/${c.total}</span> days · ${pct}%</div>
       <div class="chal-reward">${ic("i-trophy", "ic")} ${c.reward}</div>
       <button class="btn ${c.joined ? "btn-ghost" : "btn-gold"} btn-block" id="chal-join" style="margin-top:16px">${c.joined ? "You're in ✓" : "Join challenge"}</button></div>`);
-    const j = $("#chal-join"); if (j) j.onclick = () => { c.joined = true; j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
+    const j = $("#chal-join"); if (j) j.onclick = () => { saveChallenge({ joined: true }); j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
   }
   function openMembers() {
     const rows = liveLeaderboard().map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
@@ -1328,8 +1540,23 @@
     [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
   }
   function openChat() {
-    const msgs = D.chatScript.slice(0, 8);
-    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat">${msgs.map(m => `<div class="cmsg ${m.host ? "host" : ""}">${av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : ""}</b>${m.text}</div></div>`).join("")}</div><div class="cchat-in"><input class="finput" placeholder="Message the floor…"><button class="btn btn-gold" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
+    const hist = pState().chatHistory || [];
+    const seed = D.chatScript.slice(0, 8);
+    const renderMsg = m => `<div class="cmsg ${m.host ? "host" : ""}${m.me ? " me" : ""}">${m.me ? "" : av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : m.me ? " · You" : ""}</b>${m.text}</div></div>`;
+    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat" id="cchat-feed">${seed.map(renderMsg).join("")}${hist.map(renderMsg).join("")}</div><div class="cchat-in"><input class="finput" id="cchat-in" placeholder="Message the floor…"><button class="btn btn-gold" id="cchat-send" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
+    const feed = $("#cchat-feed"); feed.scrollTop = feed.scrollHeight;
+    const append = (m) => { feed.insertAdjacentHTML("beforeend", renderMsg(m)); feed.scrollTop = feed.scrollHeight; };
+    const send = () => {
+      const inp = $("#cchat-in"), txt = (inp.value || "").trim(); if (!txt) return;
+      const mine = { name: D.user.name, initials: D.user.initials, text: txt, me: true };
+      append(mine);
+      inp.value = "";
+      pSet({ chatHistory: [...(pState().chatHistory || []), mine] });
+      setTimeout(() => append({ name: "Arron Blakey", initials: "AB", text: `Welcome to the floor, ${D.user.first} — good to have you here.`, host: true }), 900);
+    };
+    const btn = $("#cchat-send"), inp = $("#cchat-in");
+    if (btn) btn.onclick = send;
+    if (inp) inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } };
   }
 
   // ============================ ACADEMY + TRACK RECORD ============================
@@ -1337,18 +1564,19 @@
   function academySection() {
     return `<div class="section-head"><span class="h2">Your path</span><span class="more" data-act="glossary">Glossary ›</span></div>
       <div class="paths">${D.paths.map(p => {
-        const pct = Math.round(p.done / p.lessons * 100);
+        const done = pathDone(p.id), pct = Math.round(done / p.lessons * 100);
         return `<button class="path" data-path="${p.id}">
           <div class="path-ring" style="background:conic-gradient(${p.color} ${pct * 3.6}deg, var(--surface-3) 0)"><span>${pct}%</span></div>
           <div class="path-body"><div class="path-top"><b>${p.name}</b><span class="path-lvl">${p.level}</span></div>
-          <div class="path-desc">${p.desc}</div><div class="path-meta">${p.done}/${p.lessons} lessons${p.done === p.lessons ? " · complete ✓" : ""}</div></div>
+          <div class="path-desc">${p.desc}</div><div class="path-meta">${done}/${p.lessons} lessons${done === p.lessons ? " · complete ✓" : ""}</div></div>
           ${ic("i-chev", "ic")}</button>`;
       }).join("")}</div>`;
   }
   function openPath(id) {
     const p = D.paths.find(x => x.id === id) || D.paths[0];
-    const rows = Array.from({ length: p.lessons }, (_, i) => { const done = i < p.done, t = LESSON_POOL[i % LESSON_POOL.length]; return `<div class="lesson ${done ? "done" : ""}"><span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span><span class="les-t">${t}</span>${done ? "" : ic("i-play", "ic")}</div>`; }).join("");
-    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${p.done}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} ${p.name} quiz</button>`);
+    const doneN = pathDone(p.id);
+    const rows = Array.from({ length: p.lessons }, (_, i) => { const done = i < doneN, t = LESSON_POOL[i % LESSON_POOL.length]; return `<div class="lesson ${done ? "done" : ""}"><span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span><span class="les-t">${t}</span>${done ? "" : ic("i-play", "ic")}</div>`; }).join("");
+    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${doneN}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} ${p.name} quiz</button>`);
     const q = $("#path-quiz"); if (q) q.onclick = () => openQuiz(p.id);
   }
   function openQuiz(pathId) {
@@ -1376,8 +1604,14 @@
     };
     const finish = (correct, total) => {
       const passed = correct >= bank.pass, s = $("#quiz-score"); if (!s) return;
-      s.innerHTML = `<div class="qs-card ${passed ? "pass" : "fail"}">${ic(passed ? "i-trophy" : "i-target", "ic")}<div>You scored <b class="gold-text">${correct}/${total}</b> — ${passed ? "passed · +60 XP" : `${bank.pass}/${total} needed — review &amp; retry.`}</div></div><button class="btn ${passed ? "btn-ghost" : "btn-gold"} btn-block" id="quiz-retry" style="margin-top:12px">${passed ? "Retake quiz" : "Try again"}</button>`;
-      if (passed) { addXp(60); toast("Quiz passed · +60 XP", "i-trophy"); }
+      const ps = pState(), already = !!(ps.quizzesPassed && ps.quizzesPassed[pathId]);
+      const xpNote = passed ? (already ? "passed again" : "passed · +60 XP") : `${bank.pass}/${total} needed — review &amp; retry.`;
+      s.innerHTML = `<div class="qs-card ${passed ? "pass" : "fail"}">${ic(passed ? "i-trophy" : "i-target", "ic")}<div>You scored <b class="gold-text">${correct}/${total}</b> — ${xpNote}</div></div><button class="btn ${passed ? "btn-ghost" : "btn-gold"} btn-block" id="quiz-retry" style="margin-top:12px">${passed ? "Retake quiz" : "Try again"}</button>`;
+      if (passed && !already) {
+        addXp(60); toast("Quiz passed · +60 XP", "i-trophy");
+        pSet({ quizzesPassed: { ...(ps.quizzesPassed || {}), [pathId]: true } });
+        if (path) { const cur = pathDone(pathId); if (cur < path.lessons) setPathDone(pathId, cur + 1); }
+      } else if (passed) toast("Quiz passed again — no extra XP", "i-check");
       const r = $("#quiz-retry"); if (r) r.onclick = render;
     };
     render();
@@ -1406,7 +1640,7 @@
     [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
-    [...document.querySelectorAll("[data-act=search]")].forEach(n => n.onclick = () => toast("Search the library", "i-search"));
+    [...document.querySelectorAll("[data-act=search]")].forEach(n => n.onclick = openLearnSearch);
     [...document.querySelectorAll("[data-act=calc]")].forEach(n => n.onclick = openCalc);
     [...document.querySelectorAll("[data-act=calendar]")].forEach(n => n.onclick = openCalendar);
     [...document.querySelectorAll("[data-act=alerts]")].forEach(n => n.onclick = openAlerts);
@@ -1460,11 +1694,15 @@
       </div>`;
     $("#app").appendChild(el);
     requestAnimationFrame(() => Charts.initIn(el));
-    const enter = () => {
+    const enterApp = () => {
       el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateY(-10px)";
-      setTimeout(() => { el.remove(); showOnboarding(); }, 420);
+      setTimeout(() => {
+        el.remove();
+        if (pState().onboardingDone) { setSignedIn("phone"); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); }
+        else showOnboarding();
+      }, 420);
     };
-    $("#enter").onclick = enter;
+    $("#enter").onclick = enterApp;
     const provs = ["Apple", "Google", "Telegram"]; // believable demo sign-in: connect → land in the app, stay signed in
     [...el.querySelectorAll("[data-soc]")].forEach((b, i) => b.onclick = () => {
       const prov = provs[i] || "account";
@@ -1474,7 +1712,11 @@
       setSignedIn(prov);
       setTimeout(() => {
         el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateY(-10px)";
-        setTimeout(() => { el.remove(); renderTabbar(); go("home"); setTimeout(() => toast(`Signed in with ${prov}`, "i-check"), 450); }, 420);
+        setTimeout(() => {
+          el.remove();
+          if (pState().onboardingDone) { renderTabbar(); go("home"); setTimeout(() => toast(`Signed in with ${prov}`, "i-check"), 450); }
+          else showOnboarding();
+        }, 420);
       }, 750);
     });
   }
@@ -1535,9 +1777,16 @@
         step++; if (step > 3) finish(); else render();
       };
       [...el.querySelectorAll("[data-lv]")].forEach(b => b.onclick = () => { level = b.dataset.lv; [...el.querySelectorAll("#ob-lv .ob-level")].forEach(x => x.classList.toggle("on", x === b)); });
-      const cal = el.querySelector("[data-cal]"); if (cal) cal.onclick = () => { cal.textContent = "Added to calendar ✓"; toast("Added — see you at the open", "i-check"); };
+      const cal = el.querySelector("[data-cal]"); if (cal) cal.onclick = () => { downloadCallIcs(nextCall()); cal.innerHTML = ic("i-cal") + " Added to calendar ✓"; };
     }
-    function finish() { setSignedIn("phone"); el.style.transition = "opacity .4s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 420); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome, ${D.user.first} 👋`, "i-check"), 500); }
+    function finish() {
+      pSet({ name: D.user.name, first: D.user.first, initials: D.user.initials, country: D.user.country, onboardingDone: true, traderLevel: level });
+      setSignedIn("phone");
+      el.style.transition = "opacity .4s"; el.style.opacity = "0";
+      setTimeout(() => el.remove(), 420);
+      renderTabbar(); go("home");
+      setTimeout(() => toast(`Welcome, ${D.user.first} 👋`, "i-check"), 500);
+    }
     render();
   }
 

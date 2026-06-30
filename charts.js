@@ -201,7 +201,8 @@
     ctx.clearRect(0, 0, w, h);
     let cum = 0; const pts = [0]; for (const r of rs) { cum += r; pts.push(cum); }
     const lo = Math.min(...pts, 0), hi = Math.max(...pts, 0.5), rng = (hi - lo) || 1;
-    const X = i => 3 + i / (pts.length - 1) * (w - 6);
+    const span = pts.length - 1;
+    const X = i => span === 0 ? w / 2 : 3 + i / span * (w - 6);
     const Y = v => h - 6 - (v - lo) / rng * (h - 16);
     ctx.strokeStyle = "rgba(237,237,232,0.09)"; ctx.lineWidth = 1;
     const zy = Y(0); ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
