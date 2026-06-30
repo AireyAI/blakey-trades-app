@@ -462,6 +462,10 @@ a{color:inherit;text-decoration:none}
 .vcard{width:230px}
 .vcard .thumb{position:relative;height:130px;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line)}
 .vcard .thumb canvas,.vcard .thumb .pic{position:absolute;inset:0;width:100%;height:100%}
+/* real video thumbnails (image instead of canvas chart) */
+.thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--surface-3)}
+.thumb-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent 52%);pointer-events:none}
+.learn-hero .hero-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--surface-3)}
 .vcard .dur{position:absolute;right:8px;bottom:8px;font-family:var(--mono);font-size:10.5px;background:rgba(0,0,0,.7);padding:3px 7px;border-radius:6px;z-index:2}
 .vcard .prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.15);z-index:2}
 .vcard .prog i{display:block;height:100%;background:var(--gold)}

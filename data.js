@@ -115,17 +115,18 @@ window.DATA = {
   featured: {
     title:"The Gold Playbook: Reading London Liquidity",
     cat:"Market Analysis", dur:"42:18", date:"2 days ago", views:"3,140",
+    img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=1000&h=520&fit=crop&q=78",
     note:"Arron walks the full London-session framework — liquidity sweeps, the 3 entry models, and where most traders get trapped." },
 
   videos: [
-    { id:"v1", title:"London Liquidity, Explained", cat:"Market Analysis", dur:"42:18", date:"2d ago", views:"3,140", progress:0.34, seed:11, host:"Arron Blakey" },
-    { id:"v2", title:"Why Your Stops Keep Getting Hit", cat:"Risk", dur:"18:50", date:"4d ago", views:"2,610", progress:0, seed:23, host:"Arron Blakey" },
-    { id:"v3", title:"The Trader's Mind: Patience Under Pressure", cat:"Mindset", dur:"27:05", date:"6d ago", views:"4,002", progress:0.72, seed:31, host:"Arron Blakey" },
-    { id:"v4", title:"Building Your First Gold Watchlist", cat:"Beginner Path", dur:"15:32", date:"1w ago", views:"1,980", progress:0, seed:7, host:"Blakey Team" },
-    { id:"v5", title:"New York Session Replay — Live Calls", cat:"Session Replays", dur:"58:44", date:"1w ago", views:"2,233", progress:0.12, seed:42, host:"Arron Blakey" },
-    { id:"v6", title:"Risk:Reward Done Properly", cat:"Risk", dur:"21:10", date:"1w ago", views:"3,560", progress:0, seed:18, host:"Blakey Team" },
-    { id:"v7", title:"Reading the Daily Before You Trade", cat:"Market Analysis", dur:"33:27", date:"2w ago", views:"2,870", progress:0, seed:55, host:"Arron Blakey" },
-    { id:"v8", title:"From Revenge Trading to Routine", cat:"Mindset", dur:"24:48", date:"2w ago", views:"3,910", progress:0, seed:64, host:"Arron Blakey" },
+    { id:"v1", title:"London Liquidity, Explained", cat:"Market Analysis", dur:"42:18", date:"2d ago", views:"3,140", progress:0.34, seed:11, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v2", title:"Why Your Stops Keep Getting Hit", cat:"Risk", dur:"18:50", date:"4d ago", views:"2,610", progress:0, seed:23, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v3", title:"The Trader's Mind: Patience Under Pressure", cat:"Mindset", dur:"27:05", date:"6d ago", views:"4,002", progress:0.72, seed:31, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v4", title:"Building Your First Gold Watchlist", cat:"Beginner Path", dur:"15:32", date:"1w ago", views:"1,980", progress:0, seed:7, img:"https://images.unsplash.com/photo-1616783943928-32f4e1e16147?w=600&h=360&fit=crop&q=72", host:"Blakey Team" },
+    { id:"v5", title:"New York Session Replay — Live Calls", cat:"Session Replays", dur:"58:44", date:"1w ago", views:"2,233", progress:0.12, seed:42, img:"https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v6", title:"Risk:Reward Done Properly", cat:"Risk", dur:"21:10", date:"1w ago", views:"3,560", progress:0, seed:18, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host:"Blakey Team" },
+    { id:"v7", title:"Reading the Daily Before You Trade", cat:"Market Analysis", dur:"33:27", date:"2w ago", views:"2,870", progress:0, seed:55, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v8", title:"From Revenge Trading to Routine", cat:"Mindset", dur:"24:48", date:"2w ago", views:"3,910", progress:0, seed:64, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
   ],
 
   traderOfWeek: {
@@ -257,9 +258,9 @@ window.DATA = {
   ],
   // ── academy learning paths ──
   paths: [
-    { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:8, color:"#3ECB86", desc:"Markets, candles & risk basics — start here." },
-    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:6, color:"#E0B23C", desc:"Liquidity, the London open & the 3 entry models." },
-    { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:2, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
+    { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:0, color:"#3ECB86", desc:"Markets, candles & risk basics — start here." },
+    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:0, color:"#E0B23C", desc:"Liquidity, the London open & the 3 entry models." },
+    { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:0, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
     { id:"pro", name:"Pro Execution", level:"Advanced", lessons:9, done:0, color:"#C06AFF", desc:"Scaling, sessions & a repeatable edge." },
   ],
   // ── path quizzes (one bank per learning path; `c` = correct index, `why` teaches after answering) ──

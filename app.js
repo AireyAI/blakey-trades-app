@@ -661,7 +661,7 @@
 
   function vCard(v) {
     return `<div class="vcard" data-video="${v.id}">
-      <div class="thumb"><canvas data-chart="thumb" data-seed="${v.seed}"></canvas>
+      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="${v.title}" loading="lazy"><div class="thumb-grad"></div>
         <div class="play-mini"><span>${ic("i-play")}</span></div>
         <span class="dur num">${v.dur}</span>
         ${getVideoProgress(v.id) ? `<div class="prog"><i style="width:${Math.round(getVideoProgress(v.id)*100)}%"></i></div>` : ""}
@@ -799,7 +799,7 @@
       ${topbar(`<button class="icon-btn" data-act="search">${ic("i-search")}</button>`)}
       <div class="app-head"><div class="who"><div><small>${D.videos.length*7+120}+ lessons</small><b>Education</b></div></div></div>
       <div class="learn-hero reveal" data-video="v1">
-        <canvas class="thumb" data-chart="thumb" data-seed="11"></canvas>
+        <img class="hero-thumb" src="${f.img}" alt="${f.title}" loading="lazy">
         <div class="g"></div>
         <div class="play">${ic("i-play")}</div>
         <div class="body"><span class="eyebrow">Featured · ${f.cat}</span>
@@ -848,7 +848,7 @@
   }
   function vRow(v) {
     return `<div class="vrow" data-video="${v.id}">
-      <div class="thumb"><canvas data-chart="thumb" data-seed="${v.seed}"></canvas>
+      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="${v.title}" loading="lazy"><div class="thumb-grad"></div>
         ${getVideoProgress(v.id)?`<div class="prog" style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.15);z-index:2"><i style="display:block;height:100%;width:${Math.round(getVideoProgress(v.id)*100)}%;background:var(--gold)"></i></div>`:""}</div>
       <div class="info"><h4>${v.title}</h4>
         <div class="vmeta">${v.cat} · ${v.dur} · ${v.views} views</div></div>
