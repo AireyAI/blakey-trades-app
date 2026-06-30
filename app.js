@@ -1054,7 +1054,7 @@
     setScreen(`
       ${topbar()}
       <div class="app-head"><div class="who"><div><small>Trade together, in person</small><b>Training Hubs</b></div></div></div>
-      <p class="sub" style="margin:2px 2px 6px">Three home cities and growing. Meet the floor, trade the open together, and learn face-to-face.</p>
+      <p class="sub" style="margin:2px 2px 6px">Train in person at our members-only Hub — learn in real time, trade the open together, and sharpen your edge face-to-face. More cities on the way.</p>
       ${D.hubs.map(hub).join("")}
       <div class="card card-pad" style="text-align:center;border-style:dashed;opacity:.8">
         <div style="font-size:22px">📍</div>
@@ -1071,9 +1071,11 @@
       b.textContent = on ? "Going ✓" : "RSVP";
       toast(on ? "You're going — see you there" : "RSVP cancelled", on ? "i-check" : null);
     });
+    [...document.querySelectorAll("[data-hubsched]")].forEach(b => b.onclick = () => openHubSchedule(b.dataset.hubsched));
     wireCommon();
   };
   function hub(h) {
+    if (h.real) return hubReal(h);
     return `<div class="hub reveal">
       <div class="hub-img" style="background:url('${h.img}') center/cover, ${h.tint}">
         <div class="hub-img-g"></div>
@@ -1094,6 +1096,52 @@
           <button class="btn ${(pState().rsvp||[]).includes(h.id)?"btn-gold":"btn-ghost"} btn-sm rsvp" data-rsvp="${h.id}">${(pState().rsvp||[]).includes(h.id)?"Going ✓":"RSVP"}</button>
         </div>
       </div></div>`;
+  }
+  function hubReal(h) {
+    return `<div class="hub reveal">
+      <div class="hub-img" style="background:url('${h.img}') center/cover, ${h.tint}">
+        <div class="hub-img-g"></div>
+        <div class="next"><span class="pill pill-gold">${ic("i-shield","ic")} ${h.access}</span></div>
+        <div class="hub-cap">
+          <h3><span class="hub-flag">${h.flag}</span>${h.city}</h3>
+          <div class="loc">${ic("i-pin","ic")} ${h.country}</div>
+        </div>
+      </div>
+      <div class="hub-body">
+        <div class="hub-tag">${h.tagline}</div>
+        <div class="hub-facts">
+          <div class="hf">${ic("i-pin","ic")}<div><b>Address</b><small>${h.address}</small></div></div>
+          <div class="hf">${ic("i-cal","ic")}<div><b>Open</b><small>${h.hours} · ${h.access}</small></div></div>
+        </div>
+        <div class="hub-cta-row">
+          <button class="btn btn-gold btn-sm" data-hubsched="${h.id}">${ic("i-cal")} Weekly schedule</button>
+          <a class="btn btn-ghost btn-sm" href="${h.map}" target="_blank" rel="noopener">${ic("i-pin")} Directions</a>
+        </div>
+      </div></div>`;
+  }
+  function openHubSchedule(id) {
+    const h = (D.hubs || []).find(x => x.id === id); if (!h) return;
+    const tel = (h.phone || "").replace(/\s/g, "");
+    openModal(`<h3 class="sheet-title">${h.city} Training Hub</h3>
+      <p class="sheet-sub">${h.tagline}</p>
+      <div class="card card-pad">
+        <div class="hf">${ic("i-pin","ic")}<div><b>Location</b><small>${h.address}</small></div></div>
+        <div class="hf">${ic("i-cal","ic")}<div><b>Hours</b><small>${h.hours}</small></div></div>
+        <div class="hf" style="border-bottom:none">${ic("i-shield","ic")}<div><b>Access</b><small>${h.access}</small></div></div>
+      </div>
+      <div class="acct-h">Weekly schedule</div>
+      <div class="card card-pad">
+        ${h.schedule.map(d => `<div class="hsc-day${/closed/i.test(d.time) ? " closed" : ""}">
+          <div class="hsc-head"><b>${d.day}</b><span>${d.time}</span></div>
+          <ul class="hsc-items">${d.items.map(i => `<li>${i}</li>`).join("")}</ul>
+        </div>`).join("")}
+      </div>
+      ${h.oneToOne ? `<div class="acct-h">1-to-1 training</div>
+      <div class="card card-pad"><ul class="hsc-items">${h.oneToOne.map(i => `<li>${i}</li>`).join("")}</ul></div>` : ""}
+      <a class="btn btn-gold btn-block" href="https://blakeytrades.com" target="_blank" rel="noopener" style="margin-top:14px">Become a member</a>
+      ${h.phone ? `<a class="btn btn-ghost btn-block" href="tel:${tel}" style="margin-top:10px">${ic("i-comm")} ${h.phone}</a>` : ""}
+      <p class="sub" style="font-size:11px;text-align:center;margin:14px 0 2px;color:var(--faint)">Members-only · capital at risk · not financial advice.</p>
+      <div class="spacer"></div>`);
   }
 
   // ============================ PROFILE ============================

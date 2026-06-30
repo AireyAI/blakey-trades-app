@@ -925,6 +925,26 @@ a{color:inherit;text-decoration:none}
 .acct-free{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
 .acct-h{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin:18px 2px 9px}
 
+/* ── training hub: real venue + weekly schedule ── */
+.hub-tag{font-style:italic;color:var(--muted);font-size:12.5px;line-height:1.45;margin-bottom:11px}
+.hub-facts{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:2px 13px;margin-bottom:12px}
+.hf{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+.hf:last-child{border-bottom:none}
+.hf svg{width:18px;height:18px;color:var(--gold);fill:none;stroke:currentColor;stroke-width:1.7;flex:none;margin-top:1px}
+.hf b{display:block;font-size:13px;font-weight:600}
+.hf small{font-size:12px;color:var(--muted);line-height:1.4}
+.hub-cta-row{display:flex;gap:9px}
+.hub-cta-row .btn{flex:1}
+.hsc-day{padding:11px 0;border-bottom:1px solid var(--line)}
+.hsc-day:last-child{border-bottom:none}
+.hsc-day.closed{opacity:.6}
+.hsc-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px}
+.hsc-head b{font-family:var(--display);font-weight:700;font-size:14.5px}
+.hsc-head span{font-family:var(--mono);font-size:11.5px;color:var(--gold);font-weight:600}
+.hsc-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.hsc-items li{font-size:12.5px;color:var(--muted);line-height:1.4;padding-left:15px;position:relative}
+.hsc-items li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--gold);opacity:.75}
+
 /* ── light-mode targeted overrides (hardcoded-dark chrome) ── */
 [data-theme="light"] .tabbar{background:rgba(255,255,255,0.64);border-color:rgba(22,20,14,0.12);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),inset 0 -1px 0 rgba(22,20,14,0.08),0 18px 42px -16px rgba(22,20,14,0.22)}
 [data-theme="light"] .tv-chart{background:#fff}
