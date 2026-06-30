@@ -69,7 +69,7 @@
     const parts = (t) => new Intl.DateTimeFormat("en-GB", { timeZone: TZ_UK, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(t));
     const g = (ps, ty) => +ps.find(x => x.type === ty).value;
     for (let i = 0; i < 20; i++) {
-      const mid = (lo + hi) >> 1; const ps = parts(mid);
+      const mid = Math.floor((lo + hi) / 2); const ps = parts(mid);
       const cmp = g(ps, "year") - Y || g(ps, "month") - M || g(ps, "day") - D || g(ps, "hour") - hh || g(ps, "minute") - mm;
       if (cmp < 0) lo = mid + 1; else if (cmp > 0) hi = mid - 1; else return mid;
     }
@@ -106,6 +106,21 @@
       if (diff < bestMs) { bestMs = diff; best = c; }
     }
     return best ? { ...best, startsIn: Math.floor(bestMs / 1000) } : null;
+  }
+  // the call that's live right now (within its window) else the next one — all from the real schedule
+  function liveCallInfo() {
+    const now = new Date();
+    const liveOne = (D.schedule || []).find(c => {
+      if (DAY_IDX[c.day] !== now.getDay()) return false;
+      const [h, m] = c.time.split(":").map(Number);
+      const start = new Date(now); start.setHours(h, m, 0, 0);
+      const mins = (now - start) / 60000;
+      return mins >= -5 && mins <= 75;
+    });
+    const c = liveOne || nextCall();
+    if (!c) return null;
+    const initials = (c.host || "BT").replace(/&/g, " ").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    return { session: c.session, host: c.host, initials, day: c.day, at: c.at };
   }
   function scheduleSection() {
     const nc = nextCall();
@@ -458,7 +473,7 @@
   // ============================ HOME ============================
   SCREENS.home = function () {
     const v = D.live;
-    const nc = nextCall() || { session: v.title, host: v.host, day: "Mon", at: "", startsIn: v.startsIn };
+    const nc = nextCall() || { ...(D.schedule[0] || { session: "Live trading", host: "the team", day: "Mon", at: "" }), startsIn: 0 };
     const ideas = D.ideas[0];
     const watching = D.videos.filter(x => getVideoProgress(x.id) > 0);
     setScreen(`
@@ -634,6 +649,7 @@
     });
   }
   function liveStageHtml(v) {
+    const ci = liveCallInfo() || { host: v.host, initials: v.hostInitials, session: v.session };
     return `<div id="live-stage">
         <canvas id="live-canvas" data-chart="live"></canvas>
         <div class="live-grad"></div>
@@ -647,7 +663,7 @@
           <span class="lvl e">Entry ${v.entry}</span>
           <span class="lvl sl">SL ${v.sl}</span>
         </div>
-        <div class="live-host">${av(v.hostInitials, 36)}<div><b>${v.host} <span class="vchk">✓</span></b><small>${v.hostRole} · Hosting</small></div></div>
+        <div class="live-host">${av(ci.initials, 36)}<div><b>${ci.host} <span class="vchk">✓</span></b><small>Hosting · ${ci.session}</small></div></div>
       </div>
       <div class="live-chatbox">
         <div class="live-chat2" id="chat"></div>
@@ -675,15 +691,15 @@
       </div>`;
   }
   SCREENS.live = function () {
-    const v = D.live, live = isLiveNow() || livePreview, nc = nextCall();
+    const v = D.live, live = isLiveNow() || livePreview, nc = nextCall(), cInfo = liveCallInfo() || { session: v.session, host: v.host, initials: v.hostInitials };
     setScreen(`
       ${live ? liveStageHtml(v) : liveLobbyHtml(nc)}
       <div style="padding-top:16px">
-        ${live ? `<span class="eyebrow">${v.session} open · live now</span>
-        <h2 class="h2" style="margin:8px 0 4px">${v.title}</h2>
-        <p class="sub">Arron is mapping the London open in real time — liquidity, the entry model, and live risk management on ${v.pair}.</p>
+        ${live ? `<span class="eyebrow">${cInfo.session} · live now</span>
+        <h2 class="h2" style="margin:8px 0 4px">${cInfo.session}</h2>
+        <p class="sub">${cInfo.host} is leading ${cInfo.session} live — liquidity, the entry model, and live risk management on ${v.pair}.</p>
         <div class="section-head"><span class="h3">Covering today</span></div>
-        ${["Where London liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}` : `<p class="sub" style="margin-top:2px">The room opens automatically when the call starts — free for members. Set a reminder so you don't miss the open.</p>`}
+        ${["Where the liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}` : `<p class="sub" style="margin-top:2px">The room opens automatically when the call starts — free for members. Set a reminder so you don't miss the open.</p>`}
         ${scheduleSection()}
         <div class="section-head"><span class="h3">Recent replays</span><span class="more" data-tab="learn">All ›</span></div>
         <div class="rail rail-pad">${D.videos.filter(x=>x.cat==="Session Replays"||x.host==="Arron Blakey").slice(0,4).map(vCard).join("")}</div>
@@ -1783,15 +1799,15 @@
           ${[["Beginner", "New to gold trading"], ["Developing", "Some screen time, building consistency"], ["Consistent", "Profitable — here to sharpen"]].map(([t, d]) => `<button class="ob-level ${t === level ? "on" : ""}" data-lv="${t}"><b>${t}</b><span>${d}</span></button>`).join("")}
         </div>
         <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Continue</button>`;
-      else body = `
-        <div class="ob-top"><span class="eyebrow">Step 4 of 4</span><h2 class="h2" style="margin:8px 0 4px">Your first live call</h2><p class="sub">This is where it clicks — Arron trades the open, live, with the room.</p></div>
+      else { const onc = nextCall() || { session: "Live trading", host: "the team", day: "Mon", at: "" }; body = `
+        <div class="ob-top"><span class="eyebrow">Step 4 of 4</span><h2 class="h2" style="margin:8px 0 4px">Your first live call</h2><p class="sub">This is where it clicks — trade the session live, with the room.</p></div>
         <div class="card ob-call">
-          <div class="ob-call-row"><span class="pill pill-live"><span class="dot-live"></span> Today</span><span class="num" style="color:var(--gold);font-weight:700">7:00am BST</span></div>
-          <h3 style="font-family:var(--display);font-weight:700;font-size:17px;margin:11px 0 3px">London Open — Gold Game Plan</h3>
-          <div class="sub" style="font-size:12.5px">Hosted by Arron Blakey <span class="vchk">✓</span></div>
+          <div class="ob-call-row"><span class="pill pill-live"><span class="dot-live"></span> ${DAY_FULL[onc.day] || "Soon"}</span><span class="num" style="color:var(--gold);font-weight:700">${onc.at || ""}</span></div>
+          <h3 style="font-family:var(--display);font-weight:700;font-size:17px;margin:11px 0 3px">${onc.session}</h3>
+          <div class="sub" style="font-size:12.5px">Hosted by ${onc.host} <span class="vchk">✓</span></div>
           <button class="btn btn-ghost btn-block" data-cal style="margin-top:14px">${ic("i-cal")} Add to calendar</button>
         </div>
-        <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Enter Blakey Trades</button>`;
+        <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Enter Blakey Trades</button>`; }
       el.innerHTML = `${dots()}<div class="ob-body">${body}</div>`;
       const next = el.querySelector("[data-next]"); if (next) next.onclick = () => {
         if (step === 1) {

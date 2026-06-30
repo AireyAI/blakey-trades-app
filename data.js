@@ -7,7 +7,7 @@ window.DATA = {
   },
 
   live: {
-    title: "London Open — Gold Game Plan",
+    title: "Live Trading Room",   // not shown as the call name anymore — the live call comes from schedule[] via liveCallInfo()
     host: "Arron Blakey", hostInitials: "AB", hostRole: "Founder",
     watchers: 1247,
     startsIn: 732,            // seconds → drives the Home countdown
