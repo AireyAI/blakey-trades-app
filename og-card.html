@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  .card{width:1200px;height:630px;position:relative;background:radial-gradient(120% 110% at 12% 0%,#1a1407 0%,#0b0c11 46%,#070809 100%);font-family:Sora,system-ui,sans-serif;color:#fff;padding:74px 80px;display:flex;flex-direction:column;justify-content:center}
+  .card::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 100% 50%,rgba(199,164,77,.16),transparent 70%)}
+  .chart{position:absolute;right:0;top:0;height:100%;width:55%;opacity:.5}
+  .brand{display:flex;align-items:center;gap:16px;margin-bottom:30px;position:relative;z-index:2}
+  .brand img{height:54px}
+  h1{font-size:84px;font-weight:800;letter-spacing:-.03em;line-height:.98;position:relative;z-index:2}
+  h1 .g{color:#D8B65A}
+  p{font-size:30px;color:#c9cbd2;margin-top:24px;max-width:760px;line-height:1.35;position:relative;z-index:2;font-weight:600}
+  .chips{display:flex;gap:14px;margin-top:38px;position:relative;z-index:2}
+  .chip{font-size:23px;font-weight:700;padding:13px 24px;border-radius:999px;border:1.5px solid rgba(199,164,77,.5);color:#E6C66A;background:rgba(199,164,77,.1)}
+  .dot{display:inline-block;width:13px;height:13px;border-radius:50%;background:#E0301E;margin-right:9px;box-shadow:0 0 0 5px rgba(224,48,30,.25)}
+</style></head>
+<body>
+  <div class="card">
+    <svg class="chart" viewBox="0 0 660 630" preserveAspectRatio="xMaxYMid slice">
+      <polyline points="0,470 60,440 120,460 180,380 240,400 300,300 360,330 420,230 480,260 540,150 600,180 660,70" fill="none" stroke="#C7A44D" stroke-width="3" opacity=".7"/>
+      <g fill="#3ECB86" stroke="#3ECB86" stroke-width="9">
+        <line x1="120" y1="420" x2="120" y2="500"/><line x1="240" y1="360" x2="240" y2="440"/><line x1="360" y1="290" x2="360" y2="370"/><line x1="480" y1="220" x2="480" y2="300"/><line x1="600" y1="130" x2="600" y2="220"/>
+      </g>
+    </svg>
+    <div class="brand"><img src="assets/blakey-logo.png" alt="Blakey Trades"></div>
+    <h1>The floor is<br><span class="g">open.</span></h1>
+    <p>Live gold calls, the full education library, and 4,200+ traders who show up every day.</p>
+    <div class="chips"><span class="chip"><span class="dot"></span>Live calls</span><span class="chip">Education</span><span class="chip">Free for members</span></div>
+  </div>
+</body></html>

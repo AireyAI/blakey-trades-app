@@ -34,7 +34,7 @@
   const SCREENS = {};
   function go(tab) {
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
-    activeTab = tab;
+    activeTab = tab; livePreview = false; // tab nav exits any live-room preview
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   }
@@ -49,6 +49,7 @@
       <div class="who" data-act="profile" style="cursor:pointer">
         ${av(D.user.initials, 44)}
         <div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div>
+        <span class="who-go">Profile ${ic("i-chev","ic")}</span>
       </div>
     </div>`;
   }
@@ -247,7 +248,10 @@
     const s = pState();
     if (Array.isArray(s.journal)) D.journal = s.journal;
     else pSet({ journal: D.journal, streak: D.user.streak, lbPoints: 3480 });
+    if (s.name) { D.user.name = s.name; D.user.first = s.first || s.name.split(/\s+/)[0]; D.user.initials = s.initials || D.user.initials; }
   }
+  function callsJoined() { const s = pState(); return s.calls != null ? s.calls : D.user.sessions; }
+  function bumpCalls() { const s = pState(), today = new Date().toLocaleDateString("en-CA"); if (s.lastCallDay === today) return false; s.calls = (s.calls != null ? s.calls : D.user.sessions) + 1; s.lastCallDay = today; pSave(s); return true; }
   // journalStats() is the canonical one defined below — extended with winRate + avgRR for these helpers
   function profStreak() { const s = pState(); return s.streak != null ? s.streak : D.user.streak; }
   function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
@@ -363,7 +367,7 @@
     const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); }, 1000);
     cleanups.push(() => clearInterval(t));
     wireCommon();
-    $("[data-act=joinlive]").onclick = () => go("live");
+    $("[data-act=joinlive]").onclick = () => { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } go("live"); };
     $("[data-act=remind]").onclick = (e) => { e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
     mountMarketBar();
   };
@@ -394,8 +398,17 @@
         down.classList.toggle("on", tookState[id] === "down");
         const n = up.querySelector(".num"); if (n) n.textContent = tookBase(id) + (tookState[id] === "up" ? 1 : 0);
       }
-      toast(tookState[id] === "up" ? "Marked as taken" : tookState[id] === "down" ? "Marked as not taken" : "Cleared", tookState[id] === "up" ? "i-check" : null);
+      if (tookState[id] === "up") openLogTrade(signalPrefill(D.ideas.find(x => x.id === id))); // took it → drop it into the journal, pre-filled
+      else toast(tookState[id] === "down" ? "Marked as not taken" : "Cleared", null);
     });
+  }
+  function signalPrefill(i) {
+    if (!i) return {};
+    const sess = /york/i.test(i.session) ? "New York" : /asia/i.test(i.session) ? "Asia" : "London";
+    const oc = i.status === "tp" ? "win" : i.status === "sl" ? "loss" : i.status === "be" ? "be" : "win";
+    const r = i.status === "sl" ? 1 : (parseFloat(i.rr) || 2);
+    const ch = (D.channels.find(c => c.id === i.channel) || {}).name || "Signal";
+    return { pair: i.pair, dir: i.dir, session: sess, outcome: oc, r, setup: `${ch} signal`, note: i.note || "" };
   }
 
   function ideaCard(i) {
@@ -460,16 +473,26 @@
   }
 
   // ============================ LIVE ============================
-  SCREENS.live = function () {
-    const v = D.live;
-    setScreen(`
-      <div id="live-stage">
+  let livePreview = false; // demo: lets you peek into the live room when no call is on
+  function isLiveNow() { // true only inside a scheduled call window (device clock, UK times)
+    const now = new Date();
+    return (D.schedule || []).some(c => {
+      if (DAY_IDX[c.day] !== now.getDay()) return false;
+      const [h, m] = c.time.split(":").map(Number);
+      const start = new Date(now); start.setHours(h, m, 0, 0);
+      const mins = (now - start) / 60000;
+      return mins >= -5 && mins <= 75;
+    });
+  }
+  function liveStageHtml(v) {
+    return `<div id="live-stage">
         <canvas id="live-canvas" data-chart="live"></canvas>
         <div class="live-grad"></div>
         <div class="live-hud">
           <span class="pill pill-live"><span class="dot-live"></span> LIVE</span>
           <span class="live-watchers">${ic("i-comm","ic")} <span id="watchers">${v.watchers.toLocaleString()}</span> watching</span>
         </div>
+        ${livePreview ? `<button class="live-exit" id="live-exit">Preview · exit ✕</button>` : ""}
         <div class="live-levels">
           <span class="lvl tp">TP ${v.tp}</span>
           <span class="lvl e">Entry ${v.entry}</span>
@@ -482,13 +505,33 @@
           <button class="react-btn" data-react="🔥">🔥</button>
           <button class="react-btn" data-react="💎">💎</button>
         </div>
-      </div>
+      </div>`;
+  }
+  function liveLobbyHtml(nc) {
+    return `<div id="live-lobby">
+        <canvas class="market-bg" data-chart="ambient" data-seed="9"></canvas>
+        <div class="lobby-inner">
+          <span class="pill pill-gold">${ic("i-live","ic")} Next live call</span>
+          <h2 class="lobby-title">${nc ? nc.session : "Live trading room"}</h2>
+          <div class="lobby-host">${nc ? `with ${nc.host} · ${DAY_FULL[nc.day]} ${nc.at}` : "Schedule coming up"}</div>
+          <div class="countdown lobby-cd" id="lobby-cd"></div>
+          <div class="lobby-actions">
+            <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} Remind me</button>
+            <button class="btn btn-ghost" id="live-preview">${ic("i-play")} Preview the room</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  SCREENS.live = function () {
+    const v = D.live, live = isLiveNow() || livePreview, nc = nextCall();
+    setScreen(`
+      ${live ? liveStageHtml(v) : liveLobbyHtml(nc)}
       <div style="padding-top:16px">
-        <span class="eyebrow">${v.session} open · live now</span>
+        ${live ? `<span class="eyebrow">${v.session} open · live now</span>
         <h2 class="h2" style="margin:8px 0 4px">${v.title}</h2>
         <p class="sub">Arron is mapping the London open in real time — liquidity, the entry model, and live risk management on ${v.pair}.</p>
         <div class="section-head"><span class="h3">Covering today</span></div>
-        ${["Where London liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}
+        ${["Where London liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}` : `<p class="sub" style="margin-top:2px">The room opens automatically when the call starts — free for members. Set a reminder so you don't miss the open.</p>`}
         ${scheduleSection()}
         <div class="section-head"><span class="h3">Recent replays</span><span class="more" data-tab="learn">All ›</span></div>
         <div class="rail rail-pad">${D.videos.filter(x=>x.cat==="Session Replays"||x.host==="Arron Blakey").slice(0,4).map(vCard).join("")}</div>
@@ -496,6 +539,17 @@
         <div class="spacer"></div>
       </div>
     `);
+    if (!live) {
+      const cd = $("#lobby-cd"); let left = nc ? nc.startsIn : 0;
+      const paint = () => { if (!cd) return; const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; cd.innerHTML = (d > 0 ? `<span class="cd-cell"><b>${d}</b><small>days</small></span>` : "") + `<span class="cd-cell"><b>${String(h).padStart(2,"0")}</b><small>hrs</small></span><span class="cd-cell"><b>${String(m).padStart(2,"0")}</b><small>min</small></span><span class="cd-cell"><b>${String(s).padStart(2,"0")}</b><small>sec</small></span>`; };
+      paint();
+      const lt = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); if (left <= 0) go("live"); }, 1000);
+      cleanups.push(() => clearInterval(lt));
+      const pv = $("#live-preview"); if (pv) pv.onclick = () => { livePreview = true; SCREENS.live(); };
+      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => toast("We'll ping you 10 min before the call", "i-bell");
+      wireCommon();
+      return;
+    }
     // watchers ticker
     let w = v.watchers;
     const wt = setInterval(() => { w += Math.floor(Math.random() * 9) - 3; $("#watchers").textContent = w.toLocaleString(); }, 2600);
@@ -517,6 +571,7 @@
     const rt = setInterval(() => { if (Math.random() > .4) flyReaction(Math.random() > .5 ? "🔥" : "💎"); }, 1500);
     cleanups.push(() => { clearInterval(wt); clearInterval(ct); clearInterval(rt); });
     [...document.querySelectorAll("[data-react]")].forEach(b => b.onclick = () => { flyReaction(b.dataset.react, b); });
+    const ex = $("#live-exit"); if (ex) ex.onclick = () => { livePreview = false; SCREENS.live(); };
     wireCommon();
   };
 
@@ -715,25 +770,26 @@
     };
   }
   function setOn(sel, btn) { [...document.querySelectorAll(sel + " .fchip")].forEach(x => x.classList.toggle("on", x === btn)); }
-  function openLogTrade() {
-    let dir = "long", oc = "win", sess = "London";
+  function openLogTrade(pre) {
+    pre = pre || {};
+    let dir = pre.dir || "long", oc = pre.outcome || "win", sess = pre.session || "London";
     openModal(`
       <h2 class="h2" style="margin:2px 0 3px">Log a trade</h2>
-      <p class="sub" style="font-size:12px;margin-bottom:15px">Record it while it's fresh — the journal is where the growth happens.</p>
+      <p class="sub" style="font-size:12px;margin-bottom:15px">${pre.setup ? `Pre-filled from ${pre.setup} — confirm the outcome and save.` : "Record it while it's fresh — the journal is where the growth happens."}</p>
       <label class="flabel">Pair</label>
-      <input class="finput" id="f-pair" value="XAUUSD">
+      <input class="finput" id="f-pair" value="${pre.pair || "XAUUSD"}">
       <label class="flabel">Direction</label>
       <div class="fchips" id="f-dir">${[["long", "▲ Long"], ["short", "▼ Short"]].map(([v, l]) => `<button class="fchip ${v === dir ? "on" : ""}" data-fdir="${v}">${l}</button>`).join("")}</div>
       <label class="flabel">Outcome</label>
       <div class="fchips" id="f-oc">${[["win", "Win"], ["loss", "Loss"], ["be", "Breakeven"]].map(([v, l]) => `<button class="fchip ${v === oc ? "on" : ""}" data-foc="${v}">${l}</button>`).join("")}</div>
       <label class="flabel">Result (R multiple)</label>
-      <input class="finput num" id="f-r" type="number" step="0.1" value="2.0" inputmode="decimal">
+      <input class="finput num" id="f-r" type="number" step="0.1" value="${pre.r != null ? pre.r : "2.0"}" inputmode="decimal">
       <label class="flabel">Session</label>
       <div class="fchips" id="f-sess">${["London", "New York", "Asia"].map(v => `<button class="fchip ${v === sess ? "on" : ""}" data-fsess="${v}">${v}</button>`).join("")}</div>
       <label class="flabel">Setup</label>
-      <input class="finput" id="f-setup" placeholder="e.g. Break & retest">
+      <input class="finput" id="f-setup" placeholder="e.g. Break & retest" value="${pre.setup || ""}">
       <label class="flabel">Notes & reflection</label>
-      <textarea class="finput ftext" id="f-note" placeholder="What did you do well? What would you do differently?"></textarea>
+      <textarea class="finput ftext" id="f-note" placeholder="What did you do well? What would you do differently?">${pre.note || ""}</textarea>
       <button class="btn btn-gold btn-block" id="f-save" style="margin-top:10px">Save to journal</button>
       <div class="spacer"></div>
     `);
@@ -848,6 +904,10 @@
         <div class="name">${u.name}</div>
         <div class="handle num">${u.handle}</div>
         <div style="margin-top:10px"><span class="pill pill-gold">⭐ Level ${profLevel()} · ${tierName(profLevel())}</span></div>
+        <div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" id="edit-profile">${ic("i-edit")} Edit</button>
+          <button class="btn btn-ghost btn-sm" id="share-card">${ic("i-share")} Share card</button>
+        </div>
       </div>
 
       <div class="card level">
@@ -859,7 +919,7 @@
       <div class="stat-row" style="margin-top:13px">
         <div class="stat">${ic("i-flame","ic")}<b class="num">${profStreak()}</b><small>Day streak</small></div>
         <div class="stat">${ic("i-target","ic")}<b class="num">${journalStats().winRate}%</b><small>Win rate</small></div>
-        <div class="stat">${ic("i-live","ic")}<b class="num">${u.sessions}</b><small>Calls joined</small></div>
+        <div class="stat">${ic("i-live","ic")}<b class="num">${callsJoined()}</b><small>Calls joined</small></div>
       </div>
 
       <div class="section-head"><span class="h2">Your numbers</span><span class="more" data-act="journal">Journal ›</span></div>
@@ -912,8 +972,43 @@
     [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => { const on = t.classList.toggle("on"); toast(on ? "Turned on" : "Turned off", on ? "i-check" : null); });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
+    const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
+    const sc = $("#share-card"); if (sc) sc.onclick = openTraderCard;
     wireCommon();
   };
+  function openEditProfile() {
+    openModal(`<h2 class="h2" style="margin:2px 0 4px">Edit profile</h2>
+      <p class="sub" style="font-size:12px;margin-bottom:15px">This is how the floor sees you.</p>
+      <label class="flabel">Display name</label>
+      <input class="finput" id="ep-name" value="${D.user.name}">
+      <button class="btn btn-gold btn-block" id="ep-save" style="margin-top:16px">Save</button>
+      <div class="spacer"></div>`);
+    const s = $("#ep-save"); if (s) s.onclick = () => {
+      const nm = ($("#ep-name").value || "").trim(); if (!nm) return;
+      D.user.name = nm; D.user.first = nm.split(/\s+/)[0];
+      D.user.initials = nm.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || D.user.initials;
+      pSet({ name: D.user.name, first: D.user.first, initials: D.user.initials });
+      closeModal(); SCREENS.profile(); toast("Profile updated", "i-check");
+    };
+  }
+  function openTraderCard() {
+    const js = journalStats();
+    openModal(`<div class="tcard">
+        <div class="tcard-head"><img src="assets/blakey-logo.png" class="tcard-logo" alt="Blakey Trades"></div>
+        ${av(D.user.initials, 64)}
+        <div class="tcard-name">${D.user.name}</div>
+        <div class="tcard-lvl">⭐ Level ${profLevel()} · ${tierName(profLevel())}</div>
+        <div class="tcard-stats">
+          <div><b class="num gold-text">${js.winRate}%</b><small>Win rate</small></div>
+          <div><b class="num gold-text">${profStreak()}</b><small>Day streak</small></div>
+          <div><b class="num ${js.netR>=0?'up':'down'}">${js.netR>=0?'+':''}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
+        </div>
+        <div class="tcard-foot">${D.user.handle} · Blakey Trades</div>
+      </div>
+      <button class="btn btn-gold btn-block" id="tc-share" style="margin-top:14px">${ic("i-share")} Share my card</button>
+      <div class="spacer"></div>`);
+    const sh = $("#tc-share"); if (sh) sh.onclick = () => toast("Card ready to share", "i-share");
+  }
   function settingRow(icon, label, val, toggle, id, last) {
     return `<div class="settings-row"${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
       ${toggle ? `<div class="toggle on" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
@@ -983,9 +1078,20 @@
   }
 
   // ---------- notifications ----------
+  function liveNotifs() { // real events computed from live state
+    const out = [], nc = nextCall();
+    if (nc) {
+      const s = nc.startsIn, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+      const when = isLiveNow() ? "is live now" : h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
+      out.push({ icon: "i-live", text: `${nc.session} ${when} — ${nc.host} hosting`, time: "now", unread: true, go: "live" });
+    }
+    out.push({ icon: "i-trophy", text: `You're #${myRank()} on the weekly leaderboard`, time: "now", unread: true, go: "community" });
+    return out;
+  }
   function openNotifications() {
     const groups = {};
-    D.notifications.forEach(n => (groups[n.group] = groups[n.group] || []).push(n));
+    liveNotifs().forEach(n => (groups.Today = groups.Today || []).push(n));
+    D.notifications.filter(n => n.go !== "live" && !/leaderboard/i.test(n.text)).forEach(n => (groups[n.group] = groups[n.group] || []).push(n));
     const sec = g => groups[g] ? `<div class="eyebrow muted" style="margin:16px 2px 9px">${g}</div>` +
       groups[g].map(n => `<button class="notif ${n.unread ? "unread" : ""}" data-go="${n.go}">${ic(n.icon, "nicon")}<span class="ntext">${n.text}</span><span class="ntime num">${n.time}</span></button>`).join("") : "";
     openModal(`
