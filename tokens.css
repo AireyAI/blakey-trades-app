@@ -77,3 +77,33 @@
   --app-w:390px;
   --app-h:844px;
 }
+
+/* ===== Light mode (Profile → Appearance → Light) ===== */
+[data-theme="light"]{
+  --ink:#F1F0EB;
+  --surface:#FFFFFF;
+  --surface-2:rgba(22,20,14,0.035);
+  --surface-3:rgba(22,20,14,0.06);
+  --surface-4:rgba(22,20,14,0.10);
+  --line:rgba(22,20,14,0.10);
+  --line-2:rgba(22,20,14,0.15);
+  --hairline:rgba(22,20,14,0.10);
+
+  --gold:#9A7B2E;
+  --gold-hi:#7C5E1C;
+  --gold-deep:#5E4716;
+  --gold-soft:rgba(154,123,46,0.12);
+  --gold-line:rgba(154,123,46,0.30);
+
+  --text:#15151A;
+  --muted:#5E5E68;
+  --faint:#9C9CA6;
+
+  --up:#0E9E5B;
+  --down:#D23A3F;
+
+  --sh-1:0 6px 22px -12px rgba(22,20,14,0.18);
+  --sh-2:0 18px 50px -22px rgba(22,20,14,0.22);
+  --glow-gold:0 0 0 1px rgba(154,123,46,0.20),0 18px 50px -22px rgba(154,123,46,0.20);
+  --glass-bg:rgba(255,255,255,0.78);
+}

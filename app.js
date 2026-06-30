@@ -364,6 +364,10 @@
   function savePosts() { pSet({ posts: D.posts }); }
   function getSetting(key, def) { const v = (pState().settings || {})[key]; return v != null ? v : def; }
   function setSetting(key, val) { pSet({ settings: { ...(pState().settings || {}), [key]: val } }); }
+  // ---- theme (dark default / light) ----
+  function currentTheme() { return getSetting("theme", "dark") === "light" ? "light" : "dark"; }
+  function applyTheme(t) { document.documentElement.dataset.theme = (t === "light" ? "light" : "dark"); }
+  function toggleTheme() { const next = currentTheme() === "light" ? "dark" : "light"; setSetting("theme", next); applyTheme(next); return next; }
   function getNotifPrefs() {
     const def = [1, 1, 1, 0, 1, 1];
     const p = pState().notifPrefs;
@@ -1152,8 +1156,8 @@
       <div class="card card-pad">
         ${settingRow("i-bell","Push notifications","",true,"set1",false,getSetting("push",true))}
         ${settingRow("i-live","Live call reminders","",true,"set2",false,getSetting("liveReminders",true))}
-        ${settingRow("i-moon","Appearance","Dark",false)}
-        ${settingRow("i-shield","Account & security","",false)}
+        ${settingRow("i-moon","Appearance",currentTheme()==="light"?"Light":"Dark",false,null,false,null,"theme")}
+        ${settingRow("i-shield","Account & security","",false,null,false,null,"account")}
         ${settingRow("i-tg","Help & support","@blakeytrades_support",false,null,true,null,"support")}
       </div>
       <button class="btn btn-ghost btn-block" id="sign-out" style="margin-top:14px">Sign out</button>
@@ -1169,6 +1173,8 @@
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
     const sup = $('[data-act="support"]'); if (sup) sup.onclick = () => window.open("https://t.me/blakeytrades_support", "_blank", "noopener");
+    const themeBtn = $('[data-act="theme"]'); if (themeBtn) themeBtn.onclick = () => { const t = toggleTheme(); toast(t === "light" ? "Light mode on" : "Dark mode on", "i-moon"); SCREENS.profile(); };
+    const acctBtn = $('[data-act="account"]'); if (acctBtn) acctBtn.onclick = openAccountSecurity;
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
     const sc = $("#share-card"); if (sc) sc.onclick = openTraderCard;
     wireCommon();
@@ -1220,6 +1226,44 @@
   }
   function hubRow(icon, title, sub, act, last) {
     return `<button class="hub-row${last ? " last" : ""}" data-act="${act}">${ic(icon, "ic")}<div class="hr-body"><b>${title}</b><small>${sub}</small></div>${ic("i-chev", "ic")}</button>`;
+  }
+  function acctRow(icon, label, val, last) {
+    return `<div class="settings-row"${last ? ' style="border-bottom:none"' : ''}>${ic(icon)}<span class="lbl">${label}</span><span class="val">${val || ""}</span>${ic("i-chev","ic")}</div>`;
+  }
+  function openAccountSecurity() {
+    const u = D.user;
+    openModal(`<h3 class="sheet-title">Account &amp; security</h3>
+      <p class="sheet-sub">Your membership, login and data — all in one place.</p>
+      <div class="acct-card">
+        <div class="acct-id">${av(u.initials, 44)}<div class="acct-meta"><b>${u.name}</b><small>${u.handle} · Member since 2025</small></div></div>
+        <div class="acct-tags"><span class="pill pill-gold">${ic("i-trophy","ic")} BT VIP · Active</span><span class="acct-free">Free · partner-funded</span></div>
+      </div>
+      <div class="acct-h">Account</div>
+      <div class="card card-pad">
+        ${acctRow("i-tg","Email","jordan.hale@gmail.com")}
+        ${acctRow("i-tg","Telegram","@jhale_fx · linked")}
+        ${acctRow("i-dollar","Membership","BT VIP — free",true)}
+      </div>
+      <div class="acct-h">Security</div>
+      <div class="card card-pad">
+        ${settingRow("i-shield","Two-factor auth","",true,"sec-2fa",false,getSetting("twofa",false))}
+        ${settingRow("i-check","Biometric login","",true,"sec-bio",false,getSetting("bio",true))}
+        ${acctRow("i-edit","Change password","Updated 3 weeks ago")}
+        ${acctRow("i-live","Active sessions","2 devices",true)}
+      </div>
+      <div class="acct-h">Privacy &amp; data</div>
+      <div class="card card-pad">
+        ${acctRow("i-shield","Privacy policy","")}
+        ${acctRow("i-share","Export my data","")}
+        ${acctRow("i-comment","Delete account","",true)}
+      </div>
+      <p class="sub" style="font-size:11px;text-align:center;margin:16px 0 2px;color:var(--faint)">Educational community · capital at risk · not financial advice.</p>
+      <div class="spacer"></div>`);
+    [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
+      const on = t.classList.toggle("on");
+      if (t.id === "sec-2fa") { setSetting("twofa", on); toast(on ? "Two-factor enabled" : "Two-factor off", on ? "i-shield" : null); }
+      else if (t.id === "sec-bio") { setSetting("bio", on); toast(on ? "Biometric login on" : "Biometric login off", on ? "i-check" : null); }
+    });
   }
 
   // ============================ MODALS (player + idea) ============================
@@ -1349,11 +1393,12 @@
       const el = document.getElementById(cid);
       if (!el || !window.TradingView) return;
       el.innerHTML = "";
+      const light = currentTheme() === "light";
       new TradingView.widget({
         container_id: cid, symbol: "OANDA:XAUUSD", interval: "60", timezone: "Europe/London",
-        theme: "dark", style: "1", locale: "en", autosize: true, enable_publishing: false,
+        theme: light ? "light" : "dark", style: "1", locale: "en", autosize: true, enable_publishing: false,
         hide_top_toolbar: true, hide_legend: true, hide_side_toolbar: true, allow_symbol_change: false, save_image: false,
-        backgroundColor: "#0b0c11", gridColor: "rgba(255,255,255,0.04)",
+        backgroundColor: light ? "#ffffff" : "#0b0c11", gridColor: light ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)",
         overrides: {
           "mainSeriesProperties.candleStyle.upColor": "#37BE7E", "mainSeriesProperties.candleStyle.downColor": "#F0565B",
           "mainSeriesProperties.candleStyle.borderUpColor": "#37BE7E", "mainSeriesProperties.candleStyle.borderDownColor": "#F0565B",
@@ -1581,7 +1626,22 @@
 
   // ============================ COMMUNITY / PROFILE FEATURES ============================
   function openGlossary() {
-    openModal(`<h3 class="sheet-title">Trading glossary</h3><p class="sheet-sub">Plain-English definitions.</p><div class="gloss">${D.glossary.map(g => `<div class="gloss-row"><b>${g.term}</b><span>${g.def}</span></div>`).join("")}</div>`);
+    const cats = [...new Set(D.glossary.map(g => g.cat || "Terms"))];
+    const body = cats.map(c => `<div class="gloss-cat">${c}</div>${D.glossary.filter(g => (g.cat || "Terms") === c).map(g => `<div class="gloss-row"><b>${g.term}</b><span>${g.def}</span></div>`).join("")}`).join("");
+    openModal(`<h3 class="sheet-title">Trading glossary</h3>
+      <p class="sheet-sub">${D.glossary.length} terms every gold trader should know — the BT VIP vocabulary, in plain English.</p>
+      <input class="finput gloss-search" id="gloss-q" placeholder="Search terms…" autocomplete="off">
+      <div class="gloss" id="gloss-list">${body}</div>
+      <div class="gloss-empty" id="gloss-empty" hidden>No terms match — try another word.</div>
+      <p class="sub" style="font-size:11px;text-align:center;margin:14px 0 4px;color:var(--faint)">Educational only · not financial advice.</p>`);
+    const q = $("#gloss-q");
+    if (q) q.oninput = () => {
+      const v = q.value.toLowerCase().trim();
+      let shown = 0;
+      [...document.querySelectorAll("#gloss-list .gloss-row")].forEach(r => { const m = !v || r.textContent.toLowerCase().includes(v); r.style.display = m ? "" : "none"; if (m) shown++; });
+      [...document.querySelectorAll("#gloss-list .gloss-cat")].forEach(h => { let n = h.nextElementSibling, any = false; while (n && n.classList.contains("gloss-row")) { if (n.style.display !== "none") any = true; n = n.nextElementSibling; } h.style.display = any ? "" : "none"; });
+      const e = $("#gloss-empty"); if (e) e.hidden = shown > 0;
+    };
   }
   function openInvite() {
     openModal(`<div class="invite"><div class="invite-ic">${ic("i-share")}</div>
@@ -1875,6 +1935,7 @@
   }
   window.addEventListener("resize", fitDevice);
   function boot() {
+    applyTheme(getSetting("theme", "dark"));
     fitDevice();
     hydrateProfile(); // journal + streak + points from device storage (seeds the demo journal first run)
     // hydrate the economic calendar from cache (instant), then refresh from the live proxy
