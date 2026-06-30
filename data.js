@@ -47,18 +47,26 @@ window.DATA = {
 
   // each idea belongs to a Telegram channel (channel id) — see `channels` below
   ideas: [
-    // BT VIP — flagship gold day calls
+    // BT VIP — flagship gold day calls (Arron's "Personal Trade Idea" format: entry range, SL→BE, TP ladder)
     { id:"i1", channel:"vip", pair:"XAUUSD", dir:"long", session:"London", time:"Today · 08:14",
       entry:"4,026.50", sl:"4,014.00", tp:"4,064.00", rr:"3.0", status:"running",
+      entryRange:"4,024–4,028", slBe:"4,031", tps:["4,035","4,042","4,049","4,056","4,064","OPEN 🚀"],
+      updates:["Buying now @ 4,026","+9 pips — SL to BE 🔒","TP1 hit ✅ +9 pips"],
       note:"Reclaimed the London low and held the 4,025 demand block. Continuation into the New York liquidity above 4,060. Risk defined below structure." },
     { id:"i2", channel:"vip", pair:"XAUUSD", dir:"short", session:"New York", time:"Yesterday · 14:40",
       entry:"4,048.00", sl:"4,057.00", tp:"4,021.00", rr:"3.0", status:"tp", result:"+27.0",
+      entryRange:"4,046–4,050", slBe:"4,043", tps:["4,041","4,036","4,031","4,026","4,021","OPEN 🚀"],
+      updates:["Selling now @ 4,048","+20 pips — SL to BE","TP4 hit ✅","Closed +27 pips 🎯"],
       note:"Swept Asian highs and rejected the weekly supply at 4,050. Clean lower-high on the 15m gave the entry. Banked at the prior day open." },
     { id:"i4", channel:"vip", pair:"XAUUSD", dir:"long", session:"London", time:"Mon · 09:20",
       entry:"4,002.40", sl:"3,994.00", tp:"4,028.00", rr:"3.0", status:"tp", result:"+25.6",
+      entryRange:"4,000–4,004", slBe:"4,007", tps:["4,010","4,016","4,022","4,028","4,034","OPEN 🚀"],
+      updates:["Buying now @ 4,002","+8 pips — SL to BE","Banked +25.6 pips ✅"],
       note:"Textbook break-and-retest of the 4,000 level off the daily trend. Patience on the retest paid." },
     { id:"i3", channel:"vip", pair:"XAUUSD", dir:"long", session:"Asia", time:"Yesterday · 02:05",
       entry:"4,031.20", sl:"4,022.00", tp:"4,058.00", rr:"2.9", status:"be", result:"BE",
+      entryRange:"4,029–4,033", slBe:"4,036", tps:["4,040","4,047","4,054","4,058","4,065","OPEN 🚀"],
+      updates:["Buying now @ 4,031","+14 pips — SL to BE","Trailed to BE before the NY reversal — scratch"],
       note:"Took partials into 4,045, trailed to breakeven before the NY reversal. Protect the account first." },
     // BT Swing — multi-day
     { id:"s1", channel:"swing", pair:"XAUUSD", dir:"long", session:"Daily swing", time:"Tue",

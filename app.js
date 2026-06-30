@@ -590,7 +590,7 @@
         <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : 'Arron Blakey <span class="vchk">✓</span>'}</span>
         <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
-        <div class="cell"><small>Entry</small><b class="num">${i.entry}</b></div>
+        <div class="cell"><small>Entry</small><b class="num">${i.entryRange || i.entry}</b></div>
         <div class="cell sl"><small>Stop</small><b class="num">${i.sl}</b></div>
         <div class="cell tp"><small>Target</small><b class="num">${i.tp}</b></div>
       </div>
@@ -1287,20 +1287,45 @@
 
   function openIdea(id) {
     const i = D.ideas.find(x => x.id === id) || D.ideas[0];
-    openModal(`
-      <div class="tv-chart" id="tv-${i.id}"><div class="tv-load">${ic("i-chart","ic")} Loading live chart…</div></div>
+    const sell = i.dir === "short";
+    const st = i.status === "tp" ? `<span class="pill pill-up">${ic("i-check","ic")} Hit TP ${i.result}</span>`
+      : i.status === "sl" ? `<span class="pill pill-down">Stopped ${i.result}</span>`
+      : i.status === "be" ? `<span class="pill">Breakeven</span>`
+      : `<span class="pill pill-gold"><span class="dot-live"></span> Running</span>`;
+    const rich = !!(i.tps && i.tps.length);
+    const post = rich ? `
+      <div class="sigpost">
+        <div class="sp-top">
+          <span class="sp-head ${sell ? "sell" : "buy"}">${sell ? "🔴 SELL" : "🟢 BUY"} ${i.pair} <span class="sp-gold">(Gold)</span></span>
+          ${st}
+        </div>
+        <div class="sp-sub">Personal Trade Idea — not financial advice, just what Arron's personally doing.</div>
+        <div class="sp-grid">
+          <div class="sp-row"><span>Entry</span><b class="num">${i.entryRange || i.entry}</b></div>
+          <div class="sp-row"><span>Stop Loss</span><b class="num sl">${i.sl}</b></div>
+        </div>
+        <div class="sp-tps">
+          <div class="sp-tps-h">🎯 Take Profits</div>
+          ${i.slBe ? `<div class="sp-tp be"><span>SL to BE</span><b class="num">${i.slBe}</b></div>` : ""}
+          ${i.tps.map((t, n) => `<div class="sp-tp"><span>TP${n + 1}</span><b class="num">${t}</b></div>`).join("")}
+        </div>
+        ${i.updates && i.updates.length ? `<div class="sp-updates"><div class="sp-up-h">${ic("i-tg","ic")} Live updates</div>${i.updates.map(u => `<div class="sp-up">${u}</div>`).join("")}</div>` : ""}
+      </div>` : `
       <div class="idea-top" style="margin-top:16px">
         <div class="idea-pair">${ic("i-chart","ic")}<span class="sym" style="font-family:var(--display);font-weight:800;font-size:19px">${i.pair}</span>
-          <span class="idea-dir ${i.dir}">${i.dir==="long"?"▲ LONG":"▼ SHORT"}</span></div>
+          <span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         <span class="eyebrow muted">${i.time}</span>
       </div>
       <div class="ticket" style="margin-top:12px">
-        <div class="cell"><small>Entry</small><b class="num">${i.entry}</b></div>
+        <div class="cell"><small>Entry</small><b class="num">${i.entryRange || i.entry}</b></div>
         <div class="cell sl"><small>Stop</small><b class="num">${i.sl}</b></div>
         <div class="cell tp"><small>Target</small><b class="num">${i.tp}</b></div>
       </div>
-      <div class="idea-foot" style="margin:12px 2px"><span class="rr num">Risk:Reward <b>${i.rr}</b></span><span class="rr num">${i.session} session</span></div>
-      <span class="eyebrow" style="display:block;margin:6px 0 6px">The reasoning</span>
+      <div class="idea-foot" style="margin:12px 2px"><span class="rr num">Risk:Reward <b>${i.rr}</b></span><span class="rr num">${i.session} session</span></div>`;
+    openModal(`
+      <div class="tv-chart" id="tv-${i.id}"><div class="tv-load">${ic("i-chart","ic")} Loading live chart…</div></div>
+      ${post}
+      <span class="eyebrow" style="display:block;margin:16px 0 6px">The reasoning</span>
       <p class="sub">${i.note}</p>
       ${tookRow(i)}
       <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Live chart by TradingView · Educational content only. Not financial advice.</p>
