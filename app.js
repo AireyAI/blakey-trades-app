@@ -1154,7 +1154,7 @@
         ${settingRow("i-live","Live call reminders","",true,"set2",false,getSetting("liveReminders",true))}
         ${settingRow("i-moon","Appearance","Dark",false)}
         ${settingRow("i-shield","Account & security","",false)}
-        ${settingRow("i-book","Help & support","",false,null,true)}
+        ${settingRow("i-tg","Help & support","@blakeytrades_support",false,null,true,null,"support")}
       </div>
       <button class="btn btn-ghost btn-block" id="sign-out" style="margin-top:14px">Sign out</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:16px;color:var(--faint)">Member since 2025 · Educational content only. Not financial advice.</p>
@@ -1168,6 +1168,7 @@
     });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
+    const sup = $('[data-act="support"]'); if (sup) sup.onclick = () => window.open("https://t.me/blakeytrades_support", "_blank", "noopener");
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
     const sc = $("#share-card"); if (sc) sc.onclick = openTraderCard;
     wireCommon();
@@ -1212,9 +1213,9 @@
       } catch (e) { if (e && e.name !== "AbortError") toast("Card ready to share", "i-share"); }
     };
   }
-  function settingRow(icon, label, val, toggle, id, last, on) {
+  function settingRow(icon, label, val, toggle, id, last, on, act) {
     const isOn = on != null ? on : true;
-    return `<div class="settings-row"${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
+    return `<div class="settings-row${act ? " tap" : ""}"${act ? ` data-act="${act}"` : ""}${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
       ${toggle ? `<div class="toggle ${isOn ? "on" : ""}" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
   }
   function hubRow(icon, title, sub, act, last) {
