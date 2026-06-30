@@ -1,7 +1,7 @@
 /* Blakey Trades — canvas "living market" engine
    Renders ambient gold price lines, the live candle chart, and thumbnails. */
 (function () {
-  const GOLD = "#C7A44D", GOLD_HI = "#E8CE86", UP = "#37BE7E", DOWN = "#F0565B";
+  const GOLD = "#E0B23C", GOLD_HI = "#F3D277", UP = "#37BE7E", DOWN = "#F0565B";
   const reduce = window.matchMedia("(prefers-reduced-motion:reduce)").matches;
 
   // deterministic PRNG so thumbnails are stable per seed
@@ -56,7 +56,7 @@
     // level lines
     if (opts.levels) for (const lv of opts.levels) {
       const y = Y(lv.price); ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
-      ctx.strokeStyle = lv.type === "tp" ? "rgba(55,190,126,.6)" : lv.type === "sl" ? "rgba(240,86,91,.6)" : "rgba(199,164,77,.7)";
+      ctx.strokeStyle = lv.type === "tp" ? "rgba(55,190,126,.6)" : lv.type === "sl" ? "rgba(240,86,91,.6)" : "rgba(224,178,60,.7)";
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); ctx.restore();
     }
     for (let i = 0; i < n; i++) {
@@ -70,7 +70,7 @@
     // current price marker
     if (opts.marker !== false) {
       const last = candles[n - 1], y = Y(last.c);
-      ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = "rgba(199,164,77,.55)"; ctx.lineWidth = 1;
+      ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = "rgba(224,178,60,.55)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); ctx.restore();
       ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(w - 4, y, 2.6, 0, 7); ctx.fill();
     }
@@ -85,12 +85,12 @@
     for (let i = 0; i < pts.length; i++) { const x = i * step - off * step; const y = Y(pts[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
     // area
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, "rgba(199,164,77,0.22)"); grad.addColorStop(1, "rgba(199,164,77,0)");
+    grad.addColorStop(0, "rgba(224,178,60,0.22)"); grad.addColorStop(1, "rgba(224,178,60,0)");
     ctx.lineTo(w, h); ctx.lineTo(-step, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
     // line
     ctx.beginPath();
     for (let i = 0; i < pts.length; i++) { const x = i * step - off * step; const y = Y(pts[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6; ctx.shadowColor = "rgba(199,164,77,.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6; ctx.shadowColor = "rgba(224,178,60,.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
   }
 
   // ---- animation registry (single rAF; auto-cleans detached canvases) ----
@@ -175,7 +175,7 @@
     ctx.fillStyle = "rgba(55,190,126,.07)"; ctx.fillRect(0, 0, w, Math.max(0, yE));
     ctx.fillStyle = "rgba(240,86,91,.07)"; ctx.fillRect(0, Math.max(0, yE), w, h - Math.max(0, yE));
     // entry line
-    ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(199,164,77,.7)"; ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(w, yE); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(224,178,60,.7)"; ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(w, yE); ctx.stroke(); ctx.restore();
     // bold gradient area fill
     const grad = ctx.createLinearGradient(0, padT, 0, h);
     grad.addColorStop(0, "rgba(216,182,90,.38)"); grad.addColorStop(1, "rgba(216,182,90,0)");
@@ -235,12 +235,12 @@
     const zy = Y(0); ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
     ctx.beginPath(); pts.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
     ctx.lineTo(X(pts.length - 1), h); ctx.lineTo(X(0), h); ctx.closePath();
-    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(199,164,77,0.3)"); g.addColorStop(1, "rgba(199,164,77,0)");
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(224,178,60,0.3)"); g.addColorStop(1, "rgba(224,178,60,0)");
     ctx.fillStyle = g; ctx.fill();
     ctx.beginPath(); pts.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
-    ctx.strokeStyle = "#C7A44D"; ctx.lineWidth = 2; ctx.shadowColor = "rgba(199,164,77,.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#E0B23C"; ctx.lineWidth = 2; ctx.shadowColor = "rgba(224,178,60,.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
     const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
-    ctx.fillStyle = "#E8CE86"; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#F3D277"; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, 7); ctx.fill();
   }
 
   window.Charts = { initIn, drawEquity };

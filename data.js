@@ -238,7 +238,7 @@ window.DATA = {
   // ── academy learning paths ──
   paths: [
     { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:8, color:"#3ECB86", desc:"Markets, candles & risk basics — start here." },
-    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:6, color:"#C7A44D", desc:"Liquidity, the London open & the 3 entry models." },
+    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:6, color:"#E0B23C", desc:"Liquidity, the London open & the 3 entry models." },
     { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:2, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
     { id:"pro", name:"Pro Execution", level:"Advanced", lessons:9, done:0, color:"#C06AFF", desc:"Scaling, sessions & a repeatable edge." },
   ],

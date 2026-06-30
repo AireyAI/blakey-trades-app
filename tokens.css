@@ -17,13 +17,13 @@
   --line-2:rgba(255,255,255,0.11);
   --hairline:rgba(255,255,255,0.08);
 
-  /* ---- brand gold (precise accent, not everywhere) ---- */
-  --gold:#C7A44D;
-  --gold-hi:#E8CE86;
-  --gold-deep:#9A7B2E;
-  --gold-soft:rgba(199,164,77,0.12);
-  --gold-line:rgba(199,164,77,0.22);
-  --gold-foil:linear-gradient(135deg,#7E631F 0%,#C7A44D 24%,#F6E3AC 47%,#DAB85E 58%,#9A7B2E 82%,#6F571B 100%);
+  /* ---- brand gold (precise accent, not everywhere) — bullion shade ---- */
+  --gold:#E0B23C;
+  --gold-hi:#F3D277;
+  --gold-deep:#A87C22;
+  --gold-soft:rgba(224,178,60,0.12);
+  --gold-line:rgba(224,178,60,0.22);
+  --gold-foil:linear-gradient(135deg,#8A6620 0%,#E0B23C 24%,#FBEAB0 47%,#ECC85F 58%,#A87C22 82%,#705117 100%);
 
   /* ---- text: bright + Revolut neutral scale ---- */
   --text:#F3F3F1;
@@ -61,7 +61,7 @@
   /* ---- depth: Apple restraint (near-zero; one soft signature) ---- */
   --sh-1:0 6px 24px -12px rgba(0,0,0,0.55);
   --sh-2:0 18px 60px -22px rgba(0,0,0,0.75);
-  --glow-gold:0 0 0 1px rgba(199,164,77,0.22),0 20px 60px -20px rgba(199,164,77,0.28);
+  --glow-gold:0 0 0 1px rgba(224,178,60,0.22),0 20px 60px -20px rgba(224,178,60,0.28);
   --glass-blur:blur(30px) saturate(165%);
   --glass-bg:rgba(10,10,12,0.72);
 

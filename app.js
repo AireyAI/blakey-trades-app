@@ -999,7 +999,7 @@
   function lbRow(r) {
     const medalCls = r.rank === 1 ? "m1" : r.rank === 2 ? "m2" : r.rank === 3 ? "m3" : "";
     const dn = r.delta.startsWith("+") ? "up" : r.delta.startsWith("-") ? "down" : "";
-    return `<div class="lb-row ${r.top?"top":""}" style="${r.me?"border-color:rgba(199,164,77,.4);background:rgba(199,164,77,.06)":""}">
+    return `<div class="lb-row ${r.top?"top":""}" style="${r.me?"border-color:rgba(224,178,60,.4);background:rgba(224,178,60,.06)":""}">
       <div class="rank num ${medalCls}">${r.rank}</div>
       ${av(r.initials, 36, r.top ? "" : "quiet")}
       <div class="nm"><b>${r.name}${r.me?' · You':''}</b><small class="num">${r.handle}</small></div>
