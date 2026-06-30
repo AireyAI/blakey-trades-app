@@ -189,7 +189,7 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse{70%{box-shadow:0 0 0 7px rgba(255,77,77,0)}100%{box-shadow:0 0 0 0 rgba(255,77,77,0)}}
 
 /* ---------- Cards ---------- */
-.card{background:var(--surface-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 48px -24px rgba(0,0,0,.8)}
+.card{background-color:var(--surface-2);background-image:var(--grain);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.30),0 24px 50px -24px rgba(7,5,2,.84)}
 .card-pad{padding:16px}
 .reveal{opacity:0;transform:translateY(16px);animation:reveal .6s cubic-bezier(.2,.7,.2,1) forwards}
 @keyframes reveal{to{opacity:1;transform:none}}
@@ -365,7 +365,7 @@ a{color:inherit;text-decoration:none}
 .lobby-title{font-family:var(--display);font-weight:800;font-size:25px;margin:13px 0 4px}
 .lobby-host{font-size:12.5px;color:var(--muted);margin-bottom:18px}
 .lobby-cd{display:flex;justify-content:center;gap:8px;margin-bottom:20px}
-.cd-cell{background:var(--surface-2);border:1px solid var(--line-2);border-radius:13px;padding:9px 13px;min-width:56px;backdrop-filter:var(--glass-blur)}
+.cd-cell{background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line-2);border-radius:13px;padding:9px 13px;min-width:56px;backdrop-filter:var(--glass-blur);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -1px 0 rgba(0,0,0,.26),0 12px 30px -20px rgba(7,5,2,.72)}
 .cd-cell b{font-family:var(--mono);font-size:23px;font-weight:700;display:block;line-height:1;color:var(--gold)}
 .cd-cell small{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:3px;display:block}
 .lobby-actions{display:flex;gap:10px;justify-content:center}
@@ -496,7 +496,7 @@ a{color:inherit;text-decoration:none}
 .wl-body{flex:1}.wl-body b{font-size:14px;display:block}.wl-body small{font-size:11px;color:var(--muted)}
 .wl-px{text-align:right}.wl-px b{font-size:14px;display:block}.wl-px small{font-size:11.5px;font-weight:700}
 /* gold price panel */
-.gp-hero{background:var(--surface-2);backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:16px;padding:16px 16px 14px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.gp-hero{background:var(--surface-2);background-image:var(--grain);backdrop-filter:var(--glass-blur);border:1px solid var(--line-2);border-radius:16px;padding:16px 16px 14px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.28),0 18px 42px -24px rgba(7,5,2,.78)}
 .gp-spark{display:block;width:100%;height:42px;opacity:.65;margin-bottom:8px}
 .gp-px{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--gold)}
 .gp-chg{display:inline-block;font-size:13px;font-weight:700;margin-top:9px}
@@ -587,7 +587,7 @@ a{color:inherit;text-decoration:none}
 /* track record */
 .track{padding:4px 14px 14px}
 .track-stats{display:flex;gap:8px;text-align:center;margin-top:4px}
-.track-stats>div{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 4px}
+.track-stats>div{flex:1;background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line);border-radius:12px;padding:12px 4px}
 .track-stats b{font-family:var(--mono);font-size:19px;font-weight:700;display:block}
 .track-stats small{font-size:10.5px;color:var(--muted);display:block;margin-top:2px}
 .track-note{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--faint);margin-top:11px;padding:0 2px}
@@ -702,7 +702,7 @@ a{color:inherit;text-decoration:none}
 .profile-head .av-ring .av{margin:0;position:relative;z-index:1}
 /* profile — your numbers + next up */
 .num-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.num-cell{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.num-cell{background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
 .num-cell b{font-size:18px;display:block}
 .num-cell small{font-size:11px;color:var(--muted)}
 .sess-block{margin-top:15px}
@@ -721,7 +721,7 @@ a{color:inherit;text-decoration:none}
 .nu-bar{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
 .nu-bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
 .ph-actions{display:flex;gap:8px;justify-content:center;margin-top:14px}
-.tcard{background:linear-gradient(160deg,#1c1608,#0c0d12);border:1px solid var(--gold-line);border-radius:20px;padding:24px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 20px 50px -28px rgba(0,0,0,.8)}
+.tcard{background-image:var(--grain),linear-gradient(160deg,#1c1608,#0c0d12);border:1px solid var(--gold-line);border-radius:20px;padding:24px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 20px 50px -28px rgba(7,5,2,.82)}
 .tcard .av{margin:0 auto 12px}
 .tcard-head{margin-bottom:14px}
 .tcard-logo{height:22px;opacity:.92}
@@ -784,7 +784,7 @@ a{color:inherit;text-decoration:none}
 .chan{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:14px;border-radius:var(--r-lg);background:var(--surface-2);border:1px solid var(--line);margin-bottom:11px;box-shadow:var(--sh-1);transition:transform .15s;cursor:pointer}
 .chan:active{transform:scale(.99)}
 /* frost the standalone glass surfaces (Liquid Glass redesign) */
-.marketbar,.stat,.lb-row,.notif,.chan{backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-color:var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 14px 36px -22px rgba(0,0,0,.7)}
+.marketbar,.stat,.lb-row,.notif,.chan{background-image:var(--grain);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-color:var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.28),0 16px 40px -22px rgba(7,5,2,.76)}
 .chan-mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:15px;flex:none;color:#120d02;background:var(--gold-foil);background-size:160% auto}
 .chan-mark.quiet{background:var(--surface-3);color:var(--gold);border:1px solid var(--line-2)}
 .chan-mark.bot{background:linear-gradient(145deg,#1d2733,#0f1620);border:1px solid rgba(127,208,255,.25);font-size:22px}
@@ -804,7 +804,7 @@ a{color:inherit;text-decoration:none}
 .chan-title{font-family:var(--display);font-weight:800;font-size:21px;display:flex;align-items:center;gap:8px}
 .chan-handle{font-size:12px;color:var(--gold);margin-top:2px}
 .chan-stats{display:flex;gap:10px;margin-top:14px}
-.chan-stats>div{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:13px;text-align:center}
+.chan-stats>div{flex:1;background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line);border-radius:var(--r-md);padding:13px;text-align:center}
 .chan-stats b{font-size:18px;display:block}
 .chan-stats small{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px;display:block}
 
@@ -825,7 +825,7 @@ a{color:inherit;text-decoration:none}
 
 /* journal stats + equity */
 .jstats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.jstat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px}
+.jstat{background:var(--surface-2);background-image:var(--grain);border:1px solid var(--line);border-radius:var(--r-md);padding:13px 14px}
 .jstat b{font-family:var(--mono);font-size:21px;font-weight:700;display:block;line-height:1.1}
 .jstat small{font-size:10.5px;color:var(--muted);letter-spacing:.04em;margin-top:3px;display:block}
 .equity-card{margin-top:12px}
