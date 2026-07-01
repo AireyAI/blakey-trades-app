@@ -167,10 +167,13 @@ a{color:inherit;text-decoration:none}
   transition:transform .2s var(--ease-spring),box-shadow .25s,filter .25s,opacity .25s;
   -webkit-tap-highlight-color:transparent;user-select:none}
 .btn:active{transform:scale(.97)}
-.btn-gold{background:linear-gradient(180deg,#ECD295 0%,#D0AA50 50%,#BD9740 100%);color:#241704;
-  box-shadow:0 8px 22px -8px rgba(224,178,60,.5),inset 0 1px 0 rgba(255,248,225,.6),inset 0 -1px 0 rgba(120,90,30,.45)}
-.btn-gold:hover{filter:brightness(1.04)}
-.btn-gold:active{transform:scale(.985);filter:brightness(.99)}
+.btn-gold{background:
+    linear-gradient(180deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 44%),
+    linear-gradient(135deg,#F3D277 0%,#E4B845 26%,#C99A2A 52%,#E3B841 73%,#A87C22 100%);
+  color:#1A1206;font-weight:700;letter-spacing:-.01em;
+  box-shadow:0 10px 26px -8px rgba(201,162,39,.45),0 2px 6px -2px rgba(120,90,25,.4),inset 0 1px 0 rgba(255,252,235,.72),inset 0 -1px 0 rgba(110,80,25,.5)}
+.btn-gold:hover{filter:brightness(1.05) saturate(1.05)}
+.btn-gold:active{transform:scale(.985);filter:brightness(.98)}
 /* premium tactile press feedback — every tap responds */
 .icon-btn,.chip,.tab,.hub-row,.lb-row,.react-btn,.took-btn,.vcard,.idea,.settings-row.tap,.qs-card{transition:transform .14s var(--ease-spring)}
 .icon-btn:active,.chip:active,.hub-row:active,.lb-row:active,.react-btn:active,.took-btn:active,.vcard:active,.settings-row.tap:active{transform:scale(.95)}

@@ -975,7 +975,7 @@
       </div>
       <div class="comm-actions">
         <button class="comm-act" data-act="chat">${ic("i-comm")}<span><b>Community chat</b><small>The floor, all day</small></span></button>
-        <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>June challenge</b><small>${liveChallenge().done}/${liveChallenge().total} days</small></span></button>
+        <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>Monthly challenge</b><small>${liveChallenge().done}/${liveChallenge().total} days</small></span></button>
       </div>
       <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
       ${liveLeaderboard().map(lbRow).join("")}
@@ -1098,33 +1098,27 @@
       if (on) rs.add(id); else rs.delete(id);
       pSet({ rsvp: [...rs] });
       b.classList.toggle("btn-gold", on); b.classList.toggle("btn-ghost", !on);
-      b.textContent = on ? "Going ✓" : "RSVP";
-      toast(on ? "You're going — see you there" : "RSVP cancelled", on ? "i-check" : null);
+      b.textContent = on ? "Interest registered ✓" : "Register interest";
+      toast(on ? "We'll let you know when dates go live" : "Removed", on ? "i-check" : null);
     });
     [...document.querySelectorAll("[data-hubsched]")].forEach(b => b.onclick = () => openHubSchedule(b.dataset.hubsched));
     wireCommon();
   };
   function hub(h) {
     if (h.real) return hubReal(h);
+    const interested = (pState().rsvp || []).includes(h.id);
     return `<div class="hub reveal">
       <div class="hub-img" style="background:url('${h.img}') center/cover, ${h.tint}">
         <div class="hub-img-g"></div>
-        <div class="next"><span class="pill pill-gold">${ic("i-cal","ic")} ${h.event.d} ${h.event.m}</span></div>
+        <div class="next"><span class="pill pill-gold">${ic("i-pin","ic")} Coming soon</span></div>
         <div class="hub-cap">
           <h3><span class="hub-flag">${h.flag}</span>${h.city}</h3>
           <div class="loc">${ic("i-pin","ic")} ${h.country}</div>
         </div>
       </div>
       <div class="hub-body">
-        <div class="event">
-          <div class="date"><b>${h.event.d}</b><small>${h.event.m}</small></div>
-          <div class="ev-info"><b>${h.event.title}</b><small>${h.event.time}</small></div>
-        </div>
-        <div class="going">
-          <div class="faces">${h.faces.map(f => av(f, 28, "quiet")).join("")}</div>
-          <small>${h.going} members going</small>
-          <button class="btn ${(pState().rsvp||[]).includes(h.id)?"btn-gold":"btn-ghost"} btn-sm rsvp" data-rsvp="${h.id}">${(pState().rsvp||[]).includes(h.id)?"Going ✓":"RSVP"}</button>
-        </div>
+        <p class="sub" style="margin:2px 2px 14px;line-height:1.55">A Blakey Trades hub is opening in ${h.city}. Register your interest and we'll tell you the moment dates go live.</p>
+        <button class="btn ${interested ? "btn-gold" : "btn-ghost"} btn-block rsvp" data-rsvp="${h.id}">${interested ? "Interest registered ✓" : "Register interest"}</button>
       </div></div>`;
   }
   function hubReal(h) {
@@ -1239,7 +1233,7 @@
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">
-        ${hubRow("i-flame","Monthly challenge","June · journal every trade","challenge")}
+        ${hubRow("i-flame","Monthly challenge","Journal every trade · 30 days","challenge")}
         ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
         ${hubRow("i-share","Invite a trader","Grow the community","invite")}
         ${hubRow("i-book","Trading glossary","Key terms, explained","glossary")}
@@ -1962,7 +1956,7 @@
       <div class="login-top">
         <img class="login-wordmark" src="assets/blakey-logo.png" alt="Blakey Trades">
         <h1 class="h1">The floor is<br>open.</h1>
-        <p class="sub" style="margin-top:10px;max-width:280px">Live gold calls, the full education library, and ${(4200).toLocaleString()}+ traders who show up every day. Welcome to Blakey Trades.</p>
+        <p class="sub" style="margin-top:10px;max-width:280px">Live gold calls, the full education library, and ${(4200).toLocaleString()}+ traders on the floor. Welcome to Blakey Trades.</p>
       </div>
       <div class="login-bottom">
         <button class="btn btn-gold btn-block" id="enter">Continue with phone</button>

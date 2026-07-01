@@ -64,10 +64,10 @@ window.DATA = {
       updates:["Buying now @ 4,002","+8 pips — SL to BE","Banked +25.6 pips ✅"],
       note:"Textbook break-and-retest of the 4,000 level off the daily trend. Patience on the retest paid." },
     { id:"i3", channel:"vip", pair:"XAUUSD", dir:"long", session:"Asia", time:"Yesterday · 02:05",
-      entry:"4,031.20", sl:"4,022.00", tp:"4,058.00", rr:"2.9", status:"be", result:"BE",
+      entry:"4,031.20", sl:"4,022.00", tp:"4,058.00", rr:"2.9", status:"sl", result:"-9.2",
       entryRange:"4,029–4,033", slBe:"4,036", tps:["4,040","4,047","4,054","4,058","4,065","OPEN 🚀"],
-      updates:["Buying now @ 4,031","+14 pips — SL to BE","Trailed to BE before the NY reversal — scratch"],
-      note:"Took partials into 4,045, trailed to breakeven before the NY reversal. Protect the account first." },
+      updates:["Buying now @ 4,031","Reclaim failed — NY reversal swept it","Stopped 4,022. Full -1R, no revenge — risk was defined below structure so it costs one unit and no more. This is the job."],
+      note:"The reclaim failed and the New York reversal took the stop. A clean -1R loss — posted live, never deleted. Managing losing ideas is the edge, not avoiding them." },
     // BT Swing — multi-day
     { id:"s1", channel:"swing", pair:"XAUUSD", dir:"long", session:"Daily swing", time:"Tue",
       entry:"3,985.00", sl:"3,952.00", tp:"4,090.00", rr:"3.2", status:"running",
@@ -90,8 +90,8 @@ window.DATA = {
       entry:"4,043.00", sl:"4,046.00", tp:"4,036.00", rr:"2.3", status:"tp", result:"+7.0",
       note:"Liquidity grab above the session high, scalped the snap-back." },
     { id:"sc3", channel:"scalps", pair:"XAUUSD", dir:"long", session:"NY scalp", time:"1h ago",
-      entry:"4,037.50", sl:"4,035.00", tp:"4,043.00", rr:"2.2", status:"running",
-      note:"Holding the intraday VWAP reclaim. Tight stop, runners to the high." },
+      entry:"4,037.50", sl:"4,035.00", tp:"4,043.00", rr:"2.2", status:"sl", result:"-2.5",
+      note:"VWAP reclaim rolled over and stopped for -2.5. Scalping is a game of small losses and bigger winners — this is one of the small ones, taken without hesitation." },
     // Signal IQ — mechanical bot
     { id:"iq1", channel:"iq", pair:"XAUUSD", dir:"long", session:"Auto", time:"06:00",
       entry:"4,020.00", sl:"4,010.00", tp:"4,040.00", rr:"2.0", status:"tp", result:"+20.0",
@@ -131,7 +131,7 @@ window.DATA = {
 
   traderOfWeek: {
     name:"Priya Nair", handle:"@priya.trades", initials:"PN",
-    ret:"+8.4%", trades:"11", winRate:"82%",
+    ret:"+8.4R", trades:"11", winRate:"78%",
     quote:"Stopped chasing every candle. Took 3 A+ setups all week and let them run. The plan works when you do." },
 
   leaderboard: [
@@ -347,7 +347,7 @@ window.DATA = {
     { cat:"Order mechanics", term:"Trailing stop", def:"Moving your stop along behind price to lock in profit as a trade runs, instead of a fixed target. Lets winners breathe while protecting gains." },
   ],
   // ── monthly challenge ──
-  challenge: { name:"June: Journal Every Trade", desc:"Log all your trades for 30 days — build the habit that builds consistency.", done:18, total:30, reward:"Disciplined badge + leaderboard boost", joined:true },
+  challenge: { name:"Journal Every Trade", desc:"Log all your trades for 30 days — build the habit that builds consistency.", done:18, total:30, reward:"Disciplined badge + leaderboard boost", joined:true },
   // ── announcements from the team ──
   announcements: [
     { from:"Arron Blakey", role:"Founder", time:"2h ago", text:"New York session was textbook today — replay's up in Learn. Watch how we managed the runner." },
