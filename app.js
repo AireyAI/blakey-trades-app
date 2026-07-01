@@ -648,7 +648,7 @@
   // home "on the floor" card — one-tap into the community chat
   function floorCard() {
     const seed = D.chatScript[0];
-    const stack = ["MW", "SR", "AK", "DO"];
+    const stack = ["MW", "SR", "AK"];
     return `<div class="card floor-card reveal" data-home-chat style="animation-delay:.05s">
       <div class="floor-head">
         <span class="pill pill-live"><span class="dot-live"></span> On the floor now</span>
@@ -659,7 +659,7 @@
         <div class="floor-bubble"><b>${seed.name} <span class="vchk">✓</span></b>${seed.text}</div>
       </div>
       <div class="floor-foot">
-        <div class="floor-stack">${stack.map((i, n) => `<span class="fs-av" style="margin-left:${n ? "-9px" : "0"};z-index:${9 - n}">${av(i, 28, "quiet")}</span>`).join("")}<span class="fs-more">chatting now</span></div>
+        <div class="floor-stack">${stack.map((i, n) => `<span class="fs-av" style="margin-left:${n ? "-8px" : "0"};z-index:${9 - n}">${av(i, 28, "quiet")}</span>`).join("")}<span class="fs-more">chatting now</span></div>
         <span class="floor-cta">${ic("i-comm", "ic")} Open chat</span>
       </div>
     </div>`;
