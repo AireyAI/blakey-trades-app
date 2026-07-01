@@ -1207,6 +1207,12 @@
         <div class="kv"><span>${profXpNext()-profXp()} XP to go — log a trade for +40, pass a path quiz for +60</span></div>
       </div>
 
+      <button class="up-card reveal" data-act="membership">
+        <div class="up-ic">${ic("i-shield","ic")}</div>
+        <div class="up-body"><b>Unlock BT VIP</b><small>Full signals, the live room &amp; all education</small></div>
+        <span class="up-cta">See plans ${ic("i-chev","ic")}</span>
+      </button>
+
       <div class="stat-row" style="margin-top:13px">
         <div class="stat">${ic("i-flame","ic")}<b class="num">${profStreak()}</b><small>Day streak</small></div>
         <div class="stat">${ic("i-target","ic")}<b class="num">${journalStats().winRate}%</b><small>Win rate</small></div>
@@ -1233,6 +1239,7 @@
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">
+        ${hubRow("i-shield","Blakey's Desk","Founder view · run your community","foundersdesk")}
         ${hubRow("i-flame","Monthly challenge","Journal every trade · 30 days","challenge")}
         ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
         ${hubRow("i-share","Invite a trader","Grow the community","invite")}
@@ -1542,6 +1549,7 @@
       ${topbar()}
       <div class="app-head"><div class="who"><div><small>${ic("i-tg","ic")} Synced from Telegram</small><b>Trade Signals</b></div></div></div>
       <p class="sub" style="margin:0 2px 8px">Every call from the Blakey Trades channels, in one place.</p>
+      <div class="tg-sync"><span class="tg-syncdot"></span><div class="tg-sync-tx"><b>Live-synced from Telegram</b><small>Members keep their calls in Telegram — the app just gives them a better home.</small></div></div>
       <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
       ${marketBar()}
       <div style="height:14px"></div>
@@ -1602,9 +1610,10 @@
     $("[data-back]").onclick = openIdeas;
     $("[data-tg]").onclick = () => toast(`Opens ${c.name} on Telegram`, "i-tg");
     const list = $("#chan-list");
-    list.innerHTML = items.map(ideaCard).join("");
+    list.innerHTML = (id === "vip" ? lockedSignalCard() : "") + items.map(ideaCard).join("");
     requestAnimationFrame(() => Charts.initIn(list));
     [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
+    const lk = list.querySelector("[data-lockvip]"); if (lk) lk.onclick = openMembership;
     wireTook();
   }
 
@@ -1772,6 +1781,74 @@
     openModal(`<h3 class="sheet-title">Members</h3><p class="sheet-sub">${(4200).toLocaleString()}+ on the floor — follow traders you rate.</p><div class="mem">${rows}</div>`);
     [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
   }
+
+  // ============================ MONETISATION + FOUNDER (the money story) ============================
+  const PLANS = [
+    { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Live gold calls in Telegram", "Community chat & the floor", "Education previews", "Economic calendar & tools"] },
+    { id: "vip", name: "BT VIP", tag: "Full signals + live room", gold: true, cta: "Upgrade to VIP", feats: ["Every VIP signal — full entry, stop & all targets", "The live trading room, every session", "Complete education library (176+ lessons)", "Verified track record & instant alerts"] },
+    { id: "inner", name: "Inner Circle", tag: "Everything + mentorship", cta: "Upgrade", feats: ["Everything in VIP", "1-to-1 trade reviews with the team", "Priority in the live room", "In-person Training Hub access"] },
+  ];
+  function openMembership() {
+    const cards = PLANS.map(t => `
+      <div class="tier ${t.gold ? "tier-gold" : ""} ${t.cur ? "tier-cur" : ""}">
+        <div class="tier-top">
+          <div><div class="tier-name">${t.name}</div><div class="tier-tag">${t.tag}</div></div>
+          ${t.cur ? `<span class="pill">Current</span>` : `<span class="tier-price">£—<small>/mo</small></span>`}
+        </div>
+        <ul class="tier-feats">${t.feats.map(f => `<li>${ic("i-check", "ic")}<span>${f}</span></li>`).join("")}</ul>
+        <button class="btn ${t.gold ? "btn-gold" : "btn-ghost"} btn-block tier-cta" data-tier="${t.id}"${t.cur ? " disabled" : ""}>${t.cta}</button>
+      </div>`).join("");
+    openModal(`
+      <h3 class="sheet-title">Membership</h3>
+      <p class="sheet-sub">Your community, your pricing — you set the price when you launch.</p>
+      <div class="tiers">${cards}</div>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Free members keep getting calls in Telegram. VIP unlocks the full app.</p>`);
+    [...document.querySelectorAll("[data-tier]")].forEach(b => b.onclick = () => { if (b.disabled) return; toast("Upgrade flow — you set the price at launch", "i-check"); });
+  }
+  // a locked "next VIP call" card — the paywall mechanic, shown in the VIP feed to free users
+  function lockedSignalCard() {
+    return `<div class="card idea sig-locked" data-lockvip>
+      <div class="sl-blur" aria-hidden="true">
+        <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">XAUUSD</span><span class="idea-dir long">▲ LONG</span></div><span class="pill pill-gold"><span class="dot-live"></span> VIP</span></div>
+        <div class="ticket"><div class="cell"><small>Entry</small><b class="num">4,0••–4,0••</b></div><div class="cell sl"><small>Stop</small><b class="num">4,0••</b></div><div class="cell tp"><small>Target</small><b class="num">4,0••</b></div></div>
+      </div>
+      <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Next VIP signal</b><small>Unlock VIP to see the entry, stop &amp; all 6 targets</small><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
+    </div>`;
+  }
+  // founder-facing view — "does this make me money & is it less work?"
+  function openFoundersDesk() {
+    openModal(`
+      <div class="fd-head"><span class="pill pill-gold">${ic("i-shield", "ic")} Founder view</span></div>
+      <h3 class="sheet-title" style="margin:10px 0 2px">Blakey's Desk</h3>
+      <p class="sheet-sub">Your community, your revenue — run it in one place.</p>
+      <div class="fd-stats">
+        <div class="fd-stat"><b class="num">4,213</b><small>Members</small></div>
+        <div class="fd-stat"><b class="num gold-text">312</b><small>VIP members</small></div>
+        <div class="fd-stat"><b class="num up">+87</b><small>New this week</small></div>
+        <div class="fd-stat"><b class="num gold-text">£—</b><small>MRR · your price</small></div>
+      </div>
+      <div class="fd-funnel">
+        <div class="fd-fn"><span>Free</span><div class="fd-fbar"><i style="width:100%"></i></div><b class="num">3,853</b></div>
+        <div class="fd-fn"><span>VIP</span><div class="fd-fbar"><i style="width:34%"></i></div><b class="num">312</b></div>
+        <div class="fd-fn"><span>Inner Circle</span><div class="fd-fbar"><i style="width:12%"></i></div><b class="num">48</b></div>
+      </div>
+      <button class="btn btn-gold btn-block" id="fd-post">${ic("i-send")} Post a signal → notify 312 VIP</button>
+      <button class="btn btn-ghost btn-block" id="fd-live" style="margin-top:10px">${ic("i-live")} Go live now</button>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Signals still start in your Telegram — the app mirrors them and pushes automatically. You change nothing about how you work.</p>`);
+    const post = $("#fd-post"); if (post) post.onclick = () => { closeModal(); setTimeout(() => { showPush("🟢 BT VIP · New XAUUSD idea", "Entry 4,024–4,028 · SL 4,014 · targets inside"); toast("Pushed to VIP · 312 members notified", "i-check"); }, 400); };
+    const live = $("#fd-live"); if (live) live.onclick = () => { closeModal(); go("live"); };
+  }
+  // iOS-style lock-screen push preview — a signals business IS push
+  function showPush(title, body) {
+    const host = document.querySelector(".app") || document.body;
+    const el = document.createElement("div");
+    el.className = "push-banner";
+    el.innerHTML = `<div class="pb-ic">${ic("i-tg")}</div><div class="pb-body"><div class="pb-top"><b>Blakey Trades</b><span>now</span></div><div class="pb-title">${title}</div><div class="pb-text">${body}</div></div>`;
+    host.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 420); }, 3600);
+  }
+
   function openChat() {
     const hist = pState().chatHistory || [];
     const seed = D.chatScript.slice(0, 8);
@@ -1927,6 +2004,8 @@
     [...document.querySelectorAll("[data-act=announce]")].forEach(n => n.onclick = openAnnouncements);
     [...document.querySelectorAll("[data-act=challenge]")].forEach(n => n.onclick = openChallenge);
     [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
+    [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
+    [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
     wireTook();
   }
