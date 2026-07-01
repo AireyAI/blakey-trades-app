@@ -94,6 +94,7 @@
   --gold-deep:#5E4716;
   --gold-soft:rgba(154,123,46,0.12);
   --gold-line:rgba(154,123,46,0.30);
+  --gold-foil:linear-gradient(135deg,#6A5019 0%,#9A7B2E 22%,#C0982E 47%,#A87C22 62%,#7A5E1E 82%,#5E4716 100%);
 
   --text:#15151A;
   --muted:#5E5E68;
