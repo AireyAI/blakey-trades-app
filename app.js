@@ -531,6 +531,9 @@
 
       ${toolsRow()}
 
+      <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community">Journal ›</span></div>
+      ${floorCard()}
+
       <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
       ${ideaCard(ideas)}
 
@@ -561,6 +564,7 @@
     wireCommon();
     $("[data-act=joinlive]").onclick = () => { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } go("live"); };
     $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
+    const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
     mountMarketBar();
   };
 
@@ -638,6 +642,26 @@
       <div class="meta"><small class="eyebrow muted">This week</small><b>${w.name}</b>
         <div class="num up" style="font-size:13px;margin-top:2px">${w.ret} · ${w.winRate} win rate</div></div>
       <div style="margin-left:auto">${ic("i-chev","ic")}</div>
+    </div>`;
+  }
+
+  // home "on the floor" card — one-tap into the community chat
+  function floorCard() {
+    const seed = D.chatScript[0];
+    const stack = ["MW", "SR", "AK", "DO"];
+    return `<div class="card floor-card reveal" data-home-chat style="animation-delay:.05s">
+      <div class="floor-head">
+        <span class="pill pill-live"><span class="dot-live"></span> On the floor now</span>
+        <span class="floor-online num">4,213 online</span>
+      </div>
+      <div class="floor-msg">
+        ${av(seed.initials, 36)}
+        <div class="floor-bubble"><b>${seed.name} <span class="vchk">✓</span></b>${seed.text}</div>
+      </div>
+      <div class="floor-foot">
+        <div class="floor-stack">${stack.map((i, n) => `<span class="fs-av" style="margin-left:${n ? "-9px" : "0"};z-index:${9 - n}">${av(i, 28, "quiet")}</span>`).join("")}<span class="fs-more">chatting now</span></div>
+        <span class="floor-cta">${ic("i-comm", "ic")} Open chat</span>
+      </div>
     </div>`;
   }
 
@@ -1761,13 +1785,28 @@
     openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat" id="cchat-feed">${seed.map(renderMsg).join("")}${hist.map(renderMsg).join("")}</div><div class="cchat-in"><input class="finput" id="cchat-in" placeholder="Message the floor…"><button class="btn btn-gold" id="cchat-send" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
     const feed = $("#cchat-feed"); feed.scrollTop = feed.scrollHeight;
     const append = (m) => { feed.insertAdjacentHTML("beforeend", renderMsg(m)); feed.scrollTop = feed.scrollHeight; };
+    // demo replies — local echo only; a real build wires this to Arron's live community
+    let sent = hist.length;
+    const floorReplies = [
+      { name: "Marcus", initials: "MW", text: "👊 welcome to the floor" },
+      { name: "Arron Blakey", initials: "AB", host: true, text: "Good to have you. Risk first, profit second — always." },
+      { name: "Sofia", initials: "SR", text: "we're all on 4,025 too 👀" },
+      { name: "Aisha", initials: "AK", text: "🙌" },
+      { name: "Arron Blakey", initials: "AB", host: true, text: "Drop your entry + stop when you take it — we review them live." },
+      { name: "Daniel", initials: "DO", text: "same, waiting on the reclaim 🧘" },
+    ];
     const send = () => {
       const inp = $("#cchat-in"), txt = (inp.value || "").trim(); if (!txt) return;
-      const mine = { name: D.user.name, initials: D.user.initials, text: txt, me: true };
+      const safe = txt.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const mine = { name: D.user.name, initials: D.user.initials, text: safe, me: true };
       append(mine);
       inp.value = "";
       pSet({ chatHistory: [...(pState().chatHistory || []), mine] });
-      setTimeout(() => append({ name: "Arron Blakey", initials: "AB", text: `Welcome to the floor, ${D.user.first} — good to have you here.`, host: true }), 900);
+      const reply = sent === 0
+        ? { name: "Arron Blakey", initials: "AB", text: `Welcome to the floor, ${D.user.first} — good to have you here.`, host: true }
+        : floorReplies[(sent - 1) % floorReplies.length];
+      sent++;
+      setTimeout(() => append(reply), 750 + Math.random() * 500);
     };
     const btn = $("#cchat-send"), inp = $("#cchat-in");
     if (btn) btn.onclick = send;
