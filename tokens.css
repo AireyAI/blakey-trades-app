@@ -17,7 +17,10 @@
   --line-2:rgba(255,255,255,0.11);
   --hairline:rgba(255,255,255,0.08);
 
-  /* ---- brand gold (precise accent, not everywhere) — bullion shade ---- */
+  /* ---- brand accent — DEFAULTS ONLY. brand.js overrides all of these at runtime
+         from BRAND.accent (one hex). These stay as a fallback if brand.js fails. ---- */
+  --gold-rgb:224,178,60;
+  --on-accent:#1A1206;
   --gold:#E0B23C;
   --gold-hi:#F3D277;
   --gold-deep:#A87C22;
@@ -27,11 +30,12 @@
 
   /* ---- text: bright + Revolut neutral scale ---- */
   --text:#F3F3F1;
+  --text-2:#D6D6DA;
   --muted:#9A9AA6;
-  --faint:#5E5E6A;
+  --faint:#82828E;
 
   /* ---- market ---- */
-  --up:#3ECB86;
+  --up:#3FBF7F;
   --down:#F0565B;
   --live:#FF4D4D;
 
@@ -59,8 +63,12 @@
   --r-sm:12px; --r-md:18px; --r-lg:24px; --r-xl:30px; --r-2xl:36px; --r-full:9999px;
 
   /* ---- depth: Apple restraint (near-zero; one soft signature) ---- */
-  --sh-1:0 6px 24px -12px rgba(0,0,0,0.55);
-  --sh-2:0 18px 60px -22px rgba(0,0,0,0.75);
+  --sh-1:0 6px 24px -12px rgba(10,7,2,0.55);
+  --sh-2:0 18px 60px -22px rgba(10,7,2,0.75);
+  /* ---- 3-tier elevation: inline rows (1) · cards (2) · floating chrome (3) ---- */
+  --elev-1:inset 0 1px 0 rgba(255,255,255,.10);
+  --elev-2:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.28),0 18px 42px -24px rgba(7,5,2,.78);
+  --elev-3:inset 0 1px 0 rgba(255,255,255,.14),0 24px 60px -20px rgba(7,5,2,.86);
   --glow-gold:0 0 0 1px rgba(224,178,60,0.22),0 20px 60px -20px rgba(224,178,60,0.28);
   --glass-blur:blur(30px) saturate(165%);
   --glass-bg:rgba(10,10,12,0.72);
@@ -74,6 +82,7 @@
 
   /* ---- app metrics ---- */
   --tabbar-h:80px;
+  --gutter:20px;
   --app-w:390px;
   --app-h:844px;
 }
@@ -97,14 +106,18 @@
   --gold-foil:linear-gradient(135deg,#6A5019 0%,#9A7B2E 22%,#C0982E 47%,#A87C22 62%,#7A5E1E 82%,#5E4716 100%);
 
   --text:#15151A;
+  --text-2:#2A2A30;
   --muted:#5E5E68;
-  --faint:#9C9CA6;
+  --faint:#63636D;
 
-  --up:#0E9E5B;
+  --up:#0B7C49;
   --down:#D23A3F;
 
   --sh-1:0 6px 22px -12px rgba(22,20,14,0.18);
   --sh-2:0 18px 50px -22px rgba(22,20,14,0.22);
+  --elev-1:inset 0 1px 0 rgba(255,255,255,.55);
+  --elev-2:inset 0 1px 0 rgba(255,255,255,.70),0 14px 36px -24px rgba(22,20,14,.22);
+  --elev-3:inset 0 1px 0 rgba(255,255,255,.85),0 22px 50px -22px rgba(22,20,14,.26);
   --glow-gold:0 0 0 1px rgba(154,123,46,0.20),0 18px 50px -22px rgba(154,123,46,0.20);
   --glass-bg:rgba(255,255,255,0.78);
 }

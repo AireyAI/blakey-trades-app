@@ -1,6 +1,8 @@
-/* Blakey Trades — app shell, router, screens, interactions */
+/* Trading-community template — app shell, router, screens, interactions.
+   All brand-specific values come from window.BRAND (see brand.js). */
 (function () {
   const D = window.DATA;
+  const B = window.BRAND;
   const $ = (s, r) => (r || document).querySelector(s);
   const ic = (id, cls) => `<svg class="${cls || ""}"><use href="#${id}"/></svg>`;
 
@@ -39,6 +41,8 @@
       if (p < 1) requestAnimationFrame(frame); else el.textContent = pre + orig + suf;
     }
     requestAnimationFrame(frame);
+    // guarantee the final value even if rAF is throttled (backgrounded tab / webview)
+    setTimeout(() => { el.textContent = pre + orig + suf; }, dur + 200);
   }
 
   // ---------- router ----------
@@ -49,31 +53,54 @@
     clean();
     const s = $("#screen");
     s.innerHTML = html; s.classList.remove("screen-enter"); void s.offsetWidth; s.classList.add("screen-enter");
-    $("#screen-scroll").scrollTop = 0;
-    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b").forEach(countUp); });
+    const scroller = $("#screen-scroll");
+    if (!reduceMotion()) {
+      s.querySelectorAll(".reveal").forEach((el, i) => { el.style.animationDelay = Math.min(i * 55, 340) + "ms"; });
+      // below-fold reveals wait for scroll entry instead of firing off-screen
+      const vh = scroller ? scroller.clientHeight : 844;
+      const wait = [...s.querySelectorAll(".reveal")].filter(el => el.offsetTop > vh);
+      if (wait.length) {
+        const io = new IntersectionObserver((ents) => {
+          ents.forEach(en => { if (en.isIntersecting) { en.target.style.animationDelay = "0ms"; en.target.classList.remove("reveal-wait"); io.unobserve(en.target); } });
+        }, { root: scroller, threshold: 0.12 });
+        wait.forEach(el => { el.classList.add("reveal-wait"); io.observe(el); });
+        cleanups.push(() => io.disconnect());
+      }
+    }
+    scroller.scrollTop = 0;
+    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b").forEach(countUp); paintOpenPl(); });
   }
 
   const SCREENS = {};
+  let _navSilent = false; // true while popstate drives navigation (don't re-push)
   function go(tab) {
     haptic(8);
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
+    if (!_navSilent) { try { history.pushState({ t: tab }, ""); } catch (e) {} }
     SCREENS[tab]();
-    [...document.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+    [...document.querySelectorAll(".tab")].forEach(t => { t.classList.toggle("active", t.dataset.tab === tab); t.setAttribute("aria-current", t.dataset.tab === tab ? "page" : "false"); });
   }
+  // hardware/browser back: first closes an open sheet, then walks tab history, never exits the prototype cold
+  window.addEventListener("popstate", (e) => {
+    const m = $("#modal");
+    if (m && m.classList.contains("open")) { closeModal(); try { history.pushState({ t: activeTab }, ""); } catch (er) {} return; }
+    const t = (e.state && e.state.t) || "home";
+    if (SCREENS[t]) { _navSilent = true; go(t); _navSilent = false; }
+  });
 
   // ---------- header ----------
   function topbar(right) {
-    return `<div class="app-topbar"><img class="brand-word" src="assets/blakey-logo.png" alt="Blakey Trades">${right || ""}</div>`;
+    return `<div class="app-topbar"><img class="brand-word" src="${B.logo}" alt="${B.name}">${right || ""}</div>`;
   }
   function header(title, sub) {
-    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif">${ic("i-bell")}<span class="badge"></span></button></div>`) +
+    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button></div>`) +
       `<div class="app-head">
-      <div class="who" data-act="profile" style="cursor:pointer">
+      <button class="as-btn who" data-act="profile" style="cursor:pointer">
         ${av(D.user.initials, 44)}
         <div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div>
         <span class="who-go">Profile ${ic("i-chev","ic")}</span>
-      </div>
+      </button>
     </div>`;
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
@@ -193,6 +220,7 @@
       <span class="mb-sep">•</span>
       <span class="mb-dot"></span><span class="mb-sess">—</span><span class="mb-next num"></span>
       <span class="mb-sep">•</span>
+      <button class="mb-news" data-newspill hidden></button>
     </span>`;
   }
   function marketBar() {
@@ -230,10 +258,17 @@
   function mountMarketBar() {
     const allOf = sel => [...document.querySelectorAll(sel)];
     const paintSession = () => { const s = sessionInfo(); allOf(".mb-sess").forEach(e => e.textContent = s.label); allOf(".mb-next").forEach(e => e.textContent = " · " + s.next); };
+    let _lastPx = null;
     const renderPrice = () => {
       if (mbPrice == null) return;
       const txt = mbPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      allOf(".mb-price").forEach(e => e.textContent = txt);
+      const moved = mbPrice !== _lastPx;
+      allOf(".mb-price").forEach(e => {
+        if (e.textContent !== txt) e.textContent = txt;
+        if (moved && !reduceMotion()) { e.classList.remove("mb-pop"); void e.offsetWidth; e.classList.add("mb-pop"); }
+      });
+      _lastPx = mbPrice;
+      paintOpenPl(); paintPaper();
       if (mbBase) {
         const pct = (mbPrice - mbBase) / mbBase * 100;
         const t = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
@@ -258,9 +293,23 @@
         mbPrice = j.price; mbBase = goldDayBaseline(j.price); renderPrice();
       } catch (e) { startMock(); }
     };
-    paintSession(); if (mbPrice != null) renderPrice(); // instant paint when returning to a screen
+    // high-impact news countdown pill — "CPI · 1h 42m", red + "size down" inside 30 min; tap opens the calendar
+    const paintNews = () => {
+      const now = Date.now();
+      const e = (liveCal || []).filter(x => x.impact === "high" && new Date(x.date).getTime() > now)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      allOf("[data-newspill]").forEach(el => {
+        if (!e) { el.hidden = true; return; }
+        const ms = new Date(e.date).getTime() - now, h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), soon = ms < 30 * 6e4;
+        el.hidden = false;
+        el.textContent = `⚠ ${e.event} · ${h > 0 ? h + "h " + m + "m" : m + "m"}${soon ? " — size down" : ""}`;
+        el.classList.toggle("soon", soon);
+        el.onclick = openCalendar;
+      });
+    };
+    paintSession(); paintNews(); if (mbPrice != null) renderPrice(); // instant paint when returning to a screen
     pull();
-    const t1 = setInterval(pull, 12000), t2 = setInterval(paintSession, 20000), t0 = setTimeout(startMock, 2500);
+    const t1 = setInterval(() => { if (!document.hidden) pull(); }, 12000), t2 = setInterval(() => { paintSession(); paintNews(); }, 20000), t0 = setTimeout(startMock, 2500);
     cleanups.push(() => { clearInterval(t1); clearInterval(t2); clearTimeout(t0); });
   }
   // next high-impact event from the live calendar (drives the brief's "On watch")
@@ -392,6 +441,18 @@
   function currentTheme() { return getSetting("theme", "dark") === "light" ? "light" : "dark"; }
   function applyTheme(t) { document.documentElement.dataset.theme = (t === "light" ? "light" : "dark"); }
   function toggleTheme() { const next = currentTheme() === "light" ? "dark" : "light"; setSetting("theme", next); applyTheme(next); return next; }
+  // 300ms opacity dip so the theme swap doesn't hard-snap every surface at once
+  function themeFade(after) {
+    const app = document.querySelector(".app");
+    if (reduceMotion() || !app) { const t = toggleTheme(); if (after) after(t); return; }
+    app.style.transition = "opacity .14s ease"; app.style.opacity = "0.3";
+    setTimeout(() => {
+      const t = toggleTheme();
+      app.style.transition = "opacity .26s var(--ease-out)"; app.style.opacity = "1";
+      setTimeout(() => { app.style.transition = ""; app.style.opacity = ""; }, 320);
+      if (after) after(t);
+    }, 140);
+  }
   function getNotifPrefs() {
     const def = [1, 1, 1, 0, 1, 1];
     const p = pState().notifPrefs;
@@ -415,17 +476,17 @@
     const start = ukInstantForDay(nc.day, nc.time, Date.now());
     if (!start) { toast("Could not schedule this call", null); return; }
     const end = start + 75 * 60000;
-    const uid = callKey(nc) + "@blakeytrades.com";
+    const uid = callKey(nc) + "@" + B.domain;
     const body = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Blakey Trades//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//" + B.name + "//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
       "BEGIN:VEVENT",
       "UID:" + uid,
       "DTSTAMP:" + icsStamp(Date.now()),
       "DTSTART:" + icsStamp(start),
       "DTEND:" + icsStamp(end),
       "SUMMARY:" + nc.session.replace(/,/g, "\\,"),
-      "DESCRIPTION:Blakey Trades live call with " + nc.host + ". Free for members.",
-      "LOCATION:Blakey Trades App",
+      "DESCRIPTION:" + B.name + " live call with " + nc.host + ". Free for members.",
+      "LOCATION:" + B.name + " App",
       "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", "DESCRIPTION:Live call starts in 10 minutes", "END:VALARM",
       "END:VEVENT", "END:VCALENDAR"
     ].join("\r\n");
@@ -498,6 +559,90 @@
   function setSignedIn(provider) { pSet({ session: { provider: provider || "phone", signedIn: true, at: Date.now() } }); }
   function signOut() { const s = pState(); delete s.session; pSave(s); location.href = location.pathname; } // drop ?screen= so it returns to login
 
+  // ============================ "TODAY ON THE FLOOR" STORIES ============================
+  const ymd = () => new Date().toLocaleDateString("en-CA");
+  function storyStrip() {
+    const seen = getSetting("storySeen", "") === ymd();
+    return `<button class="story-strip reveal" data-act="story">
+      <span class="story-ring ${seen ? "seen" : ""}"><span class="story-dot">${ic("i-flame")}</span></span>
+      <span class="story-tx"><b>Today on ${B.floor}</b><small>${seen ? "Watched · tap to replay" : "Your daily recap · 5 cards"}</small></span>
+      ${ic("i-chev", "ic")}
+    </button>`;
+  }
+  function storyCards() {
+    const bd = briefData ? briefData() : null;
+    const nc = nextCall();
+    const todays = D.ideas.filter(i => /Today|ago|Active|Auto/.test(i.time || ""));
+    const w = D.traderOfWeek, ch = liveChallenge();
+    const cards = [];
+    const pts = (bd && bd.points) || [];
+    cards.push({ eyebrow: "Morning brief", h: (bd && bd.headline) || "Mapping today's session", body: `${bd && bd.bias ? `<span class="pill pill-gold" style="margin-bottom:14px">${bd.bias}</span>` : ""}${pts.slice(0, 2).map(p => `<p><b style="color:var(--gold)">${p.label}</b> — ${p.text}</p>`).join("")}` });
+    cards.push({ eyebrow: "Signals today", h: `${todays.length} calls on the floor`, body: `<div class="st-sigs">${todays.slice(0, 4).map(i => `<div class="st-sig"><span>${i.pair} ${i.dir === "long" ? "▲" : "▼"}</span><b class="num ${i.status === "tp" ? "up" : i.status === "sl" ? "down" : ""}">${i.status === "tp" ? "Hit TP " + i.result : i.status === "sl" ? "Stopped " + i.result : i.status === "be" ? "BE" : "Running"}</b></div>`).join("")}</div>` });
+    if (nc) cards.push({ eyebrow: "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${DAY_FULL[nc.day]} ${nc.at}</div>`, cta: { label: "Set a reminder", go: "live" } });
+    cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><div class="st-big num up">${w.ret}</div><p>${w.winRate} win rate · ${w.trades} trades</p>` });
+    cards.push({ eyebrow: "Monthly challenge", h: "Journal every trade", body: `<div class="st-big num gold-text">${ch.done}<small style="font-size:22px">/${ch.total}</small></div><p>days logged — keep the streak alive</p>`, cta: { label: "Log a trade", go: "community" } });
+    return cards;
+  }
+  function openStories() {
+    const cards = storyCards();
+    let idx = 0, timer = null, holdT = 0;
+    const host = document.querySelector(".app");
+    const old = document.getElementById("story"); if (old) old.remove();
+    const el = document.createElement("div");
+    el.id = "story"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Daily recap");
+    el.innerHTML = `
+      <div class="st-bars">${cards.map(() => `<span class="st-bar"><i></i></span>`).join("")}</div>
+      <button class="st-close" aria-label="Close">✕</button>
+      <div class="st-card" id="st-card"></div>
+      <div class="st-nav"><button class="st-zone" data-stz="-1" aria-label="Previous"></button><button class="st-zone" data-stz="1" aria-label="Next"></button></div>`;
+    host.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    const bars = [...el.querySelectorAll(".st-bar i")];
+    const paint = () => {
+      const c = cards[idx];
+      $("#st-card").innerHTML = `
+        <span class="eyebrow">${c.eyebrow}</span>
+        <h2>${c.h}</h2>
+        <div class="st-body">${c.body || ""}</div>
+        ${c.cta ? `<button class="btn btn-gold" data-stgo="${c.cta.go}" style="margin-top:22px;padding:0 28px">${c.cta.label}</button>` : ""}`;
+      bars.forEach((b, n) => { b.style.transition = "none"; b.style.transform = n < idx ? "scaleX(1)" : "scaleX(0)"; });
+      const go2 = $("#st-card [data-stgo]"); if (go2) go2.onclick = () => { close(); go(go2.dataset.stgo); };
+      run();
+    };
+    const DUR = 5000;
+    function run() {
+      cancelAnimationFrame(timer);
+      if (reduceMotion()) { bars[idx].style.transform = "scaleX(1)"; return; } // manual advance only
+      const t0 = performance.now();
+      (function f(t) {
+        if (!document.contains(el)) return;
+        if (holdT) { timer = requestAnimationFrame(f); return; } // press-hold pauses
+        const p = Math.min((t - t0) / DUR, 1);
+        bars[idx].style.transition = "none"; bars[idx].style.transform = `scaleX(${p})`;
+        if (p >= 1) { step(1); return; }
+        timer = requestAnimationFrame(f);
+      })(t0);
+    }
+    function step(d) { idx += d; if (idx < 0) idx = 0; if (idx >= cards.length) { close(); return; } paint(); }
+    function close() {
+      cancelAnimationFrame(timer);
+      setSetting("storySeen", ymd());
+      el.classList.remove("show"); setTimeout(() => el.remove(), 380);
+      const strip = document.querySelector(".story-strip .story-ring"); if (strip) strip.classList.add("seen");
+      document.removeEventListener("keydown", onKey);
+    }
+    const onKey = (e) => { if (e.key === "Escape") close(); else if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1); };
+    document.addEventListener("keydown", onKey);
+    el.querySelector(".st-close").onclick = close;
+    let heldLong = false;
+    [...el.querySelectorAll("[data-stz]")].forEach(z => {
+      z.onclick = () => { if (heldLong) { heldLong = false; return; } step(+z.dataset.stz); };
+      z.onpointerdown = () => { holdT = Date.now(); };
+      z.onpointerup = () => { heldLong = Date.now() - holdT > 350; holdT = 0; };
+    });
+    paint();
+  }
+
   // ============================ HOME ============================
   SCREENS.home = function () {
     const v = D.live;
@@ -507,6 +652,7 @@
     setScreen(`
       ${header()}
       ${marketBar()}
+      ${storyStrip()}
       ${morningBriefCard()}
       <div class="live-banner reveal">
         <canvas class="market-bg" data-chart="ambient" data-seed="7"></canvas>
@@ -531,7 +677,7 @@
 
       ${toolsRow()}
 
-      <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community">Journal ›</span></div>
+      <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community" data-seg="community">Open ›</span></div>
       ${floorCard()}
 
       <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
@@ -549,20 +695,29 @@
       ${D.hubs.slice(0, 1).map(hubMini).join("")}
       <div class="spacer"></div>
     `);
-    // countdown to the next scheduled call
+    // countdown to the next scheduled call — build cells once, roll only the digits that change
     let left = nc.startsIn;
     const cd = $("#cd");
+    const cdLabels = nc.startsIn >= 86400 ? ["Days", "Hrs", "Min"] : ["Hrs", "Min", "Sec"];
+    cd.innerHTML = cdLabels.map(l => `<div class="cd-cell"><b class="num">00</b><span>${l}</span></div>`).join("");
+    const cdB = [...cd.querySelectorAll(".cd-cell b")];
     const paint = () => {
       const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
-      const cells = d > 0 ? [["Days", d], ["Hrs", h], ["Min", m]] : [["Hrs", h], ["Min", m], ["Sec", s]];
-      cd.innerHTML = cells.map(([l, n]) =>
-        `<div class="cd-cell"><b class="num">${String(n).padStart(2, "0")}</b><span>${l}</span></div>`).join("");
+      const vals = d > 0 ? [d, h, m] : [h, m, s];
+      vals.forEach((n, i) => {
+        const str = String(n).padStart(2, "0");
+        const b = cdB[i];
+        if (b && b.textContent !== str) {
+          b.textContent = str;
+          if (!reduceMotion()) { b.classList.remove("cd-tick"); void b.offsetWidth; b.classList.add("cd-tick"); }
+        }
+      });
     };
     paint();
     const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); }, 1000);
     cleanups.push(() => clearInterval(t));
     wireCommon();
-    $("[data-act=joinlive]").onclick = () => { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } go("live"); };
+    $("[data-act=joinlive]").onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
     $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
     mountMarketBar();
@@ -607,6 +762,22 @@
     return { pair: i.pair, dir: i.dir, session: sess, outcome: oc, r, setup: `${ch} signal`, note: i.note || "" };
   }
 
+  // ---- live open-P&L on running signals (driven by the real spot-gold feed) ----
+  function openPlPts(i) {
+    if (mbPrice == null || !i || !i.entry) return null;
+    const e = parseFloat(String(i.entry).replace(/,/g, ""));
+    if (!isFinite(e)) return null;
+    return (mbPrice - e) * (i.dir === "long" ? 1 : -1);
+  }
+  function paintOpenPl() {
+    [...document.querySelectorAll("[data-openpl]")].forEach(el => {
+      const i = D.ideas.find(x => x.id === el.dataset.openpl);
+      const p = openPlPts(i);
+      if (p == null) { el.textContent = ""; return; }
+      el.textContent = "Open " + (p >= 0 ? "+" : "") + p.toFixed(1) + " pts";
+      el.className = "pl-chip " + (p >= 0 ? "up" : "down");
+    });
+  }
   function ideaCard(i) {
     const st = i.status === "tp" ? `<span class="pill pill-up">${ic("i-check","ic")} Hit TP ${i.result}</span>`
       : i.status === "sl" ? `<span class="pill pill-down">Stopped ${i.result}</span>`
@@ -616,10 +787,10 @@
       <div class="idea-top">
         <div class="idea-pair">${ic("i-chart","ic")}<span class="sym">${i.pair}</span>
           <span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
-        ${st}
+        <span class="idea-top-r">${st}${i.status === "running" ? `<span class="pl-chip" data-openpl="${i.id}"></span>` : ""}</span>
       </div>
       <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas>
-        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : 'Arron Blakey <span class="vchk">✓</span>'}</span>
+        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : `${B.founder} <span class="vchk">✓</span>`}</span>
         <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
         <div class="cell"><small>Entry</small><b class="num">${i.entryRange || i.entry}</b></div>
@@ -636,7 +807,7 @@
 
   function totwMini() {
     const w = D.traderOfWeek;
-    return `<div class="card totw reveal" data-tab="community">
+    return `<div class="card totw reveal" data-tab="community" data-seg="community">
       <div class="trophy">${ic("i-trophy")}</div>
       ${av(w.initials, 44)}
       <div class="meta"><small class="eyebrow muted">This week</small><b>${w.name}</b>
@@ -651,7 +822,7 @@
     const stack = ["MW", "SR", "AK"];
     return `<div class="card floor-card reveal" data-home-chat style="animation-delay:.05s">
       <div class="floor-head">
-        <span class="pill pill-live"><span class="dot-live"></span> On the floor now</span>
+        <span class="pill pill-live"><span class="dot-live"></span> On ${B.floor} now</span>
         <span class="floor-online num">4,213 online</span>
       </div>
       <div class="floor-msg">
@@ -684,15 +855,15 @@
   }
 
   function vCard(v) {
-    return `<div class="vcard" data-video="${v.id}">
-      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="${v.title}" loading="lazy"><div class="thumb-grad"></div>
+    return `<button class="as-btn vcard" data-video="${v.id}">
+      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="" loading="lazy" decoding="async"><div class="thumb-grad"></div>
         <div class="play-mini"><span>${ic("i-play")}</span></div>
         <span class="dur num">${v.dur}</span>
         ${getVideoProgress(v.id) ? `<div class="prog"><i style="width:${Math.round(getVideoProgress(v.id)*100)}%"></i></div>` : ""}
       </div>
       <h4>${v.title}</h4>
       <div class="vmeta"><span>${v.cat}</span>·<span>${v.views} views</span></div>
-    </div>`;
+    </button>`;
   }
 
   // ============================ LIVE ============================
@@ -724,6 +895,7 @@
           <span class="lvl sl">SL ${v.sl}</span>
         </div>
         <div class="live-host">${av(ci.initials, 36)}<div><b>${ci.host} <span class="vchk">✓</span></b><small>Hosting · ${ci.session}</small></div></div>
+        <div class="mark-chip" id="mark-chip" role="status" aria-live="polite"></div>
       </div>
       <div class="live-chatbox">
         <div class="live-chat2" id="chat"></div>
@@ -762,7 +934,7 @@
         ${["Where the liquidity is resting","The A+ entry model (reclaim & hold)","Live risk: where the stop really goes","Q&A from the floor"].map(x=>`<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)">${ic("i-check","ic")}<span style="font-size:13.5px">${x}</span></div>`).join("")}` : `<p class="sub" style="margin-top:2px">The room opens automatically when the call starts — free for members. Set a reminder so you don't miss the open.</p>`}
         ${scheduleSection()}
         <div class="section-head"><span class="h3">Recent replays</span><span class="more" data-tab="learn">All ›</span></div>
-        <div class="rail rail-pad">${D.videos.filter(x=>x.cat==="Session Replays"||x.host==="Arron Blakey").slice(0,4).map(vCard).join("")}</div>
+        <div class="rail rail-pad">${D.videos.filter(x=>x.cat==="Session Replays"||x.host===B.founder).slice(0,4).map(vCard).join("")}</div>
         <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Educational content only. Not financial advice.</p>
         <div class="spacer"></div>
       </div>
@@ -781,7 +953,7 @@
     }
     // watchers ticker
     let w = v.watchers;
-    const wt = setInterval(() => { const el = $("#watchers"); if (el) { w += Math.floor(Math.random() * 9) - 3; el.textContent = w.toLocaleString(); } }, 2600);
+    const wt = setInterval(() => { if (document.hidden) return; const el = $("#watchers"); if (el) { w += Math.floor(Math.random() * 9) - 3; el.textContent = w.toLocaleString(); } }, 2600);
     // chat playback
     const chat = $("#chat"); let ci = 0;
     function push() {
@@ -796,10 +968,23 @@
       chat.scrollTop = chat.scrollHeight;
     }
     push(); push(); push();
-    const ct = setInterval(push, 2400);
+    const ct = setInterval(() => { if (!document.hidden) push(); }, 2400);
     // auto reactions
-    const rt = setInterval(() => { if (Math.random() > .4) flyReaction(Math.random() > .5 ? "🔥" : "💎"); }, 1500);
+    const rt = setInterval(() => { if (document.hidden || reduceMotion()) return; if (Math.random() > .4) flyReaction(Math.random() > .5 ? "🔥" : "💎"); }, 1500);
     cleanups.push(() => { clearInterval(wt); clearInterval(ct); clearInterval(rt); });
+    // founder chart markup → "marking the chart" chip
+    const lcv = $("#live-canvas");
+    if (lcv) {
+      let mkT = null;
+      const onMark = (e) => {
+        const chip = $("#mark-chip"); if (!chip) return;
+        chip.innerHTML = `${ic("i-edit", "ic")} ${cInfo.host.split(" ")[0]} marked the chart — <b>${e.detail.chip || e.detail.label}</b>`;
+        chip.classList.add("show"); haptic(8);
+        clearTimeout(mkT); mkT = setTimeout(() => chip.classList.remove("show"), 3600);
+      };
+      lcv.addEventListener("chart-mark", onMark);
+      cleanups.push(() => { clearTimeout(mkT); lcv.removeEventListener("chart-mark", onMark); });
+    }
     [...document.querySelectorAll("[data-react]")].forEach(b => b.onclick = () => { flyReaction(b.dataset.react, b); });
     const ex = $("#live-exit"); if (ex) ex.onclick = () => { livePreview = false; SCREENS.live(); };
     wireCommon();
@@ -820,20 +1005,20 @@
   SCREENS.learn = function () {
     const f = D.featured;
     setScreen(`
-      ${topbar(`<button class="icon-btn" data-act="search">${ic("i-search")}</button>`)}
+      ${topbar(`<button class="icon-btn" data-act="search" aria-label="Search the library">${ic("i-search")}</button>`)}
       <div class="app-head"><div class="who"><div><small>${D.videos.length*7+120}+ lessons</small><b>Education</b></div></div></div>
-      <div class="learn-hero reveal" data-video="v1">
-        <img class="hero-thumb" src="${f.img}" alt="${f.title}" loading="lazy">
+      <button class="as-btn learn-hero reveal" data-video="v1">
+        <img class="hero-thumb" src="${f.img}" alt="" loading="lazy" decoding="async">
         <div class="g"></div>
         <div class="play">${ic("i-play")}</div>
         <div class="body"><span class="eyebrow">Featured · ${f.cat}</span>
           <h3 class="h2" style="margin:7px 0 5px">${f.title}</h3>
           <div class="vmeta sub" style="font-size:12px">${f.dur} · ${f.views} views · ${f.date}</div></div>
-      </div>
+      </button>
       ${academySection()}
       <div class="section-head"><span class="h2">Library</span></div>
       <div class="chips" id="chips">
-        ${D.categories.map(c => `<button class="chip${c===learnCat?" active":""}" data-cat="${c}">${c}</button>`).join("")}
+        ${D.categories.map(c => `<button class="chip${c===learnCat?" active":""}" data-cat="${c}" aria-pressed="${c===learnCat}">${c}</button>`).join("")}
       </div>
       <div id="learn-list"></div>
       <div class="spacer"></div>
@@ -844,7 +1029,7 @@
   };
   function openLearnSearch() {
     openModal(`<h3 class="sheet-title">Search library</h3><p class="sheet-sub">${D.videos.length} lessons · type to filter</p>
-      <input class="finput" id="learn-q" placeholder="Search by title, category, or host…" autocomplete="off">
+      <input class="finput" id="learn-q" placeholder="Search by title, category, or host…" aria-label="Search the library" autocomplete="off">
       <div id="learn-search-results" style="margin-top:14px"></div>`);
     const run = () => {
       const box = $("#learn-search-results"), q = ($("#learn-q").value || "").trim().toLowerCase();
@@ -871,29 +1056,29 @@
     [...list.querySelectorAll("[data-video]")].forEach(n => n.onclick = () => openPlayer(n.dataset.video));
   }
   function vRow(v) {
-    return `<div class="vrow" data-video="${v.id}">
-      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="${v.title}" loading="lazy"><div class="thumb-grad"></div>
+    return `<button class="as-btn vrow" data-video="${v.id}">
+      <div class="thumb"><img class="thumb-img" src="${v.img}" alt="" loading="lazy" decoding="async"><div class="thumb-grad"></div>
         ${getVideoProgress(v.id)?`<div class="prog" style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.15);z-index:2"><i style="display:block;height:100%;width:${Math.round(getVideoProgress(v.id)*100)}%;background:var(--gold)"></i></div>`:""}</div>
       <div class="info"><h4>${v.title}</h4>
         <div class="vmeta">${v.cat} · ${v.dur} · ${v.views} views</div></div>
-      ${ic("i-play","ic")}</div>`;
+      ${ic("i-play","ic")}</button>`;
   }
 
   // ============================ CIRCLE (journal + community) ============================
   let circleTab = "journal";
   SCREENS.community = function () {
     setScreen(`
-      ${topbar(`<button class="icon-btn" data-act="notif">${ic("i-bell")}<span class="badge"></span></button>`)}
+      ${topbar(`<button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button>`)}
       <div class="app-head"><div class="who"><div><small>Your trading circle</small><b id="circle-title">${circleTab === "journal" ? "My Journal" : "Community"}</b></div></div></div>
       <div class="seg" id="circle-seg">
-        <button class="seg-btn ${circleTab === "journal" ? "on" : ""}" data-seg="journal">My Journal</button>
-        <button class="seg-btn ${circleTab === "community" ? "on" : ""}" data-seg="community">Community</button>
+        <button class="seg-btn ${circleTab === "journal" ? "on" : ""}" data-seg="journal" aria-pressed="${circleTab === "journal"}">My Journal</button>
+        <button class="seg-btn ${circleTab === "community" ? "on" : ""}" data-seg="community" aria-pressed="${circleTab === "community"}">Community</button>
       </div>
       <div id="circle-body"></div>
     `);
     [...document.querySelectorAll("#circle-seg .seg-btn")].forEach(b => b.onclick = () => {
       circleTab = b.dataset.seg;
-      [...document.querySelectorAll("#circle-seg .seg-btn")].forEach(x => x.classList.toggle("on", x === b));
+      [...document.querySelectorAll("#circle-seg .seg-btn")].forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
       $("#circle-title").textContent = circleTab === "journal" ? "My Journal" : "Community";
       renderCircle();
     });
@@ -922,7 +1107,7 @@
   function journalCard(j) {
     const pill = j.outcome === "win" ? `<span class="pill pill-up">${resStr(j)}</span>` : j.outcome === "loss" ? `<span class="pill pill-down">${resStr(j)}</span>` : `<span class="pill">BE</span>`;
     const from = j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · ${j.channel}` : "";
-    return `<div class="card jcard" data-jentry="${j.id}">
+    return `<button class="as-btn card jcard" data-jentry="${j.id}">
       <div class="jc-top">
         <div class="jc-pair">${ic("i-chart","ic")}<b>${j.pair}</b><span class="idea-dir ${j.dir}">${j.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         ${pill}
@@ -930,6 +1115,47 @@
       <div class="jc-meta">${j.setup} · ${j.session} · ${j.date}${from}</div>
       <div class="jc-note">${j.note}</div>
       <div class="jc-tags">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
+    </button>`;
+  }
+  // "Your edge" — pattern analytics derived from the user's real logged trades (pure code, no LLM)
+  function edgeCard() {
+    const J = D.journal;
+    if (J.length < 4) return "";
+    // win-rate by session
+    const sess = ["London", "New York", "Asia"].map(sn => {
+      const es = J.filter(j => (j.session || "").indexOf(sn === "New York" ? "York" : sn) >= 0);
+      const dec = es.filter(j => j.outcome !== "be");
+      const wins = dec.filter(j => j.outcome === "win").length;
+      return { sn, n: es.length, w: wins, l: dec.length - wins, wr: dec.length ? Math.round(wins / dec.length * 100) : 0 };
+    }).filter(x => x.n);
+    // best / worst setup by avg R (2+ trades)
+    const bySetup = {};
+    J.forEach(j => { const k = j.setup || "—"; (bySetup[k] = bySetup[k] || []).push(j.r); });
+    const setups = Object.entries(bySetup).filter(([, rs]) => rs.length >= 2)
+      .map(([k, rs]) => ({ k, n: rs.length, avg: rs.reduce((a, b) => a + b, 0) / rs.length }))
+      .sort((a, b) => b.avg - a.avg);
+    // R distribution (7 buckets, -2R..+3R+)
+    const edges = [-1.5, -0.5, 0.5, 1.5, 2.5, 3.5];
+    const buckets = new Array(7).fill(0);
+    J.forEach(j => { let b = edges.findIndex(e => j.r < e); if (b < 0) b = 6; buckets[b]++; });
+    const maxB = Math.max(...buckets, 1);
+    const labels = ["≤-1.5", "-1", "0", "+1", "+2", "+3", "3+"];
+    // one derived sentence — best sess vs worst, or setup edge
+    let insight = "";
+    const ranked = [...sess].filter(x => x.w + x.l >= 2).sort((a, b) => b.wr - a.wr);
+    if (ranked.length >= 2 && ranked[0].wr - ranked[ranked.length - 1].wr >= 25)
+      insight = `Your ${ranked[0].sn} win rate (${ranked[0].wr}%) is well clear of ${ranked[ranked.length - 1].sn} (${ranked[ranked.length - 1].wr}%) — your edge lives in the ${ranked[0].sn} ${ranked[0].sn === "Asia" ? "session" : "open"}.`;
+    else if (setups.length >= 2 && setups[0].avg - setups[setups.length - 1].avg >= 1)
+      insight = `“${setups[0].k}” averages ${setups[0].avg >= 0 ? "+" : ""}${setups[0].avg.toFixed(1)}R across ${setups[0].n} trades — lean into it and cut “${setups[setups.length - 1].k}”.`;
+    return `<div class="card card-pad edge-card reveal">
+      <div class="eq-head"><span class="eyebrow">${ic("i-target","ic")} Your edge</span><span class="sub" style="font-size:11px">from ${J.length} logged trades</span></div>
+      <div class="edge-sess">${sess.map(x => `<div class="edge-row"><span class="edge-n">${x.sn}</span><div class="edge-bar"><i style="transform:scaleX(${x.wr / 100})"></i></div><b class="num">${x.wr}%</b><small>${x.w}W ${x.l}L</small></div>`).join("")}</div>
+      ${setups.length ? `<div class="edge-setups">
+        <div class="edge-set"><span>${ic("i-check","ic")} Best setup</span><b>${setups[0].k}</b><small class="num up">${setups[0].avg >= 0 ? "+" : ""}${setups[0].avg.toFixed(1)}R avg · ${setups[0].n}</small></div>
+        ${setups.length > 1 ? `<div class="edge-set"><span>${ic("i-thumbdown","ic")} Weakest</span><b>${setups[setups.length - 1].k}</b><small class="num ${setups[setups.length - 1].avg < 0 ? "down" : ""}">${setups[setups.length - 1].avg >= 0 ? "+" : ""}${setups[setups.length - 1].avg.toFixed(1)}R avg · ${setups[setups.length - 1].n}</small></div>` : ""}
+      </div>` : ""}
+      <div class="edge-histo" role="img" aria-label="Distribution of trade results in R">${buckets.map((b, n) => `<div class="eh-col"><i style="transform:scaleY(${b / maxB})" class="${n < 2 ? "neg" : n === 2 ? "" : "pos"}"></i><small>${labels[n]}</small></div>`).join("")}</div>
+      ${insight ? `<p class="edge-insight">${insight}</p>` : ""}
     </div>`;
   }
   function renderJournalView(body) {
@@ -946,8 +1172,9 @@
         <div class="eq-head"><span class="eyebrow">Equity curve · R</span><span class="num ${s.netR >= 0 ? "up" : "down"}" style="font-size:13px">${s.netR >= 0 ? "+" : ""}${s.netR.toFixed(1)}R</span></div>
         <canvas id="equity-cv"></canvas>
       </div>
+      ${edgeCard()}
       <button class="btn btn-gold btn-block" data-log style="margin:14px 0 2px">${ic("i-plus")} Log a trade</button>
-      <div class="chips" id="jfilters">${["All", "Wins", "Losses"].map(f => `<button class="chip ${f === journalFilter ? "active" : ""}" data-jf="${f}">${f}</button>`).join("")}</div>
+      <div class="chips" id="jfilters">${["All", "Wins", "Losses"].map(f => `<button class="chip ${f === journalFilter ? "active" : ""}" data-jf="${f}" aria-pressed="${f === journalFilter}">${f}</button>`).join("")}</div>
       <div id="journal-list">${items.length ? items.map(journalCard).join("") : `<p class="sub" style="text-align:center;padding:30px 0">No trades here yet — tap “Log a trade”.</p>`}</div>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Your private journal. Educational only — not financial advice.</p>
       <div class="spacer"></div>`;
@@ -1005,6 +1232,7 @@
       <p class="sub">${j.note}</p>
       <div class="jc-tags" style="margin-top:13px">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
       <button class="btn ${shared ? "btn-ghost" : "btn-gold"} btn-block" data-share style="margin-top:18px">${shared ? "✓ Shared to community" : ic("i-share") + " Share to community"}</button>
+      <button class="btn btn-ghost btn-block" data-sharecard style="margin-top:10px">${ic("i-share")} Share as card ↗</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:10px;color:var(--faint)">${shared ? "This trade is on the community feed." : "Post this trade to the community feed for others to see."}</p>
     `);
     const sh = $("[data-share]");
@@ -1014,6 +1242,72 @@
       closeModal(); circleTab = "community";
       setTimeout(() => { if (activeTab === "community") SCREENS.community(); toast("Shared to the community", "i-check"); }, 320);
     };
+    const sc = $("[data-sharecard]"); if (sc) sc.onclick = () => exportTradeCard(j);
+  }
+  // gold-foil shareable trade card — canvas-rendered 1080×1350 PNG, every colour routed through BRAND
+  async function exportTradeCard(j) {
+    try { await Promise.all([document.fonts.load('800 96px "Sora"'), document.fonts.load('700 120px "JetBrains Mono"'), document.fonts.load('500 44px "Outfit"')]); } catch (e) {}
+    const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const x = cv.getContext("2d");
+    // near-black base + subtle vignette
+    x.fillStyle = "#0B0B0F"; x.fillRect(0, 0, W, H);
+    const vg = x.createRadialGradient(W / 2, H * 0.36, 120, W / 2, H / 2, H * 0.85);
+    vg.addColorStop(0, "rgba(255,255,255,0.05)"); vg.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = vg; x.fillRect(0, 0, W, H);
+    // foil bar — same stops as the CSS foil, derived from BRAND
+    const foil = x.createLinearGradient(0, 0, W, 0);
+    foil.addColorStop(0, B._accentDarkest || "#705117"); foil.addColorStop(0.28, B.accent);
+    foil.addColorStop(0.5, B._accentHi || "#F3D277"); foil.addColorStop(0.72, B.accent);
+    foil.addColorStop(1, B._accentDarkest || "#705117");
+    x.fillStyle = foil; x.fillRect(0, 0, W, 14);
+    // brand wordmark
+    x.fillStyle = foil; x.font = '800 64px "Sora", sans-serif'; x.textAlign = "center";
+    x.fillText(B.name.toUpperCase(), W / 2, 150);
+    x.fillStyle = "rgba(255,255,255,.45)"; x.font = '500 30px "Outfit", sans-serif';
+    x.fillText("TRADE CARD", W / 2, 200);
+    // pair + direction
+    x.fillStyle = "#F3F3F1"; x.font = '800 88px "Sora", sans-serif';
+    x.fillText(j.pair, W / 2, 400);
+    const long = j.dir === "long";
+    x.fillStyle = long ? "#3ECB86" : "#F0565B"; x.font = '700 44px "JetBrains Mono", monospace';
+    x.fillText(long ? "▲ LONG" : "▼ SHORT", W / 2, 465);
+    // giant R result
+    const rTxt = j.outcome === "be" ? "BE" : (j.r > 0 ? "+" : "") + j.r.toFixed(1) + "R";
+    x.fillStyle = j.r > 0 ? "#3ECB86" : j.outcome === "be" ? "#9A9AA6" : "#F0565B";
+    x.font = '700 230px "JetBrains Mono", monospace';
+    x.fillText(rTxt, W / 2, 760);
+    // meta line
+    x.fillStyle = "rgba(255,255,255,.55)"; x.font = '500 36px "Outfit", sans-serif';
+    x.fillText(`${j.setup} · ${j.session} session`, W / 2, 850);
+    // equity spark from the journal
+    const rs = D.journal.map(t => t.r).slice().reverse();
+    let cum = 0; const pts = [0]; rs.forEach(r => { cum += r; pts.push(cum); });
+    const lo = Math.min(...pts, 0), hi = Math.max(...pts, 1), sx = 160, sw = W - 320, sy = 940, sh2 = 170;
+    x.beginPath();
+    pts.forEach((v, n) => { const px = sx + n / (pts.length - 1) * sw, py = sy + sh2 - (v - lo) / (hi - lo) * sh2; n ? x.lineTo(px, py) : x.moveTo(px, py); });
+    x.strokeStyle = B.accent; x.lineWidth = 5; x.stroke();
+    x.fillStyle = B._accentHi || B.accent;
+    const lastX = sx + sw, lastY = sy + sh2 - (pts[pts.length - 1] - lo) / (hi - lo) * sh2;
+    x.beginPath(); x.arc(lastX, lastY, 9, 0, 7); x.fill();
+    // handle + footer
+    x.fillStyle = "rgba(255,255,255,.5)"; x.font = '500 34px "JetBrains Mono", monospace';
+    x.fillText(D.user.handle + " · " + B.name, W / 2, 1220);
+    x.fillStyle = "rgba(255,255,255,.28)"; x.font = '500 24px "Outfit", sans-serif';
+    x.fillText("Educational only · not financial advice", W / 2, 1280);
+    cv.toBlob(async (blob) => {
+      if (!blob) { toast("Could not render the card", null); return; }
+      const file = new File([blob], "trade-card.png", { type: "image/png" });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "My " + B.name + " trade" });
+          toast("Card shared", "i-check"); return;
+        }
+      } catch (e) { if (e && e.name === "AbortError") return; }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "trade-card.png"; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast("Card saved", "i-check");
+    }, "image/png");
   }
   function setOn(sel, btn) { [...document.querySelectorAll(sel + " .fchip")].forEach(x => x.classList.toggle("on", x === btn)); }
   function openLogTrade(pre) {
@@ -1117,7 +1411,7 @@
         </div>
       </div>
       <div class="hub-body">
-        <p class="sub" style="margin:2px 2px 14px;line-height:1.55">A Blakey Trades hub is opening in ${h.city}. Register your interest and we'll tell you the moment dates go live.</p>
+        <p class="sub" style="margin:2px 2px 14px;line-height:1.55">A ${B.name} hub is opening in ${h.city}. Register your interest and we'll tell you the moment dates go live.</p>
         <button class="btn ${interested ? "btn-gold" : "btn-ghost"} btn-block rsvp" data-rsvp="${h.id}">${interested ? "Interest registered ✓" : "Register interest"}</button>
       </div></div>`;
   }
@@ -1207,11 +1501,9 @@
         <div class="kv"><span>${profXpNext()-profXp()} XP to go — log a trade for +40, pass a path quiz for +60</span></div>
       </div>
 
-      <button class="up-card reveal" data-act="membership">
-        <div class="up-ic">${ic("i-shield","ic")}</div>
-        <div class="up-body"><b>Unlock BT VIP</b><small>Full signals, the live room &amp; all education</small></div>
-        <span class="up-cta">See plans ${ic("i-chev","ic")}</span>
-      </button>
+      ${getSetting("tier", "free") === "vip"
+        ? `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-trophy","ic")}</div><div class="up-body"><b>${B.short} VIP · Active</b><small>Full signals, the live room &amp; all education</small></div><span class="pill pill-gold">VIP</span></button>`
+        : `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Unlock ${B.short} VIP</b><small>Full signals, the live room &amp; all education</small></div><span class="up-cta">See plans ${ic("i-chev","ic")}</span></button>`}
 
       <div class="stat-row" style="margin-top:13px">
         <div class="stat">${ic("i-flame","ic")}<b class="num">${profStreak()}</b><small>Day streak</small></div>
@@ -1239,13 +1531,13 @@
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">
-        ${hubRow("i-shield","Blakey's Desk","Founder view · run your community","foundersdesk")}
+        ${hubRow("i-shield",`${B.founderLast}'s Desk`,"Founder view · run your community","foundersdesk")}
         ${hubRow("i-flame","Monthly challenge","Journal every trade · 30 days","challenge")}
         ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
         ${hubRow("i-share","Invite a trader","Grow the community","invite")}
         ${hubRow("i-book","Trading glossary","Key terms, explained","glossary")}
         ${hubRow("i-bell","Notifications","Choose what pings you","settings")}
-        ${hubRow("i-chart","Announcements","From Arron & the team","announce",true)}
+        ${hubRow("i-chart","Announcements",`From ${B.founderFirst} & the team`,"announce",true)}
       </div>
 
       <div class="section-head"><span class="h2">Trade journal</span><span class="more" data-act="journal">Open journal ›</span></div>
@@ -1261,7 +1553,7 @@
         ${settingRow("i-live","Live call reminders","",true,"set2",false,getSetting("liveReminders",true))}
         ${settingRow("i-moon","Appearance",currentTheme()==="light"?"Light":"Dark",false,null,false,null,"theme")}
         ${settingRow("i-shield","Account & security","",false,null,false,null,"account")}
-        ${settingRow("i-tg","Help & support","@blakeytrades_support",false,null,true,null,"support")}
+        ${settingRow("i-tg","Help & support",`@${B.handle}`,false,null,true,null,"support")}
       </div>
       <button class="btn btn-ghost btn-block" id="sign-out" style="margin-top:14px">Sign out</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:16px;color:var(--faint)">Member since 2025 · Educational content only. Not financial advice.</p>
@@ -1269,14 +1561,15 @@
     `);
     [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
       const on = t.classList.toggle("on");
+      t.setAttribute("aria-checked", on);
       if (t.id === "set1") setSetting("push", on);
       else if (t.id === "set2") setSetting("liveReminders", on);
       toast(on ? "Turned on" : "Turned off", on ? "i-check" : null);
     });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
-    const sup = $('[data-act="support"]'); if (sup) sup.onclick = () => window.open("https://t.me/blakeytrades_support", "_blank", "noopener");
-    const themeBtn = $('[data-act="theme"]'); if (themeBtn) themeBtn.onclick = () => { const t = toggleTheme(); toast(t === "light" ? "Light mode on" : "Dark mode on", "i-moon"); SCREENS.profile(); };
+    const sup = $('[data-act="support"]'); if (sup) sup.onclick = () => window.open(`https://t.me/${B.handle}`, "_blank", "noopener");
+    const themeBtn = $('[data-act="theme"]'); if (themeBtn) themeBtn.onclick = () => themeFade(t => { toast(t === "light" ? "Light mode on" : "Dark mode on", "i-moon"); SCREENS.profile(); });
     const acctBtn = $('[data-act="account"]'); if (acctBtn) acctBtn.onclick = openAccountSecurity;
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
     const sc = $("#share-card"); if (sc) sc.onclick = openTraderCard;
@@ -1300,7 +1593,7 @@
   function openTraderCard() {
     const js = journalStats();
     openModal(`<div class="tcard">
-        <div class="tcard-head"><img src="assets/blakey-logo.png" class="tcard-logo" alt="Blakey Trades"></div>
+        <div class="tcard-head"><img src="${B.logo}" class="tcard-logo" alt="${B.name}"></div>
         ${av(D.user.initials, 64)}
         <div class="tcard-name">${D.user.name}</div>
         <div class="tcard-lvl">⭐ Level ${profLevel()} · ${tierName(profLevel())}</div>
@@ -1309,15 +1602,15 @@
           <div><b class="num gold-text">${profStreak()}</b><small>Day streak</small></div>
           <div><b class="num ${js.netR>=0?'up':'down'}">${js.netR>=0?'+':''}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
         </div>
-        <div class="tcard-foot">${D.user.handle} · Blakey Trades</div>
+        <div class="tcard-foot">${D.user.handle} · ${B.name}</div>
       </div>
       <button class="btn btn-gold btn-block" id="tc-share" style="margin-top:14px">${ic("i-share")} Share my card</button>
       <div class="spacer"></div>`);
     const sh = $("#tc-share"); if (sh) sh.onclick = async () => {
-      const text = `${D.user.name} · Level ${profLevel()} ${tierName(profLevel())} · ${js.winRate}% win rate · ${profStreak()}-day streak · Blakey Trades`;
+      const text = `${D.user.name} · Level ${profLevel()} ${tierName(profLevel())} · ${js.winRate}% win rate · ${profStreak()}-day streak · ${B.name}`;
       const url = "https://blakey-trades.pages.dev/";
       try {
-        if (navigator.share) await navigator.share({ title: "My Blakey Trades card", text, url });
+        if (navigator.share) await navigator.share({ title: "My " + B.name + " card", text, url });
         else { await navigator.clipboard.writeText(text + "\n" + url); toast("Card copied to clipboard", "i-check"); }
       } catch (e) { if (e && e.name !== "AbortError") toast("Card ready to share", "i-share"); }
     };
@@ -1325,7 +1618,7 @@
   function settingRow(icon, label, val, toggle, id, last, on, act) {
     const isOn = on != null ? on : true;
     return `<div class="settings-row${act ? " tap" : ""}"${act ? ` data-act="${act}"` : ""}${last?' style="border-bottom:none"':''}>${ic(icon)}<span class="lbl">${label}</span>
-      ${toggle ? `<div class="toggle ${isOn ? "on" : ""}" id="${id}"><i></i></div>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
+      ${toggle ? `<button type="button" class="toggle ${isOn ? "on" : ""}" id="${id}" role="switch" aria-checked="${isOn}" aria-label="${label}"><i></i></button>` : `<span class="val">${val||""}</span>${ic("i-chev","ic")}`}</div>`;
   }
   function hubRow(icon, title, sub, act, last) {
     return `<button class="hub-row${last ? " last" : ""}" data-act="${act}">${ic(icon, "ic")}<div class="hr-body"><b>${title}</b><small>${sub}</small></div>${ic("i-chev", "ic")}</button>`;
@@ -1339,7 +1632,7 @@
       <p class="sheet-sub">Your membership, login and data — all in one place.</p>
       <div class="acct-card">
         <div class="acct-id">${av(u.initials, 44)}<div class="acct-meta"><b>${u.name}</b><small>${u.handle} · Member since 2025</small></div></div>
-        <div class="acct-tags"><span class="pill pill-gold">${ic("i-trophy","ic")} BT VIP · Active</span><span class="acct-free">Free · partner-funded</span></div>
+        <div class="acct-tags">${getSetting("tier", "free") === "vip" ? `<span class="pill pill-gold">${ic("i-trophy","ic")} ${B.short} VIP · Active</span>` : `<span class="pill">Free member</span><span class="acct-free">Free · partner-funded</span>`}</div>
       </div>
       <div class="acct-h">Account</div>
       <div class="card card-pad">
@@ -1364,20 +1657,54 @@
       <div class="spacer"></div>`);
     [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
       const on = t.classList.toggle("on");
+      t.setAttribute("aria-checked", on);
       if (t.id === "sec-2fa") { setSetting("twofa", on); toast(on ? "Two-factor enabled" : "Two-factor off", on ? "i-shield" : null); }
       else if (t.id === "sec-bio") { setSetting("bio", on); toast(on ? "Biometric login on" : "Biometric login off", on ? "i-check" : null); }
     });
   }
 
   // ============================ MODALS (player + idea) ============================
+  let _lastFocus = null;
   function openModal(html) {
-    const m = $("#modal"); m.innerHTML = `<div class="sheet"><button class="sheet-grab" aria-label="Close"></button>${html}</div>`;
-    m.classList.add("open"); requestAnimationFrame(() => Charts.initIn(m));
+    const m = $("#modal");
+    _lastFocus = document.activeElement;
+    m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><button class="sheet-grab" aria-label="Close"></button>${html}</div>`;
+    void m.offsetWidth;                                             // reflow so the translateY(100%) start state paints → slide-up actually animates
+    m.classList.add("open"); requestAnimationFrame(() => { Charts.initIn(m); const sh = m.querySelector(".sheet"); if (sh) try { sh.focus({ preventScroll: true }); } catch (e) {} });
     m.onclick = (e) => { if (e.target === m) closeModal(); };       // tap dimmed area
     const grab = m.querySelector(".sheet-grab"); if (grab) grab.onclick = closeModal; // tap handle
+    wireSheetDrag(m.querySelector(".sheet"));                       // swipe-down to dismiss
     return m;
   }
-  function closeModal() { const m = $("#modal"); m.classList.remove("open"); setTimeout(() => { m.innerHTML = ""; }, 350); }
+  // native-feel drag-to-dismiss: pull the sheet down (from the top zone, or anywhere when scrolled to top)
+  function wireSheetDrag(sh) {
+    if (!sh) return;
+    let startY = 0, dy = 0, dragging = false, mayDrag = false, t0 = 0;
+    sh.addEventListener("touchstart", (e) => {
+      const y = e.touches[0].clientY;
+      mayDrag = sh.scrollTop <= 0 || (y - sh.getBoundingClientRect().top) < 64;
+      startY = y; dy = 0; dragging = false; t0 = performance.now();
+    }, { passive: true });
+    sh.addEventListener("touchmove", (e) => {
+      if (!mayDrag) return;
+      const d = e.touches[0].clientY - startY;
+      if (!dragging) { if (d > 8 && sh.scrollTop <= 0) { dragging = true; sh.style.transition = "none"; } else if (d < -4) { mayDrag = false; return; } else return; }
+      dy = Math.max(0, d);
+      e.preventDefault();
+      sh.style.transform = `translateY(${dy * 0.92}px)`;
+    }, { passive: false });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false; mayDrag = false;
+      const vel = dy / Math.max(performance.now() - t0, 1);
+      sh.style.transition = "";
+      if (dy > 120 || (dy > 40 && vel > 0.45)) { sh.style.transform = "translateY(100%)"; closeModal(); }
+      else sh.style.transform = "";
+    };
+    sh.addEventListener("touchend", end);
+    sh.addEventListener("touchcancel", end);
+  }
+  function closeModal() { const m = $("#modal"); if (!m.classList.contains("open")) return; m.classList.remove("open"); setTimeout(() => { m.innerHTML = ""; }, 350); try { _lastFocus && _lastFocus.focus && _lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 
   function openPlayer(id) {
     const v = D.videos.find(x => x.id === id) || D.videos[0];
@@ -1447,7 +1774,7 @@
           <span class="sp-head ${sell ? "sell" : "buy"}">${sell ? "🔴 SELL" : "🟢 BUY"} ${i.pair} <span class="sp-gold">(Gold)</span></span>
           ${st}
         </div>
-        <div class="sp-sub">Personal Trade Idea — not financial advice, just what Arron's personally doing.</div>
+        <div class="sp-sub">Personal Trade Idea — not financial advice, just what ${B.founderFirst}'s personally doing.</div>
         <div class="sp-grid">
           <div class="sp-row"><span>Entry</span><b class="num">${i.entryRange || i.entry}</b></div>
           <div class="sp-row"><span>Stop Loss</span><b class="num sl">${i.sl}</b></div>
@@ -1470,16 +1797,58 @@
         <div class="cell tp"><small>Target</small><b class="num">${i.tp}</b></div>
       </div>
       <div class="idea-foot" style="margin:12px 2px"><span class="rr num">Risk:Reward <b>${i.rr}</b></span><span class="rr num">${i.session} session</span></div>`;
+    const closed = i.status === "tp" || i.status === "sl" || i.status === "be";
+    const canReplay = rich && closed && i.updates && i.updates.length;
+    const canPaper = i.status === "running";
     openModal(`
       <div class="tv-chart" id="tv-${i.id}"><div class="tv-load">${ic("i-chart","ic")} Loading live chart…</div></div>
+      <div class="rp-bar" id="rp-bar" hidden><input type="range" class="fd-slider" id="rp-scrub" min="0" max="1000" value="0" aria-label="Scrub through the trade replay"></div>
+      ${canReplay ? `<button class="btn btn-ghost btn-block" id="rp-btn" style="margin-top:12px">${ic("i-play")} Replay this call</button>` : ""}
       ${post}
+      ${canPaper ? `<button class="btn btn-ghost btn-block" id="pp-btn" style="margin-top:14px">${ic("i-shield")} Paper trade this idea</button>` : ""}
       <span class="eyebrow" style="display:block;margin:16px 0 6px">The reasoning</span>
-      <p class="sub">${i.note}</p>
+      <p class="sub">${linkTerms(i.note)}</p>
       ${tookRow(i)}
       <p class="sub" style="font-size:11px;text-align:center;margin-top:18px;color:var(--faint)">Live chart by TradingView · Educational content only. Not financial advice.</p>
     `);
     wireTook();
     mountTV("tv-" + i.id);
+    // ---- replay: scrub through the trade's life, updates firing in sync ----
+    const rb = $("#rp-btn");
+    if (rb) rb.onclick = () => {
+      rb.hidden = true;
+      const host = document.getElementById("tv-" + i.id);
+      host.innerHTML = '<canvas id="rp-cv" style="position:absolute;inset:0;width:100%;height:100%"></canvas><span class="rp-tag">Replay</span>';
+      const rp = Charts.initReplay($("#rp-cv"), {
+        seed: (i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3,
+        e: parseFloat(i.entry.replace(/,/g, "")), sl: parseFloat(i.sl.replace(/,/g, "")),
+        tp: parseFloat(i.tp.replace(/,/g, "")), dir: i.dir === "short" ? -1 : 1,
+      });
+      const bar = $("#rp-bar"), scrub = $("#rp-scrub"), ups = [...document.querySelectorAll(".sp-up")];
+      bar.hidden = false;
+      const setP = (p) => {
+        rp.drawAt(p);
+        scrub.value = Math.round(p * 1000);
+        ups.forEach((u, idx) => u.classList.toggle("rp-dim", p < (idx + 1) / (ups.length + 0.4)));
+      };
+      if (reduceMotion()) { setP(1); return; }
+      let playing = true;
+      const t0 = performance.now(), DUR = 6200;
+      (function play(t) {
+        if (!playing || !document.contains(scrub)) return;
+        const p = Math.min((t - t0) / DUR, 1);
+        setP(1 - Math.pow(1 - p, 2.2));
+        if (p < 1) requestAnimationFrame(play);
+      })(t0);
+      scrub.addEventListener("pointerdown", () => { playing = false; });
+      scrub.addEventListener("input", () => { playing = false; setP(+scrub.value / 1000); });
+    };
+    // ---- paper trade: anchor at the live price, track it app-wide ----
+    const pb = $("#pp-btn");
+    if (pb) pb.onclick = () => {
+      if (pState().paperPos) { toast("One open paper trade at a time — that's the discipline", "i-shield"); return; }
+      openPaperTicket(i);
+    };
   }
   // lazy-load TradingView's widget lib once, then mount a clean dark live XAUUSD chart
   function loadTV() {
@@ -1517,14 +1886,22 @@
     if (nc) {
       const s = nc.startsIn, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
       const when = isLiveNow() ? "is live now" : h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
-      out.push({ icon: "i-live", text: `${nc.session} ${when} — ${nc.host} hosting`, time: "now", unread: true, go: "live" });
+      out.push({ k: "call-" + nc.session, icon: "i-live", text: `${nc.session} ${when} — ${nc.host} hosting`, time: "now", unread: true, go: "live" });
     }
     (D.schedule || []).forEach(c => {
-      if (isReminded(c)) out.push({ icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
+      if (isReminded(c)) out.push({ k: "rem-" + c.session, icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
     });
-    out.push({ icon: "i-trophy", text: `You're #${myRank()} on the weekly leaderboard`, time: "now", unread: true, go: "community" });
+    out.push({ k: "leaderboard", icon: "i-trophy", text: `You're #${myRank()} on the weekly leaderboard`, time: "now", unread: true, go: "community" });
     return out;
   }
+  // state-driven bell badge — "mark all read" persists instead of un-doing itself on the next render
+  function unreadCount() {
+    const seen = pState().notifSeen || {};
+    const live = liveNotifs().filter(n => n.unread && !seen[n.k]).length;
+    const stat = pState().notifReadAt ? 0 : D.notifications.filter(n => n.unread).length;
+    return live + stat;
+  }
+  function badgeHtml() { return unreadCount() > 0 ? '<span class="badge"></span>' : ""; }
   function openNotifications() {
     const groups = {};
     liveNotifs().forEach(n => (groups.Today = groups.Today || []).push(n));
@@ -1540,7 +1917,14 @@
       <div class="spacer"></div>
     `);
     [...document.querySelectorAll(".notif")].forEach(b => b.onclick = () => { const g = b.dataset.go; closeModal(); setTimeout(() => { if (SCREENS[g]) go(g); }, 300); });
-    const mk = $("[data-mark]"); if (mk) mk.onclick = () => { D.notifications.forEach(n => n.unread = false); [...document.querySelectorAll(".notif")].forEach(n => n.classList.remove("unread")); [...document.querySelectorAll("[data-act=notif] .badge")].forEach(b => { b.hidden = true; }); toast("All caught up", "i-check"); };
+    const mk = $("[data-mark]"); if (mk) mk.onclick = () => {
+      D.notifications.forEach(n => n.unread = false);
+      const seen = { ...(pState().notifSeen || {}) }; liveNotifs().forEach(n => { seen[n.k] = 1; });
+      pSet({ notifReadAt: Date.now(), notifSeen: seen });
+      [...document.querySelectorAll(".notif")].forEach(n => n.classList.remove("unread"));
+      [...document.querySelectorAll("[data-act=notif] .badge")].forEach(b => b.remove());
+      toast("All caught up", "i-check");
+    };
   }
 
   // ---------- signals: channels hub (a bottom tab) + per-channel feed ----------
@@ -1548,7 +1932,7 @@
     setScreen(`
       ${topbar()}
       <div class="app-head"><div class="who"><div><small>${ic("i-tg","ic")} Synced from Telegram</small><b>Trade Signals</b></div></div></div>
-      <p class="sub" style="margin:0 2px 8px">Every call from the Blakey Trades channels, in one place.</p>
+      <p class="sub" style="margin:0 2px 8px">Every call from the ${B.name} channels, in one place.</p>
       <div class="tg-sync"><span class="tg-syncdot"></span><div class="tg-sync-tx"><b>Live-synced from Telegram</b><small>Members keep their calls in Telegram — the app just gives them a better home.</small></div></div>
       <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
       ${marketBar()}
@@ -1581,6 +1965,7 @@
       ${ic("i-chev", "ic")}
     </button>`;
   }
+  let lastChanId = null;
   function openChannel(id) {
     const c = D.channels.find(x => x.id === id) || D.channels[0];
     const items = D.ideas.filter(i => i.channel === id);
@@ -1610,10 +1995,14 @@
     $("[data-back]").onclick = openIdeas;
     $("[data-tg]").onclick = () => toast(`Opens ${c.name} on Telegram`, "i-tg");
     const list = $("#chan-list");
-    list.innerHTML = (id === "vip" ? lockedSignalCard() : "") + items.map(ideaCard).join("");
+    lastChanId = id;
+    const tier = getSetting("tier", "free");
+    list.innerHTML = items.map(x => (id === "vip" && tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
     requestAnimationFrame(() => Charts.initIn(list));
     [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
-    const lk = list.querySelector("[data-lockvip]"); if (lk) lk.onclick = openMembership;
+    const lk = list.querySelector("[data-lockvip]"); if (lk) lk.onclick = IB ? openVerifyBroker : openMembership;
+    const vv = list.querySelector("[data-vipviewers]");
+    if (vv && !reduceMotion()) { const iv = setInterval(() => { if (document.hidden) return; let n = +vv.textContent + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)); n = Math.max(72, Math.min(103, n)); vv.textContent = n; }, 4000); cleanups.push(() => clearInterval(iv)); }
     wireTook();
   }
 
@@ -1686,11 +2075,17 @@
     const live = !!(liveCal && liveCal.length);
     const subLive = `<span class="cal-live">● Live</span> · news that moves gold · times UK`;
     openModal(`<h3 class="sheet-title">Market news</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
-    if (!live) loadCalendar().then(d => { const box = $("#cal-list"); if (d && box) { box.innerHTML = calRowsHtml(d); const s = box.parentElement.querySelector(".sheet-sub"); if (s) s.innerHTML = subLive; } });
+    if (!live) loadCalendar().then(d => {
+      const box = $("#cal-list"); if (!d || !box) return;
+      const swap = () => { box.innerHTML = calRowsHtml(d); const s = box.parentElement.querySelector(".sheet-sub"); if (s) s.innerHTML = subLive; };
+      if (reduceMotion()) { swap(); return; }
+      box.style.transition = "opacity .18s"; box.style.opacity = "0";
+      setTimeout(() => { swap(); box.style.opacity = "1"; setTimeout(() => { box.style.transition = ""; }, 220); }, 190);
+    });
   }
   function openAlerts() {
     const list = () => D.alerts.map((a, i) => `<div class="alert-row"><div class="alert-body"><b class="num">${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price}</b><small>${a.note}</small></div><button class="tgl ${a.on ? "on" : ""}" data-al="${i}"><span></span></button></div>`).join("");
-    openModal(`<h3 class="sheet-title">Price alerts</h3><p class="sheet-sub">Get pinged when gold hits your level.</p><div id="alert-list">${list()}</div><label class="flabel" style="margin-top:16px">New gold alert</label><div class="calc-2"><input class="finput num" id="al-px" inputmode="decimal" placeholder="e.g. 2,960"><button class="btn btn-gold" id="al-add" style="height:50px;flex:none;padding:0 18px">${ic("i-plus")} Add</button></div>`);
+    openModal(`<h3 class="sheet-title">Price alerts</h3><p class="sheet-sub">Get pinged when gold hits your level.</p><div id="alert-list">${list()}</div><label class="flabel" style="margin-top:16px">New gold alert</label><div class="calc-2"><input class="finput num" id="al-px" inputmode="decimal" placeholder="e.g. 2,960" aria-label="Alert price level"><button class="btn btn-gold" id="al-add" style="height:50px;flex:none;padding:0 18px">${ic("i-plus")} Add</button></div>`);
     const wire = () => [...document.querySelectorAll("[data-al]")].forEach(b => b.onclick = () => { const a = D.alerts[+b.dataset.al]; a.on = !a.on; b.classList.toggle("on", a.on); saveAlerts(); });
     wire();
     const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); saveAlerts(); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
@@ -1730,12 +2125,62 @@
   }
 
   // ============================ COMMUNITY / PROFILE FEATURES ============================
+  // trading jargon in trusted DATA strings auto-links to its glossary definition (never run on user input)
+  // vernacular → canonical glossary term (the notes say "demand block", the glossary says "Supply / demand zone")
+  const GLOSS_ALIAS = {
+    "liquidity sweep": "Liquidity sweep", "swept": "Liquidity sweep", "sweep": "Liquidity sweep",
+    "liquidity": "Liquidity", "demand block": "Supply / demand zone", "demand zone": "Supply / demand zone",
+    "supply zone": "Supply / demand zone", "supply": "Supply / demand zone", "order block": "Order block",
+    "reclaimed": "Reclaim & hold", "reclaim": "Reclaim & hold", "breakeven": "Breakeven (BE)",
+    "structure": "Break of Structure (BOS)", "retest": "Support & resistance", "resistance": "Support & resistance",
+    "fvg": "Fair value gap (FVG)", "drawdown": "Drawdown", "fomo": "FOMO", "confluence": "Confluence",
+    "revenge": "Revenge trading", "trailing": "Trailing stop", "trailed": "Trailing stop",
+    "partials": "Scaling out", "nfp": "NFP", "cpi": "CPI", "fomc": "FOMC", "range": "Range",
+  };
+  let _termRx = null;
+  function linkTerms(html) {
+    if (!D.glossary || !D.glossary.length) return html;
+    if (!_termRx) {
+      const alts = Object.keys(GLOSS_ALIAS).map(a => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort((a, b) => b.length - a.length);
+      _termRx = new RegExp("\\b(" + alts.join("|") + ")\\b", "i");
+    }
+    const seen = new Set();
+    // link only the first occurrence per term, and never inside a tag
+    return html.split(/(<[^>]+>)/).map(part => {
+      if (part.startsWith("<")) return part;
+      let out = "", rest = part, m;
+      while ((m = rest.match(_termRx))) {
+        const canon = GLOSS_ALIAS[m[1].toLowerCase()] || m[1];
+        out += rest.slice(0, m.index);
+        if (seen.has(canon)) { out += m[1]; }
+        else { seen.add(canon); out += `<button class="gterm" data-gterm="${canon}">${m[1]}</button>`; }
+        rest = rest.slice(m.index + m[1].length);
+      }
+      return out + rest;
+    }).join("");
+  }
+  function showGloss(word) {
+    const w = word.toLowerCase();
+    const g = D.glossary.find(x => x.term.toLowerCase() === w)
+      || D.glossary.find(x => w.indexOf(x.term.toLowerCase()) >= 0 || x.term.toLowerCase().indexOf(w) >= 0);
+    if (!g) return;
+    const old = document.getElementById("gloss-pop"); if (old) old.remove();
+    const el = document.createElement("div");
+    el.id = "gloss-pop"; el.setAttribute("role", "note");
+    el.innerHTML = `<span class="eyebrow">${g.cat || "Glossary"}</span><b>${g.term}</b><p>${g.def}</p><small>Tap anywhere to dismiss</small>`;
+    (document.querySelector(".app") || document.body).appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    const kill = () => { el.classList.remove("show"); setTimeout(() => el.remove(), 300); document.removeEventListener("pointerdown", onDoc, true); };
+    const onDoc = (e) => { if (!el.contains(e.target)) kill(); };
+    setTimeout(() => document.addEventListener("pointerdown", onDoc, true), 60);
+    setTimeout(kill, 9000);
+  }
   function openGlossary() {
     const cats = [...new Set(D.glossary.map(g => g.cat || "Terms"))];
     const body = cats.map(c => `<div class="gloss-cat">${c}</div>${D.glossary.filter(g => (g.cat || "Terms") === c).map(g => `<div class="gloss-row"><b>${g.term}</b><span>${g.def}</span></div>`).join("")}`).join("");
     openModal(`<h3 class="sheet-title">Trading glossary</h3>
       <p class="sheet-sub">${D.glossary.length} terms every gold trader should know — the BT VIP vocabulary, in plain English.</p>
-      <input class="finput gloss-search" id="gloss-q" placeholder="Search terms…" autocomplete="off">
+      <input class="finput gloss-search" id="gloss-q" placeholder="Search terms…" aria-label="Search glossary terms" autocomplete="off">
       <div class="gloss" id="gloss-list">${body}</div>
       <div class="gloss-empty" id="gloss-empty" hidden>No terms match — try another word.</div>
       <p class="sub" style="font-size:11px;text-align:center;margin:14px 0 4px;color:var(--faint)">Educational only · not financial advice.</p>`);
@@ -1761,11 +2206,11 @@
   function openSettings() {
     const opts = ["New signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
     const prefs = getNotifPrefs();
-    openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${prefs[i] ? "on" : ""}" data-set="${i}"><span></span></button></div>`).join("")}</div>`);
-    [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("on"); setNotifPref(+b.dataset.set, on); });
+    openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${prefs[i] ? "on" : ""}" data-set="${i}" role="switch" aria-checked="${!!prefs[i]}" aria-label="${o}"><span></span></button></div>`).join("")}</div>`);
+    [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("on"); b.setAttribute("aria-checked", on); setNotifPref(+b.dataset.set, on); });
   }
   function openAnnouncements() {
-    openModal(`<h3 class="sheet-title">Announcements</h3><p class="sheet-sub">From Arron & the team.</p><div class="ann">${D.announcements.map(a => `<div class="ann-row">${av(a.from === "Team" ? "BT" : "AB", 38)}<div><div class="ann-top"><b>${a.from}</b><span class="vchk">✓</span><span class="ann-time">${a.time}</span></div><p>${a.text}</p></div></div>`).join("")}</div>`);
+    openModal(`<h3 class="sheet-title">Announcements</h3><p class="sheet-sub">From ${B.founderFirst} & the team.</p><div class="ann">${D.announcements.map(a => `<div class="ann-row">${av(a.from === "Team" ? B.short : B.founderInitials, 38)}<div><div class="ann-top"><b>${a.from}</b><span class="vchk">✓</span><span class="ann-time">${a.time}</span></div><p>${a.text}</p></div></div>`).join("")}</div>`);
   }
   function openChallenge() {
     const c = liveChallenge(), pct = Math.round(c.done / c.total * 100);
@@ -1783,49 +2228,183 @@
   }
 
   // ============================ MONETISATION + FOUNDER (the money story) ============================
+  const IB = B.vipModel !== "paid"; // partner-funded VIP: verified via the founder's broker IB list
   const PLANS = [
     { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Live gold calls in Telegram", "Community chat & the floor", "Education previews", "Economic calendar & tools"] },
-    { id: "vip", name: "BT VIP", tag: "Full signals + live room", gold: true, cta: "Upgrade to VIP", feats: ["Every VIP signal — full entry, stop & all targets", "The live trading room, every session", "Complete education library (176+ lessons)", "Verified track record & instant alerts"] },
+    { id: "vip", name: `${B.short} VIP`, tag: "Full signals + live room", gold: true, ib: IB, cta: IB ? `Unlock with ${B.broker}` : "Upgrade to VIP", feats: [`Every VIP signal — full entry, stop & all targets`, "The live trading room, every session", "Complete education library (176+ lessons)", "Verified track record & instant alerts"] },
     { id: "inner", name: "Inner Circle", tag: "Everything + mentorship", cta: "Upgrade", feats: ["Everything in VIP", "1-to-1 trade reviews with the team", "Priority in the live room", "In-person Training Hub access"] },
   ];
+  function rerenderAfterTier() { if (lastChanId && $("#chan-list")) openChannel(lastChanId); else if (SCREENS[activeTab]) SCREENS[activeTab](); }
   function openMembership() {
-    const cards = PLANS.map(t => `
-      <div class="tier ${t.gold ? "tier-gold" : ""} ${t.cur ? "tier-cur" : ""}">
+    const tierNow = getSetting("tier", "free");
+    const cards = PLANS.map(t => {
+      const cur = t.id === tierNow;
+      return `
+      <div class="tier ${t.gold ? "tier-gold" : ""} ${cur ? "tier-cur" : ""}">
         <div class="tier-top">
           <div><div class="tier-name">${t.name}</div><div class="tier-tag">${t.tag}</div></div>
-          ${t.cur ? `<span class="pill">Current</span>` : `<span class="tier-price">£—<small>/mo</small></span>`}
+          ${cur ? `<span class="pill">Current</span>` : t.id === "free" ? `<span class="tier-price">£0</span>` : t.ib ? `<span class="tier-price">Free<small> · ${B.broker}-linked</small></span>` : `<span class="tier-price">£—<small>/mo</small></span>`}
         </div>
         <ul class="tier-feats">${t.feats.map(f => `<li>${ic("i-check", "ic")}<span>${f}</span></li>`).join("")}</ul>
-        <button class="btn ${t.gold ? "btn-gold" : "btn-ghost"} btn-block tier-cta" data-tier="${t.id}"${t.cur ? " disabled" : ""}>${t.cta}</button>
-      </div>`).join("");
+        <button class="btn ${t.gold ? "btn-gold" : "btn-ghost"} btn-block tier-cta" data-tier="${t.id}"${cur ? " disabled" : ""}>${cur ? "Current plan" : t.cta}</button>
+      </div>`;
+    }).join("");
     openModal(`
       <h3 class="sheet-title">Membership</h3>
-      <p class="sheet-sub">Your community, your pricing — you set the price when you launch.</p>
+      <p class="sheet-sub">${IB ? `${B.short} VIP is partner-funded — free when you trade with ${B.broker} under ${B.name}. Inner Circle pricing is yours to set.` : "Your community, your pricing — you set the price when you launch."}</p>
       <div class="tiers">${cards}</div>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Free members keep getting calls in Telegram. VIP unlocks the full app.</p>`);
-    [...document.querySelectorAll("[data-tier]")].forEach(b => b.onclick = () => { if (b.disabled) return; toast("Upgrade flow — you set the price at launch", "i-check"); });
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Free members keep getting calls in Telegram. VIP unlocks the full app.</p>
+      ${getSetting("tier", "free") !== "free" ? `<button class="btn btn-ghost btn-sm btn-block" id="demo-reset" style="margin-top:10px">Demo: reset to Free</button>` : ""}`);
+    const rs = $("#demo-reset"); if (rs) rs.onclick = () => { setSetting("tier", "free"); closeModal(); toast("Demo reset — back to Free", "i-check"); setTimeout(rerenderAfterTier, 360); };
+    [...document.querySelectorAll("[data-tier]")].forEach(b => b.onclick = () => {
+      if (b.disabled || b.dataset.tier === "free") return;
+      const plan = PLANS.find(p => p.id === b.dataset.tier) || PLANS[1];
+      if (plan.ib) return openVerifyBroker();
+      openModal(`
+        <h3 class="sheet-title">Confirm upgrade</h3>
+        <p class="sheet-sub">${plan.name} — the full ${B.name} experience.</p>
+        <div class="card card-pad" style="margin:10px 0 14px">
+          <div class="kv"><span>Plan</span><b>${plan.name}</b></div>
+          <div class="kv"><span>Billing</span><b>Monthly · cancel anytime</b></div>
+          <div class="kv"><span>Price</span><b>£— · you set this at launch</b></div>
+        </div>
+        <button class="btn btn-gold btn-block" id="confirm-up">${ic("i-check")} Confirm upgrade</button>
+        <p class="sub" style="font-size:11px;text-align:center;margin-top:10px;color:var(--faint)">Demo checkout — no payment taken.</p>`);
+      $("#confirm-up").onclick = () => {
+        setSetting("tier", plan.id === "inner" ? "inner" : "vip");
+        closeModal();
+        setTimeout(() => {
+          showPush(`Welcome to ${plan.name} 🔓`, "Full signals, the live room & the library are unlocked");
+          toast(`${plan.name} unlocked`, "i-check");
+          rerenderAfterTier();
+        }, 380);
+      };
+    });
+  }
+  // ---- broker (IB) verification — VIP is free for members trading under the founder's partner link ----
+  function openVerifyBroker() {
+    openModal(`
+      <h3 class="sheet-title">Unlock ${B.short} VIP</h3>
+      <p class="sheet-sub">${B.short} VIP is free — funded by the ${B.name} × ${B.broker} partnership. Link a ${B.broker} account opened under ${B.name} and every signal unlocks.</p>
+      <div class="vb-how">
+        <div class="vb-step"><span class="vb-n num">1</span><span>Open your ${B.broker} account through ${B.founderFirst}'s partner link — or ask support to move an existing one under ${B.name}.</span></div>
+        <div class="vb-step"><span class="vb-n num">2</span><span>Enter your ${B.broker} account number below.</span></div>
+        <div class="vb-step"><span class="vb-n num">3</span><span>We verify it against the ${B.name} partner list — VIP unlocks instantly.</span></div>
+      </div>
+      <label class="flabel" for="vb-acct">${B.broker} account number</label>
+      <input class="finput num" id="vb-acct" inputmode="numeric" autocomplete="off" placeholder="e.g. 8 0 4 2 1 9 7">
+      <button class="btn btn-gold btn-block" id="vb-verify" style="margin-top:14px">${ic("i-shield")} Verify &amp; unlock VIP</button>
+      <button class="btn btn-ghost btn-block" id="vb-open" style="margin-top:10px">${ic("i-chev")} New to ${B.broker}? Open an account</button>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Demo — verification is simulated. The live app checks your account against the ${B.name} partner (IB) list with ${B.broker}.</p>`);
+    const btn = $("#vb-verify"), inp = $("#vb-acct");
+    btn.onclick = () => {
+      const v = (inp.value || "").replace(/\D/g, "");
+      if (v.length < 6) { inp.focus(); toast(`Enter your ${B.broker} account number`, "i-shield"); return; }
+      btn.disabled = true; btn.textContent = `Checking with ${B.broker}…`;
+      setTimeout(() => {
+        setSetting("tier", "vip");
+        closeModal();
+        setTimeout(() => {
+          showPush(`Account verified ✓`, `${B.short} VIP unlocked — every signal, the live room & the library`);
+          toast("Verified — VIP unlocked", "i-check");
+          rerenderAfterTier();
+        }, 380);
+      }, 1400);
+    };
+    $("#vb-open").onclick = () => toast(`Opens ${B.founderFirst}'s ${B.broker} partner link`, "i-chev");
   }
   // a locked "next VIP call" card — the paywall mechanic, shown in the VIP feed to free users
-  function lockedSignalCard() {
+  // the paywall mechanic: live/running VIP entries are locked for free members — closed results stay public
+  function lockedSignalCard(i) {
     return `<div class="card idea sig-locked" data-lockvip>
       <div class="sl-blur" aria-hidden="true">
-        <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">XAUUSD</span><span class="idea-dir long">▲ LONG</span></div><span class="pill pill-gold"><span class="dot-live"></span> VIP</span></div>
+        <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${i.pair}</span><span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div><span class="pill pill-gold"><span class="dot-live"></span> VIP</span></div>
+        <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas></div>
         <div class="ticket"><div class="cell"><small>Entry</small><b class="num">4,0••–4,0••</b></div><div class="cell sl"><small>Stop</small><b class="num">4,0••</b></div><div class="cell tp"><small>Target</small><b class="num">4,0••</b></div></div>
       </div>
-      <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Next VIP signal</b><small>Unlock VIP to see the entry, stop &amp; all 6 targets</small><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
+      <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Live VIP signal · running now</b><small>Closed results below are public. Live entries are for verified members — ${IB ? `link your ${B.broker} account` : "unlock"} to see the entry, stop &amp; all 6 targets.</small><div class="sl-meta"><span class="dot-live"></span>Posted 4m ago · <span data-vipviewers>87</span> VIP viewing now</div><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
     </div>`;
   }
+  // ---- paper trading: one live mock position, anchored at the current price ----
+  function openPaperTicket(i) {
+    const slDist = Math.abs(parseFloat(i.entry.replace(/,/g, "")) - parseFloat(i.sl.replace(/,/g, ""))) || 10;
+    const tpDist = Math.abs(parseFloat(i.tp.replace(/,/g, "")) - parseFloat(i.entry.replace(/,/g, ""))) || 25;
+    const px = mbPrice != null ? mbPrice : parseFloat(i.entry.replace(/,/g, ""));
+    openModal(`
+      <h3 class="sheet-title">Paper trade</h3>
+      <p class="sheet-sub">${i.pair} ${i.dir === "long" ? "▲ LONG" : "▼ SHORT"} · entry at the live price. One position at a time — protect the account first.</p>
+      <div class="card card-pad" style="margin:10px 0 14px">
+        <div class="kv"><span>Entry (live)</span><b class="num">${px.toLocaleString("en-US", { minimumFractionDigits: 2 })}</b></div>
+        <div class="kv"><span>Stop distance</span><b class="num sl-tx">−${slDist.toFixed(1)} pts</b></div>
+        <div class="kv"><span>Target distance</span><b class="num up">+${tpDist.toFixed(1)} pts</b></div>
+      </div>
+      <label class="flabel">Risk per trade</label>
+      <div class="chips" style="margin-top:8px">${[0.5, 1, 2].map((r, n) => `<button class="chip${n === 1 ? " active" : ""}" data-risk="${r}" aria-pressed="${n === 1}">${r}%</button>`).join("")}</div>
+      <button class="btn btn-gold btn-block" id="pp-start" style="margin-top:16px">${ic("i-shield")} Start paper trade</button>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:10px;color:var(--faint)">Simulated — no real money. Closes itself at the stop or target.</p>`);
+    let risk = 1;
+    [...document.querySelectorAll("[data-risk]")].forEach(c => c.onclick = () => {
+      risk = +c.dataset.risk;
+      [...document.querySelectorAll("[data-risk]")].forEach(x => { x.classList.toggle("active", x === c); x.setAttribute("aria-pressed", x === c); });
+    });
+    $("#pp-start").onclick = () => {
+      pSet({ paperPos: { ideaId: i.id, pair: i.pair, dir: i.dir, entry: px, slDist, tpDist, riskPct: risk, at: Date.now() } });
+      closeModal(); renderPaperPill(); haptic(14);
+      toast("Paper trade open — tracking the live price", "i-shield");
+    };
+  }
+  function renderPaperPill() {
+    const host = document.querySelector(".app");
+    let el = document.getElementById("paper-pill");
+    const pos = pState().paperPos;
+    if (!pos) { if (el) { el.classList.remove("show"); setTimeout(() => el.remove(), 400); } return; }
+    if (!el) {
+      el = document.createElement("button");
+      el.id = "paper-pill"; el.className = "paper-pill";
+      el.setAttribute("aria-label", "Open paper trade");
+      host.appendChild(el);
+      el.onclick = () => openIdea(pos.ideaId);
+      requestAnimationFrame(() => el.classList.add("show"));
+    }
+    paintPaper();
+  }
+  function paintPaper() {
+    const el = document.getElementById("paper-pill"), pos = pState().paperPos;
+    if (!el || !pos || mbPrice == null) return;
+    const pts = (mbPrice - pos.entry) * (pos.dir === "long" ? 1 : -1);
+    const r = pts / pos.slDist;
+    el.innerHTML = `${ic("i-shield", "ic")} <b>${pos.pair}</b> ${pos.dir === "long" ? "▲" : "▼"} paper · <b class="num ${r >= 0 ? "up" : "down"}">${r >= 0 ? "+" : ""}${r.toFixed(2)}R</b>`;
+    if (pts <= -pos.slDist) closePaper("loss", -1);
+    else if (pts >= pos.tpDist) closePaper("win", pos.tpDist / pos.slDist);
+  }
+  function closePaper(outcome, r) {
+    const pos = pState().paperPos; if (!pos) return;
+    pSet({ paperPos: null }); renderPaperPill();
+    showPush(outcome === "win" ? "🎯 Paper trade closed · target hit" : "Paper trade closed · stopped",
+      `${pos.pair} ${pos.dir} · ${r >= 0 ? "+" : ""}${r.toFixed(1)}R at ${pos.riskPct}% risk`);
+    setTimeout(() => openLogTrade({
+      pair: pos.pair, dir: pos.dir, session: "London", outcome, r: Math.abs(r),
+      setup: "Paper trade", note: `Paper-traded the ${pos.ideaId.toUpperCase()} idea at ${pos.riskPct}% risk — closed ${r >= 0 ? "+" : ""}${r.toFixed(1)}R. Journaled like a real one.`,
+    }), 900);
+  }
+
   // founder-facing view — "does this make me money & is it less work?"
   function openFoundersDesk() {
     openModal(`
       <div class="fd-head"><span class="pill pill-gold">${ic("i-shield", "ic")} Founder view</span></div>
-      <h3 class="sheet-title" style="margin:10px 0 2px">Blakey's Desk</h3>
-      <p class="sheet-sub">Your community, your revenue — run it in one place.</p>
+      <h3 class="sheet-title" style="margin:10px 0 2px">${B.founderLast}'s Desk</h3>
+      <p class="sheet-sub">Your community, your revenue — ${IB ? `${B.broker} rebates and Inner Circle` : "run it"} in one place.</p>
       <div class="fd-stats">
         <div class="fd-stat"><b class="num">4,213</b><small>Members</small></div>
-        <div class="fd-stat"><b class="num gold-text">312</b><small>VIP members</small></div>
+        <div class="fd-stat"><b class="num gold-text">312</b><small>${IB ? `VIP · ${B.broker}-verified` : "VIP members"}</small></div>
         <div class="fd-stat"><b class="num up">+87</b><small>New this week</small></div>
-        <div class="fd-stat"><b class="num gold-text">£—</b><small>MRR · your price</small></div>
+        <div class="fd-stat"><b class="num gold-text" id="fd-mrr-stat">£—</b><small>MRR · ${IB ? "Inner Circle" : "your price"}</small></div>
+      </div>
+      ${IB ? `<div class="fd-ib">${ic("i-shield", "ic")}<div><b>${B.broker} partner rebates</b><small>Every VIP member is verified under your IB — you earn on every lot they trade, on top of memberships. Unverified accounts never see a live entry.</small></div></div>` : ""}
+      <div class="fd-price">
+        <div class="fd-price-top"><span class="eyebrow" id="fd-price-label">${IB ? "Inner Circle price" : "VIP price"}</span><b class="fd-mrr" id="fd-mrr">£—</b></div>
+        <input type="range" class="fd-slider" id="fd-slider" min="${IB ? 29 : 9}" max="${IB ? 299 : 99}" step="${IB ? 5 : 1}" aria-label="Set your ${IB ? "Inner Circle" : "VIP"} monthly price">
+        <div class="fd-proj" id="fd-proj"></div>
       </div>
       <div class="fd-funnel">
         <div class="fd-fn"><span>Free</span><div class="fd-fbar"><i style="width:100%"></i></div><b class="num">3,853</b></div>
@@ -1835,7 +2414,21 @@
       <button class="btn btn-gold btn-block" id="fd-post">${ic("i-send")} Post a signal → notify 312 VIP</button>
       <button class="btn btn-ghost btn-block" id="fd-live" style="margin-top:10px">${ic("i-live")} Go live now</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Signals still start in your Telegram — the app mirrors them and pushes automatically. You change nothing about how you work.</p>`);
-    const post = $("#fd-post"); if (post) post.onclick = () => { closeModal(); setTimeout(() => { showPush("🟢 BT VIP · New XAUUSD idea", "Entry 4,024–4,028 · SL 4,014 · targets inside"); toast("Pushed to VIP · 312 members notified", "i-check"); }, 400); };
+    const VIPN = 312, INNERN = 48, slider = $("#fd-slider");
+    const sMin = +slider.min, sMax = +slider.max;
+    const setP = (p) => {
+      const mrr = Math.round(IB ? INNERN * p : VIPN * p + INNERN * p * 2.5), mrrStr = "£" + mrr.toLocaleString();
+      $("#fd-mrr").textContent = mrrStr;
+      const stat = $("#fd-mrr-stat"); if (stat) stat.textContent = mrrStr;
+      $("#fd-price-label").textContent = "£" + p + "/mo · " + (IB ? "Inner Circle" : "VIP");
+      $("#fd-proj").innerHTML = IB
+        ? `At <b>£${p}</b>/mo · ${INNERN} Inner Circle → <b>${mrrStr}</b>/mo · <b>£${(mrr * 12).toLocaleString()}</b>/yr — plus ${B.broker} rebates on ${VIPN} VIP`
+        : `At <b>£${p}</b>/mo · ${VIPN} VIP + ${INNERN} Inner Circle → <b>${mrrStr}</b>/mo · <b>£${(mrr * 12).toLocaleString()}</b>/yr`;
+      slider.style.background = `linear-gradient(90deg, var(--gold) ${(p - sMin) / (sMax - sMin) * 100}%, var(--surface-4) 0)`;
+    };
+    const p0 = Math.min(sMax, Math.max(sMin, +getSetting("vipPrice", IB ? 149 : 39))); slider.value = p0; setP(p0);
+    slider.oninput = () => { const p = +slider.value; setP(p); setSetting("vipPrice", p); };
+    const post = $("#fd-post"); if (post) post.onclick = () => { closeModal(); setTimeout(() => { showPush(`🟢 ${B.short} VIP · New ${B.market} idea`, "Entry 4,024–4,028 · SL 4,014 · targets inside"); toast("Pushed to VIP · 312 members notified", "i-check"); }, 400); };
     const live = $("#fd-live"); if (live) live.onclick = () => { closeModal(); go("live"); };
   }
   // iOS-style lock-screen push preview — a signals business IS push
@@ -1843,7 +2436,7 @@
     const host = document.querySelector(".app") || document.body;
     const el = document.createElement("div");
     el.className = "push-banner";
-    el.innerHTML = `<div class="pb-ic">${ic("i-tg")}</div><div class="pb-body"><div class="pb-top"><b>Blakey Trades</b><span>now</span></div><div class="pb-title">${title}</div><div class="pb-text">${body}</div></div>`;
+    el.innerHTML = `<div class="pb-ic">${ic("i-tg")}</div><div class="pb-body"><div class="pb-top"><b>${B.name}</b><span>now</span></div><div class="pb-title">${title}</div><div class="pb-text">${body}</div></div>`;
     host.appendChild(el);
     requestAnimationFrame(() => el.classList.add("show"));
     setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 420); }, 3600);
@@ -1853,17 +2446,17 @@
     const hist = pState().chatHistory || [];
     const seed = D.chatScript.slice(0, 8);
     const renderMsg = m => `<div class="cmsg ${m.host ? "host" : ""}${m.me ? " me" : ""}">${m.me ? "" : av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : m.me ? " · You" : ""}</b>${m.text}</div></div>`;
-    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat" id="cchat-feed">${seed.map(renderMsg).join("")}${hist.map(renderMsg).join("")}</div><div class="cchat-in"><input class="finput" id="cchat-in" placeholder="Message the floor…"><button class="btn btn-gold" id="cchat-send" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
+    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat" id="cchat-feed">${seed.map(renderMsg).join("")}${hist.map(renderMsg).join("")}</div><div class="cchat-in"><input class="finput" id="cchat-in" placeholder="Message ${B.floor}…" aria-label="Message ${B.floor}"><button class="btn btn-gold" id="cchat-send" aria-label="Send message" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
     const feed = $("#cchat-feed"); feed.scrollTop = feed.scrollHeight;
     const append = (m) => { feed.insertAdjacentHTML("beforeend", renderMsg(m)); feed.scrollTop = feed.scrollHeight; };
     // demo replies — local echo only; a real build wires this to Arron's live community
     let sent = hist.length;
     const floorReplies = [
       { name: "Marcus", initials: "MW", text: "👊 welcome to the floor" },
-      { name: "Arron Blakey", initials: "AB", host: true, text: "Good to have you. Risk first, profit second — always." },
+      { name: B.founder, initials: B.founderInitials, host: true, text: "Good to have you. Risk first, profit second — always." },
       { name: "Sofia", initials: "SR", text: "we're all on 4,025 too 👀" },
       { name: "Aisha", initials: "AK", text: "🙌" },
-      { name: "Arron Blakey", initials: "AB", host: true, text: "Drop your entry + stop when you take it — we review them live." },
+      { name: B.founder, initials: B.founderInitials, host: true, text: "Drop your entry + stop when you take it — we review them live." },
       { name: "Daniel", initials: "DO", text: "same, waiting on the reclaim 🧘" },
     ];
     const send = () => {
@@ -1874,7 +2467,7 @@
       inp.value = "";
       pSet({ chatHistory: [...(pState().chatHistory || []), mine] });
       const reply = sent === 0
-        ? { name: "Arron Blakey", initials: "AB", text: `Welcome to the floor, ${D.user.first} — good to have you here.`, host: true }
+        ? { name: B.founder, initials: B.founderInitials, text: `Welcome to ${B.floor}, ${D.user.first} — good to have you here.`, host: true }
         : floorReplies[(sent - 1) % floorReplies.length];
       sent++;
       setTimeout(() => append(reply), 750 + Math.random() * 500);
@@ -1984,12 +2577,12 @@
   }
 
   function wireCommon() {
-    [...document.querySelectorAll("[data-tab]")].forEach(n => n.addEventListener("click", e => { e.stopPropagation(); go(n.dataset.tab); }));
+    [...document.querySelectorAll("[data-tab]")].forEach(n => n.addEventListener("click", e => { e.stopPropagation(); if (n.dataset.seg) circleTab = n.dataset.seg; go(n.dataset.tab); }));
     [...document.querySelectorAll("[data-path]")].forEach(n => n.onclick = () => openPath(n.dataset.path));
     [...document.querySelectorAll("[data-video]")].forEach(n => n.addEventListener("click", () => openPlayer(n.dataset.video)));
     [...document.querySelectorAll("[data-idea]")].forEach(n => n.addEventListener("click", () => openIdea(n.dataset.idea)));
     [...document.querySelectorAll("[data-act=notif]")].forEach(n => n.onclick = openNotifications);
-    [...document.querySelectorAll("[data-act=theme-top]")].forEach(n => n.onclick = () => { const t = toggleTheme(); n.innerHTML = ic(t === "light" ? "i-moon" : "i-sun"); toast(t === "light" ? "Light mode" : "Dark mode", "i-moon"); });
+    [...document.querySelectorAll("[data-act=theme-top]")].forEach(n => n.onclick = () => themeFade(t => { n.innerHTML = ic(t === "light" ? "i-moon" : "i-sun"); toast(t === "light" ? "Light mode" : "Dark mode", "i-moon"); }));
     [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
@@ -2006,6 +2599,7 @@
     [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
     [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
     [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
+    [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
     wireTook();
   }
@@ -2021,7 +2615,7 @@
   ];
   function renderTabbar() {
     $("#tabbar").innerHTML = TABS.map(t =>
-      `<button class="tab ${t.live ? "live-tab" : ""} ${t.id===activeTab?"active":""}" data-tab="${t.id}">
+      `<button class="tab ${t.live ? "live-tab" : ""} ${t.id===activeTab?"active":""}" data-tab="${t.id}" aria-current="${t.id===activeTab?"page":"false"}">
         <span class="tab-cluster">${ic(t.icon)}${t.live ? '<span class="dot"></span>' : ""}</span>${t.label}</button>`).join("");
     [...document.querySelectorAll("#tabbar .tab")].forEach(b => b.onclick = () => go(b.dataset.tab));
   }
@@ -2033,17 +2627,17 @@
     el.innerHTML = `
       <canvas class="market-bg" data-chart="ambient" data-seed="12"></canvas>
       <div class="login-top">
-        <img class="login-wordmark" src="assets/blakey-logo.png" alt="Blakey Trades">
-        <h1 class="h1">The floor is<br>open.</h1>
-        <p class="sub" style="margin-top:10px;max-width:280px">Live gold calls, the full education library, and ${(4200).toLocaleString()}+ traders on the floor. Welcome to Blakey Trades.</p>
+        <img class="login-wordmark" src="${B.logo}" alt="${B.name}">
+        <h1 class="h1">${B.tagline}</h1>
+        <p class="sub" style="margin-top:10px;max-width:280px">${B.blurb} Welcome to ${B.name}.</p>
       </div>
       <div class="login-bottom">
         <button class="btn btn-gold btn-block" id="enter">Continue with phone</button>
         <div class="login-or">or</div>
         <div class="social-row">
-          <button class="social-btn" data-soc>${appleSvg()}</button>
-          <button class="social-btn" data-soc>${googleSvg()}</button>
-          <button class="social-btn" data-soc>${tgSvg()}</button>
+          <button class="social-btn" data-soc aria-label="Continue with Apple">${appleSvg()}</button>
+          <button class="social-btn" data-soc aria-label="Continue with Google">${googleSvg()}</button>
+          <button class="social-btn" data-soc aria-label="Continue with Telegram">${tgSvg()}</button>
         </div>
         <p class="login-foot">Free for members — funded by our partners.<br>By continuing you agree to the Terms & Privacy Policy.</p>
       </div>`;
@@ -2086,7 +2680,7 @@
       let body;
       if (step === 0) body = `
         <div class="ob-center">
-          <img class="ob-wordmark" src="assets/blakey-logo.png" alt="Blakey Trades">
+          <img class="ob-wordmark" src="${B.logo}" alt="${B.name}">
           <h1 class="h1" style="margin-top:22px">Welcome to<br>the floor.</h1>
           <p class="sub" style="margin-top:10px;max-width:285px">You're one of ${(4200).toLocaleString()}+ gold traders now. Let's get you set up — takes 30 seconds.</p>
         </div>
@@ -2113,8 +2707,9 @@
           <div class="sub" style="font-size:12.5px">Hosted by ${onc.host} <span class="vchk">✓</span></div>
           <button class="btn btn-ghost btn-block" data-cal style="margin-top:14px">${ic("i-cal")} Add to calendar</button>
         </div>
-        <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Enter Blakey Trades</button>`; }
+        <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Enter ${B.name}</button>`; }
       el.innerHTML = `${dots()}<div class="ob-body">${body}</div>`;
+      if (!reduceMotion()) { el.classList.remove("ob-enter"); void el.offsetWidth; el.classList.add("ob-enter"); }
       const next = el.querySelector("[data-next]"); if (next) next.onclick = () => {
         if (step === 1) {
           const nameEl = el.querySelector("#ob-name"), countryEl = el.querySelector("#ob-country");
@@ -2154,8 +2749,15 @@
   window.addEventListener("resize", fitDevice);
   function boot() {
     applyTheme(getSetting("theme", "dark"));
+    try { history.replaceState({ t: "home" }, ""); } catch (e) {}
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#modal").classList.contains("open")) closeModal(); });
+    document.addEventListener("click", (e) => { const t = e.target.closest && e.target.closest(".gterm"); if (t) { e.stopPropagation(); showGloss(t.dataset.gterm); } }, true);
+    // sticky liquid-glass top bar: condense onto glass once content scrolls beneath it
+    const sc = $("#screen-scroll");
+    if (sc) sc.addEventListener("scroll", () => { const tb = $("#screen .app-topbar"); if (tb) tb.classList.toggle("scrolled", sc.scrollTop > 8); }, { passive: true });
     fitDevice();
     hydrateProfile(); // journal + streak + points from device storage (seeds the demo journal first run)
+    renderPaperPill(); // restore an open paper position across reloads
     // hydrate the economic calendar from cache (instant), then refresh from the live proxy
     try { const c = JSON.parse(localStorage.getItem("bt_cal") || "null"); if (c && c.d && c.d.length && (Date.now() - c.t) < 12 * 36e5) liveCal = c.d; } catch (e) {}
     loadCalendar();
@@ -2180,7 +2782,8 @@
 
   // social svgs
   function appleSvg(){return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.6-1.3-.1-2.5.8-3.1.8-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.4 2.5-.4 6.2 1 8.2.7 1 1.5 2.1 2.5 2 1-.04 1.4-.65 2.6-.65 1.2 0 1.5.65 2.6.63 1.1-.02 1.8-1 2.5-2 .8-1.1 1.1-2.2 1.1-2.3-.02-.01-2.1-.8-2.1-3.1zM14.5 6.3c.5-.65.9-1.55.8-2.45-.8.03-1.7.53-2.3 1.18-.5.57-.95 1.5-.83 2.37.9.07 1.8-.45 2.33-1.1z"/></svg>';}
-  function googleSvg(){return '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4c-.2 1.2-.9 2.3-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#34A853" d="M12 22c2.7 0 5-1 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6C4.7 19.9 8.1 22 12 22z"/><path fill="#FBBC05" d="M6.4 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.6H3.1C2.4 9 2 10.5 2 12s.4 3 1.1 4.4l3.3-2.6z"/><path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 3.2 14.7 2 12 2 8.1 2 4.7 4.1 3.1 7.6l3.3 2.6C7.2 7.8 9.4 6.1 12 6.1z"/></svg>';}
-  function tgSvg(){return '<svg viewBox="0 0 24 24" fill="#229ED9"><path d="M21.9 4.3 18.6 20c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.2-8.3c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1-1 .2-1.5l19-7.3c.9-.3 1.6.2 1.3 1.6z"/></svg>';}
+  // monochrome brand marks — flagship auth screens don't run full-saturation logos on dark glass
+  function googleSvg(){return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4c-.2 1.2-.9 2.3-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path d="M12 22c2.7 0 5-1 6.6-2.5l-3.2-2.5c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6C4.7 19.9 8.1 22 12 22z" opacity=".85"/><path d="M6.4 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.6H3.1C2.4 9 2 10.5 2 12s.4 3 1.1 4.4l3.3-2.6z" opacity=".7"/><path d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 3.2 14.7 2 12 2 8.1 2 4.7 4.1 3.1 7.6l3.3 2.6C7.2 7.8 9.4 6.1 12 6.1z" opacity=".92"/></svg>';}
+  function tgSvg(){return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.6 20c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.2-8.3c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1-1 .2-1.5l19-7.3c.9-.3 1.6.2 1.3 1.6z"/></svg>';}
 
 })();

@@ -1,4 +1,6 @@
-/* Blakey Trades — mock data (realistic, gold/XAUUSD flavoured) */
+/* Content data — realistic, gold/XAUUSD flavoured. Edit this file to swap a
+   community's channels, hub(s), testimonials, schedule & videos. Founder/brand
+   names come from BRAND (brand.js), which loads before this file. */
 window.DATA = {
   user: {
     name: "Jordan Hale", first: "Jordan", handle: "@jhale_fx", initials: "JH",
@@ -8,13 +10,22 @@ window.DATA = {
 
   live: {
     title: "Live Trading Room",   // not shown as the call name anymore — the live call comes from schedule[] via liveCallInfo()
-    host: "Arron Blakey", hostInitials: "AB", hostRole: "Founder",
+    host: BRAND.founder, hostInitials: BRAND.founderInitials, hostRole: "Founder",
     watchers: 1247,
     startsIn: 732,            // seconds → drives the Home countdown
     session: "London",
     pair: "XAUUSD",
     entry: "4,026.50", sl: "4,014.00", tp: "4,064.00", bias: "Long bias",
   },
+
+  // founder chart markup — timed annotations "drawn" on the live chart, synced to the room narrative.
+  // kind: zone (price band) | hline (level) | trend (drawn line, x as width fractions) | flag (pulse marker)
+  liveMarkup: [
+    { at: 2.2,  kind: "zone",  from: 4016, to: 4026, label: "Demand block", chip: "Demand block · 4,016–4,026" },
+    { at: 7.5,  kind: "hline", p: 4045, label: "Partials 4,045", chip: "Partials level · liquidity above 4,045" },
+    { at: 13,   kind: "trend", x1: 0.06, p1: 4049, x2: 0.60, p2: 4028, label: "Let it come to you", chip: "Pullback path — let it come to you" },
+    { at: 18.5, kind: "flag",  p: 4026.5, x: 0.74, label: "4,026.5 ✓", chip: "Long taken · 4,026.5" },
+  ],
 
   // weekly live-call timetable (client's "Upcoming Zoom Calls" schedule; times = UK)
   schedule: [
@@ -103,10 +114,10 @@ window.DATA = {
 
   // Telegram channels the signals are posted to (mirrored into the app)
   channels: [
-    { id:"vip", name:"BT VIP", handle:"@bt_vip", mark:"BT", img:"assets/channels/vip.jpg", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
-    { id:"swing", name:"BT Swing Trades", handle:"@bt_swing", mark:"BT", img:"assets/channels/swing.jpg", tone:"quiet", members:"1,940", today:1, desc:"Multi-day swing setups for the bigger moves." },
-    { id:"zones", name:"BT Zones", handle:"@bt_zones", mark:"BT", img:"assets/channels/zones.jpg", tone:"quiet", members:"2,480", today:2, desc:"Key supply & demand zones to watch each session." },
-    { id:"scalps", name:"SN Scalps", handle:"@sn_scalps", mark:"SN", img:"assets/channels/scalps.jpg", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
+    { id:"vip", name:"BT VIP", handle:"@bt_vip", mark:"BT", img:"assets/channels/vip.webp", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
+    { id:"swing", name:"BT Swing Trades", handle:"@bt_swing", mark:"BT", img:"assets/channels/swing.webp", tone:"quiet", members:"1,940", today:1, desc:"Multi-day swing setups for the bigger moves." },
+    { id:"zones", name:"BT Zones", handle:"@bt_zones", mark:"BT", img:"assets/channels/zones.webp", tone:"quiet", members:"2,480", today:2, desc:"Key supply & demand zones to watch each session." },
+    { id:"scalps", name:"SN Scalps", handle:"@sn_scalps", mark:"SN", img:"assets/channels/scalps.webp", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
     { id:"iq", name:"Signal IQ", handle:"@signal_iq", mark:"🤖", tone:"bot", members:"1,120", today:6, bot:true, desc:"Automated mechanical signals, 24/5. No emotion, fixed risk." },
   ],
 
@@ -116,17 +127,17 @@ window.DATA = {
     title:"The Gold Playbook: Reading London Liquidity",
     cat:"Market Analysis", dur:"42:18", date:"2 days ago", views:"3,140",
     img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=1000&h=520&fit=crop&q=78",
-    note:"Arron walks the full London-session framework — liquidity sweeps, the 3 entry models, and where most traders get trapped." },
+    note: BRAND.founderFirst + " walks the full London-session framework — liquidity sweeps, the 3 entry models, and where most traders get trapped." },
 
   videos: [
-    { id:"v1", title:"London Liquidity, Explained", cat:"Market Analysis", dur:"42:18", date:"2d ago", views:"3,140", progress:0.34, seed:11, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
-    { id:"v2", title:"Why Your Stops Keep Getting Hit", cat:"Risk", dur:"18:50", date:"4d ago", views:"2,610", progress:0, seed:23, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
-    { id:"v3", title:"The Trader's Mind: Patience Under Pressure", cat:"Mindset", dur:"27:05", date:"6d ago", views:"4,002", progress:0.72, seed:31, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
-    { id:"v4", title:"Building Your First Gold Watchlist", cat:"Beginner Path", dur:"15:32", date:"1w ago", views:"1,980", progress:0, seed:7, img:"https://images.unsplash.com/photo-1616783943928-32f4e1e16147?w=600&h=360&fit=crop&q=72", host:"Blakey Team" },
-    { id:"v5", title:"New York Session Replay — Live Calls", cat:"Session Replays", dur:"58:44", date:"1w ago", views:"2,233", progress:0.12, seed:42, img:"https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
-    { id:"v6", title:"Risk:Reward Done Properly", cat:"Risk", dur:"21:10", date:"1w ago", views:"3,560", progress:0, seed:18, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host:"Blakey Team" },
-    { id:"v7", title:"Reading the Daily Before You Trade", cat:"Market Analysis", dur:"33:27", date:"2w ago", views:"2,870", progress:0, seed:55, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
-    { id:"v8", title:"From Revenge Trading to Routine", cat:"Mindset", dur:"24:48", date:"2w ago", views:"3,910", progress:0, seed:64, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:"Arron Blakey" },
+    { id:"v1", title:"London Liquidity, Explained", cat:"Market Analysis", dur:"42:18", date:"2d ago", views:"3,140", progress:0.34, seed:11, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
+    { id:"v2", title:"Why Your Stops Keep Getting Hit", cat:"Risk", dur:"18:50", date:"4d ago", views:"2,610", progress:0, seed:23, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
+    { id:"v3", title:"The Trader's Mind: Patience Under Pressure", cat:"Mindset", dur:"27:05", date:"6d ago", views:"4,002", progress:0.72, seed:31, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
+    { id:"v4", title:"Building Your First Gold Watchlist", cat:"Beginner Path", dur:"15:32", date:"1w ago", views:"1,980", progress:0, seed:7, img:"https://images.unsplash.com/photo-1616783943928-32f4e1e16147?w=600&h=360&fit=crop&q=72", host: BRAND.short + " Team" },
+    { id:"v5", title:"New York Session Replay — Live Calls", cat:"Session Replays", dur:"58:44", date:"1w ago", views:"2,233", progress:0.12, seed:42, img:"https://images.unsplash.com/photo-1496588152823-86ff7695e68f?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
+    { id:"v6", title:"Risk:Reward Done Properly", cat:"Risk", dur:"21:10", date:"1w ago", views:"3,560", progress:0, seed:18, img:"https://images.unsplash.com/photo-1560221328-12fe60f83ab8?w=600&h=360&fit=crop&q=72", host: BRAND.short + " Team" },
+    { id:"v7", title:"Reading the Daily Before You Trade", cat:"Market Analysis", dur:"33:27", date:"2w ago", views:"2,870", progress:0, seed:55, img:"https://images.unsplash.com/photo-1689732888407-310424e3a372?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
+    { id:"v8", title:"From Revenge Trading to Routine", cat:"Mindset", dur:"24:48", date:"2w ago", views:"3,910", progress:0, seed:64, img:"https://images.unsplash.com/photo-1624461145824-d9d44d85cc77?w=600&h=360&fit=crop&q=72", host:BRAND.founder },
   ],
 
   traderOfWeek: {
@@ -150,7 +161,7 @@ window.DATA = {
       body:"Followed the London plan to the tick this morning. +2.1R on gold, out before the lunchtime chop. The discipline framework from Tuesday's call is everything. 🙏",
       tag:{ pair:"XAUUSD", dir:"long", rr:"+2.1R" }, likes:84, comments:12, liked:false },
     { author:"Aisha Khan", initials:"AK", time:"48m", featured:false,
-      body:"3 weeks no revenge trades. Journaling every entry like Arron said. Small wins compound. Thank you to this community for keeping me accountable.",
+      body:"3 weeks no revenge trades. Journaling every entry like " + BRAND.founderFirst + " said. Small wins compound. Thank you to this community for keeping me accountable.",
       likes:142, comments:23, liked:true },
     { author:"Daniel Okafor", initials:"DO", time:"2h", featured:false,
       body:"Anyone else catch the NY short? That supply zone was textbook. Banked +1.8R and called it a day. Process over profit.",
@@ -184,11 +195,11 @@ window.DATA = {
       ],
       oneToOne:["Personalised support","Strategy refinement","Risk management & mindset","Help with execution & consistency","By request / booking only"],
       faces:["MW","SR","TB","AK"] },
-    { id:"dubai", city:"Dubai", country:"United Arab Emirates", flag:"🇦🇪", img:"assets/hub-dubai.jpg",
+    { id:"dubai", city:"Dubai", country:"United Arab Emirates", flag:"🇦🇪", img:"assets/hub-dubai.webp",
       tint:"linear-gradient(160deg,#1c1503,#0a0a0e)",
       event:{ d:"22", m:"Jul", title:"Gold Masterclass — Live Trading", time:"7:00pm · DIFC", }, going:164,
       faces:["PN","DO","LF","AB"] },
-    { id:"ni", city:"Belfast", country:"Northern Ireland", flag:"🇬🇧", img:"assets/hub-belfast.jpg",
+    { id:"ni", city:"Belfast", country:"Northern Ireland", flag:"🇬🇧", img:"assets/hub-belfast.webp",
       tint:"linear-gradient(160deg,#10140d,#0a0a0e)",
       event:{ d:"09", m:"Aug", title:"NI Traders Social & Q&A", time:"5:00pm · City Centre", }, going:96,
       faces:["TB","AK","MW","JH"] },
@@ -215,16 +226,16 @@ window.DATA = {
 
   // Live chat playback script (loops). host:true = Arron pinned style.
   chatScript: [
-    { initials:"AB", name:"Arron", host:true, text:"Morning all 👋 mapping the London open now — watch 4,025." },
+    { initials:BRAND.founderInitials, name:BRAND.founderFirst, host:true, text:"Morning all 👋 mapping the London open now — watch 4,025." },
     { initials:"MW", name:"Marcus", text:"Been waiting for this level all week 🔥" },
     { initials:"SR", name:"Sofia", text:"Volume picking up already" },
     { initials:"AK", name:"Aisha", text:"So this is the demand block from yesterday?" },
-    { initials:"AB", name:"Arron", host:true, text:"Exactly Aisha — reclaim + hold = our long. Stop below structure, never inside it." },
+    { initials:BRAND.founderInitials, name:BRAND.founderFirst, host:true, text:"Exactly Aisha — reclaim + hold = our long. Stop below structure, never inside it." },
     { initials:"DO", name:"Daniel", text:"In at 4,026.5, stop 4,014 ✅" },
     { initials:"PN", name:"Priya", text:"Patience. Let it come to you 🧘" },
     { initials:"TB", name:"Tom", text:"This is why I show up live every day" },
     { initials:"LF", name:"Lena", text:"First green week thanks to these calls 🙌" },
-    { initials:"AB", name:"Arron", host:true, text:"Partials into 4,045, trail the rest. Protect the account first, profit second." },
+    { initials:BRAND.founderInitials, name:BRAND.founderFirst, host:true, text:"Partials into 4,045, trail the rest. Protect the account first, profit second." },
     { initials:"AK", name:"Aisha", text:"Banked +1.4R already 💎" },
     { initials:"MW", name:"Marcus", text:"Clean. Textbook continuation." },
   ],
@@ -258,8 +269,8 @@ window.DATA = {
   ],
   // ── academy learning paths ──
   paths: [
-    { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:0, color:"#3ECB86", desc:"Markets, candles & risk basics — start here." },
-    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:0, color:"#E0B23C", desc:"Liquidity, the London open & the 3 entry models." },
+    { id:"found", name:"Foundations", level:"Beginner", lessons:8, done:0, color:"#3FBF7F", desc:"Markets, candles & risk basics — start here." },
+    { id:"gold", name:"The Gold Playbook", level:"Core", lessons:10, done:0, color:BRAND.accent, desc:"Liquidity, the London open & the 3 entry models." },
     { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:0, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
     { id:"pro", name:"Pro Execution", level:"Advanced", lessons:9, done:0, color:"#C06AFF", desc:"Scaling, sessions & a repeatable edge." },
   ],
@@ -275,7 +286,7 @@ window.DATA = {
       { q:"Why is gold (XAUUSD) a sound market to learn on?", a:["It's deeply liquid and respects clear technical levels","It can only ever go up over time","Brokers pay you just to hold it","It only moves for one hour a day"], c:0, why:"Gold's liquidity and clean reaction to levels suit a patient, rules-based approach." },
     ]},
     gold: { pass:5, qs:[
-      { q:"What is the core Blakey Trades long trigger?", a:["Price reclaims a level and holds it","Any dip in price","A round number gets hit","An indicator turns green"], c:0, why:"Reclaim-and-hold shows buyers have taken control before you commit — the BT long." },
+      { q:"What is the core " + BRAND.name + " long trigger?", a:["Price reclaims a level and holds it","Any dip in price","A round number gets hit","An indicator turns green"], c:0, why:"Reclaim-and-hold shows buyers have taken control before you commit — the " + BRAND.short + " long." },
       { q:"Why does the London open matter for gold?", a:["It often expands the range and sets the day's liquidity","Gold only trades during London hours","Spreads drop to zero then","The dollar stops moving at the open"], c:0, why:"London brings the volume and volatility that frequently defines the day's range." },
       { q:"'Liquidity' resting above the highs is best described as…", a:["Clustered stop / limit orders price is drawn toward","A guaranteed wall of resistance","A period of very low volume","A fee your broker charges"], c:0, why:"Liquidity is pooled orders; price is often drawn to it before reversing." },
       { q:"A liquidity sweep is when price…", a:["Spikes past a high/low, grabs orders, then reverses","Trends smoothly in one direction all day","Gaps higher at the weekly open","Sits dead flat in a tight range"], c:0, why:"The sweep takes resting liquidity beyond a level then reverses — a trap-and-go." },
@@ -350,8 +361,8 @@ window.DATA = {
   challenge: { name:"Journal Every Trade", desc:"Log all your trades for 30 days — build the habit that builds consistency.", done:18, total:30, reward:"Disciplined badge + leaderboard boost", joined:true },
   // ── announcements from the team ──
   announcements: [
-    { from:"Arron Blakey", role:"Founder", time:"2h ago", text:"New York session was textbook today — replay's up in Learn. Watch how we managed the runner." },
-    { from:"Team", role:"Blakey Trades", time:"Yesterday", text:"Dubai meetup tickets are live — 12 spots left. See you on the floor." },
-    { from:"Arron Blakey", role:"Founder", time:"2 days ago", text:"Big week ahead — CPI Wednesday + NFP Friday. Plan your risk; don't force trades around the news." },
+    { from:BRAND.founder, role:"Founder", time:"2h ago", text:"New York session was textbook today — replay's up in Learn. Watch how we managed the runner." },
+    { from:"Team", role: BRAND.name, time:"Yesterday", text:"Dubai meetup tickets are live — 12 spots left. See you on the floor." },
+    { from:BRAND.founder, role:"Founder", time:"2 days ago", text:"Big week ahead — CPI Wednesday + NFP Friday. Plan your risk; don't force trades around the news." },
   ],
 };
