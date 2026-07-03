@@ -653,6 +653,7 @@
       ${header()}
       ${marketBar()}
       ${storyStrip()}
+      ${deskCard()}
       ${morningBriefCard()}
       <div class="live-banner reveal">
         <canvas class="market-bg" data-chart="ambient" data-seed="7"></canvas>
@@ -674,6 +675,8 @@
       <div class="stat-row reveal" style="animation-delay:.05s">
         ${liveHomeStats().map(s => `<div class="stat">${ic("i-" + s.ic, "ic")}<b class="num">${s.value}</b><small>${s.label}</small></div>`).join("")}
       </div>
+
+      ${journeyCard()}
 
       ${toolsRow()}
 
@@ -814,6 +817,109 @@
         <div class="num up" style="font-size:13px;margin-top:2px">${w.ret} · ${w.winRate} win rate</div></div>
       <div style="margin-left:auto">${ic("i-chev","ic")}</div>
     </div>`;
+  }
+
+  // ---- "Your desk" — the member's personalised daily briefing ----
+  function copierState() {
+    const tier = getSetting("tier", "free");
+    if (tier === "free") return { code: "verify", label: `Verify with ${B.broker} ›`, cls: "gold-tx" };
+    if (!getSetting("copierLinked", false)) return { code: "link", label: "Link MT5 ›", cls: "gold-tx" };
+    return { code: "on", label: "Connected ✓", cls: "up" };
+  }
+  function unreadAnnouncements() { return Math.max(0, D.announcements.length - getSetting("annSeen", 0)); }
+  function deskCard() {
+    const js = journalStats(), cp = copierState(), nc = nextCall();
+    const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
+    const healthy = js.pf >= 1 && js.netR >= 0;
+    const when = nc ? (nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
+    const unread = unreadAnnouncements();
+    const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
+    return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
+      <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your desk</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
+      ${row("i-send", "Copier status", cp.label, 'data-act="copier"', cp.cls)}
+      ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
+      ${row("i-chart", "New signals today", `<span class="num">${sigsToday}</span>`, 'data-tab="signals"')}
+      ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
+      ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</span>`, 'data-act="journal"')}
+      ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
+    </div>`;
+  }
+
+  // ---- "Your journey" — milestone tracker (the Duolingo loop, floor-flavoured) ----
+  function journeySteps() {
+    const js = journalStats(), tier = getSetting("tier", "free");
+    return [
+      { label: "Joined " + B.floor, done: true },
+      { label: "Took your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
+      { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
+      { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
+      { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
+      { label: "MT5 connected to the copier", done: !!getSetting("copierLinked", false), xp: 150, act: 'data-act="copier"' },
+    ];
+  }
+  function journeyCard() {
+    const steps = journeySteps();
+    const done = steps.filter(s => s.done).length;
+    const nextIdx = steps.findIndex(s => !s.done);
+    return `<div class="card card-pad jny reveal" style="animation-delay:.07s">
+      <div class="sch-head"><span class="eyebrow">${ic("i-trophy", "ic")} Your journey</span><span class="sch-count num">${done}/${steps.length}</span></div>
+      <div class="jny-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
+      ${steps.map((s, i) => `
+        <button class="as-btn jny-row ${s.done ? "is-done" : i === nextIdx ? "is-next" : ""}" ${s.act || ""} ${s.done ? 'aria-disabled="true"' : ""}>
+          <span class="jny-node">${s.done ? ic("i-check", "ic") : `<span class="num">${i + 1}</span>`}</span>
+          <span class="jny-label">${s.label}</span>
+          ${s.done ? "" : i === nextIdx ? `<span class="jny-next">Next up${s.xp ? ` · +${s.xp} XP` : ""}</span>` : s.xp ? `<span class="jny-xp num">+${s.xp} XP</span>` : ""}
+        </button>`).join("")}
+    </div>`;
+  }
+
+  // ---- trade copier sheet — mirrors signals to the member's MT5 (real-build: bridge service) ----
+  function openCopier() {
+    const tier = getSetting("tier", "free");
+    if (tier === "free") {
+      openModal(`
+        <h3 class="sheet-title">Trade copier</h3>
+        <p class="sheet-sub">The copier mirrors every ${B.short} VIP signal straight to your MT5 account — entries, stops and targets, hands-free.</p>
+        <div class="vb-how">
+          <div class="vb-step"><span class="vb-n num">1</span><span>Verify your ${B.broker} account (VIP is free for ${B.name} members).</span></div>
+          <div class="vb-step"><span class="vb-n num">2</span><span>Link your MT5 login — the copier runs in the cloud, your platform can stay closed.</span></div>
+          <div class="vb-step"><span class="vb-n num">3</span><span>Set your risk per trade. Every signal mirrors automatically.</span></div>
+        </div>
+        <button class="btn btn-gold btn-block" data-act="verifyib" style="margin-top:14px">${ic("i-shield")} Verify with ${B.broker} first</button>
+        <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Copying live trades carries risk — you stay in control of risk per trade.</p>`);
+      wireCommon();
+      return;
+    }
+    const linked = getSetting("copierLinked", false);
+    const acct = getSetting("vantageAcct", "");
+    openModal(`
+      <h3 class="sheet-title">Trade copier</h3>
+      <p class="sheet-sub">${linked ? "Live — every VIP signal mirrors to your MT5 automatically." : `Link your MT5 account and every ${B.short} VIP signal mirrors automatically.`}</p>
+      <div class="card card-pad" style="margin:10px 0 14px">
+        <div class="kv"><span>Status</span><b class="${linked ? "up" : ""}">${linked ? "Connected ✓" : "Not linked"}</b></div>
+        <div class="kv"><span>${B.broker} account</span><b class="num">${acct ? "•••• " + acct.slice(-3) : "Verified ✓"}</b></div>
+        <div class="kv"><span>Risk per trade</span><b class="num">1.0%</b></div>
+        ${linked ? `<div class="kv"><span>Last mirrored</span><b>${D.ideas[0].pair} ${D.ideas[0].dir === "long" ? "▲" : "▼"} · ${D.ideas[0].time}</b></div>` : ""}
+      </div>
+      ${linked
+        ? `<button class="btn btn-ghost btn-block" id="cp-pause">${ic("i-play")} Pause copier</button>`
+        : `<button class="btn btn-gold btn-block" id="cp-link">${ic("i-send")} Connect MT5 to the copier</button>`}
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Demo — the live copier is part of the full build. Copying live trades carries risk.</p>`);
+    const lk = $("#cp-link");
+    if (lk) lk.onclick = () => {
+      lk.disabled = true; lk.textContent = "Linking MT5…";
+      setTimeout(() => {
+        setSetting("copierLinked", true);
+        closeModal();
+        setTimeout(() => {
+          showPush("Copier connected ✓", `${B.short} VIP signals now mirror to your MT5`);
+          toast("Copier connected", "i-check");
+          if (SCREENS[activeTab]) SCREENS[activeTab]();
+        }, 380);
+      }, 1200);
+    };
+    const ps = $("#cp-pause");
+    if (ps) ps.onclick = () => { setSetting("copierLinked", false); closeModal(); toast("Copier paused", "i-check"); setTimeout(() => { if (SCREENS[activeTab]) SCREENS[activeTab](); }, 360); };
   }
 
   // home "on the floor" card — one-tap into the community chat
@@ -2211,6 +2317,11 @@
   }
   function openAnnouncements() {
     openModal(`<h3 class="sheet-title">Announcements</h3><p class="sheet-sub">From ${B.founderFirst} & the team.</p><div class="ann">${D.announcements.map(a => `<div class="ann-row">${av(a.from === "Team" ? B.short : B.founderInitials, 38)}<div><div class="ann-top"><b>${a.from}</b><span class="vchk">✓</span><span class="ann-time">${a.time}</span></div><p>${a.text}</p></div></div>`).join("")}</div>`);
+    if (unreadAnnouncements()) {
+      setSetting("annSeen", D.announcements.length);
+      const dr = document.querySelector('.desk [data-act=announce] .dr-val');
+      if (dr) { dr.textContent = "All read ✓"; dr.classList.remove("gold-tx"); }
+    }
   }
   function openChallenge() {
     const c = liveChallenge(), pct = Math.round(c.done / c.total * 100);
@@ -2303,6 +2414,7 @@
       btn.disabled = true; btn.textContent = `Checking with ${B.broker}…`;
       setTimeout(() => {
         setSetting("tier", "vip");
+        setSetting("vantageAcct", v);
         closeModal();
         setTimeout(() => {
           showPush(`Account verified ✓`, `${B.short} VIP unlocked — every signal, the live room & the library`);
@@ -2598,6 +2710,8 @@
     [...document.querySelectorAll("[data-act=challenge]")].forEach(n => n.onclick = openChallenge);
     [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
     [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
+    [...document.querySelectorAll("[data-act=copier]")].forEach(n => n.onclick = openCopier);
+    [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
     [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });

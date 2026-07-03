@@ -1176,6 +1176,32 @@ a{color:inherit;text-decoration:none}
 .vb-how{margin:4px 0 6px;padding:13px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
 .vb-step{display:flex;gap:11px;align-items:flex-start;font-size:12.5px;color:var(--muted);line-height:1.5}
 .vb-step .vb-n{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--gold);background:rgba(var(--gold-rgb),.1);border:1px solid var(--gold-line)}
+/* "Your desk" — personalised daily briefing */
+.streak-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold);background:rgba(var(--gold-rgb),.09);border:1px solid var(--gold-line);border-radius:var(--r-full);padding:5px 11px}
+.streak-chip .ic{width:12px;height:12px}
+.desk-row{display:flex;align-items:center;gap:11px;width:100%;padding:11px 2px;border-bottom:1px solid var(--line);text-align:left}
+.desk-row:last-child{border-bottom:none;padding-bottom:2px}
+.desk-row>.ic{width:16px;height:16px;color:var(--gold);flex:none}
+.dr-label{font-size:13.5px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-val{font-size:13px;font-weight:600;color:var(--muted)}
+.dr-val.up{color:var(--up)} .dr-val.down{color:var(--down)} .dr-val.gold-tx{color:var(--gold)}
+.dr-chev{width:13px;height:13px;color:var(--faint);flex:none}
+/* "Your journey" — milestone tracker */
+.jny-bar{height:6px;border-radius:4px;background:var(--surface-4);margin:4px 0 12px;overflow:hidden}
+.jny-bar i{display:block;height:100%;border-radius:4px;background:var(--gold-foil);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.jny-row{display:flex;align-items:center;gap:12px;width:100%;padding:9px 2px;text-align:left;position:relative}
+.jny-row::before{content:"";position:absolute;left:14px;top:-9px;width:2px;height:18px;background:var(--line)}
+.jny-row:first-of-type::before{display:none}
+.jny-row.is-done::before{background:rgba(var(--gold-rgb),.4)}
+.jny-node{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;position:relative;z-index:1;background:var(--surface-3);border:1px solid var(--line-2);color:var(--muted);font-size:11px;font-weight:700}
+.jny-row.is-done .jny-node{background:rgba(var(--gold-rgb),.14);border-color:var(--gold-line);color:var(--gold)}
+.jny-row.is-done .jny-node .ic{width:13px;height:13px}
+.jny-row.is-next .jny-node{border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.14)}
+.jny-label{flex:1;min-width:0;font-size:13.5px;color:var(--text)}
+.jny-row:not(.is-done):not(.is-next) .jny-label{color:var(--muted)}
+.jny-row.is-done .jny-label{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(var(--gold-rgb),.45);text-decoration-thickness:1px}
+.jny-next{flex:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:rgba(var(--gold-rgb),.1);border:1px solid var(--gold-line);border-radius:var(--r-full);padding:4px 9px}
+.jny-xp{flex:none;font-size:10.5px;font-weight:700;color:var(--faint)}
 /* ===== batch 3: signal replay + paper-trade pill ===== */
 .rp-bar{margin-top:10px}
 .rp-tag{position:absolute;top:8px;left:10px;z-index:2;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);background:rgba(var(--gold-rgb),.12);border:1px solid var(--gold-line);padding:2px 8px;border-radius:var(--r-full)}
