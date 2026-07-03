@@ -77,6 +77,7 @@
     haptic(8);
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
+    if (tab === "signals") setSetting("sigDay", ymd()); // daily-goal signal
     if (!_navSilent) { try { history.pushState({ t: tab }, ""); } catch (e) {} }
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => { t.classList.toggle("active", t.dataset.tab === tab); t.setAttribute("aria-current", t.dataset.tab === tab ? "page" : "false"); });
@@ -832,17 +833,143 @@
     const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
     const healthy = js.pf >= 1 && js.netR >= 0;
     const when = nc ? (nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
-    const unread = unreadAnnouncements();
+    const unread = unreadAnnouncements(), dmUn = dmUnread();
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
-      <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your desk</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
+      <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your office</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
       ${row("i-send", "Copier status", cp.label, 'data-act="copier"', cp.cls)}
       ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
       ${row("i-chart", "New signals today", `<span class="num">${sigsToday}</span>`, 'data-tab="signals"')}
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
       ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</span>`, 'data-act="journal"')}
       ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
+      <button class="btn btn-gold btn-block" data-act="office" style="margin-top:13px">${ic("i-home")} Enter your office${dmUn ? `<span class="dm-badge num">${dmUn}</span>` : ""}</button>
     </div>`;
+  }
+
+  // ---- the office: DM inbox state + daily goals + streak extension ----
+  function dmSeenMap() { return pState().dmSeen || {}; }
+  function dmUnread() { const seen = dmSeenMap(); return (D.dms || []).reduce((s, t) => s + Math.max(0, t.msgs.length - (seen[t.id] || 0)), 0); }
+  function markDmSeen(id) { const t = D.dms.find(x => x.id === id); if (t) pSet({ dmSeen: { ...dmSeenMap(), [id]: t.msgs.length } }); }
+  function dailyGoals() {
+    return [
+      { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
+      { label: "Check today's signals", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
+      { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
+    ];
+  }
+  function maybeExtendStreak() {
+    if (getSetting("streakDay", "") === ymd()) return false;
+    if (!dailyGoals().every(g => g.done)) return false;
+    const s = pState();
+    pSet({ streak: (s.streak != null ? s.streak : D.user.streak) + 1 });
+    setSetting("streakDay", ymd());
+    return true;
+  }
+
+  SCREENS.office = function () {
+    const u = D.user, js = journalStats(), goals = dailyGoals(), gDone = goals.filter(g => g.done).length;
+    const seen = dmSeenMap();
+    setScreen(`
+      ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
+      <div class="office-head reveal">
+        <div class="av-ring" style="background:conic-gradient(var(--gold) ${Math.round(profXp() / profXpNext() * 360)}deg, var(--surface-3) 0)">${av(u.initials, 64)}</div>
+        <div class="of-id">
+          <div class="of-hi">Welcome back,</div>
+          <div class="of-name">${(u.first || u.name.split(" ")[0])}'s office</div>
+          <span class="pill pill-gold" style="margin-top:7px">Level ${profLevel()} · ${tierName(profLevel())}</span>
+        </div>
+        <span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}d</span>
+      </div>
+
+      <div class="card level reveal">
+        <div class="kv"><span>Progress to Level ${profLevel() + 1}</span><b class="num">${profXp().toLocaleString()} / ${profXpNext().toLocaleString()} XP</b></div>
+        <div class="level-bar"><i style="width:${Math.round(profXp() / profXpNext() * 100)}%"></i></div>
+        <div class="kv" style="margin-top:2px"><span>${(profXpNext() - profXp()).toLocaleString()} XP to go — log a trade for +40, join a call for +50</span></div>
+      </div>
+
+      <div class="card card-pad reveal" style="margin-top:14px">
+        <div class="sch-head"><span class="eyebrow">${ic("i-check", "ic")} Today's goals</span><span class="sch-count num">${gDone}/${goals.length}</span></div>
+        ${goals.map(g => `<button class="as-btn jny-row ${g.done ? "is-done" : ""}" ${g.done ? 'aria-disabled="true"' : g.act}><span class="jny-node">${g.done ? ic("i-check", "ic") : ""}</span><span class="jny-label">${g.label}</span>${g.done ? "" : `<span class="jny-next">Do it</span>`}</button>`).join("")}
+        <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : `Complete all ${goals.length} to extend your ${profStreak()}-day streak.`}</p>
+      </div>
+
+      <div class="section-head"><span class="h2">Messages</span><span class="more" data-act="members">Members ›</span></div>
+      <div class="card card-pad">
+        ${D.dms.map(t => {
+          const un = Math.max(0, t.msgs.length - (seen[t.id] || 0)), lastM = t.msgs[t.msgs.length - 1];
+          return `<button class="as-btn dm-row" data-dm="${t.id}">${av(t.initials, 44, un ? "" : "quiet")}<div class="dm-body"><div class="dm-top"><b>${t.name}${t.role === "Coach" ? ' <span class="vchk">✓</span>' : ""}</b><span class="dm-time num">${t.last}</span></div><small class="dm-prev">${lastM.me ? "You: " : ""}${lastM.text}</small></div>${un ? `<span class="dm-un num">${un}</span>` : ic("i-chev", "dr-chev")}</button>`;
+        }).join("")}
+      </div>
+
+      <div class="stat-row" style="margin-top:14px">
+        <div class="stat">${ic("i-trophy", "ic")}<b class="num">#${myRank()}</b><small>Leaderboard</small></div>
+        <div class="stat">${ic("i-target", "ic")}<b class="num">${js.winRate}%</b><small>Win rate</small></div>
+        <div class="stat">${ic("i-chart", "ic")}<b class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
+      </div>
+
+      <div class="section-head"><span class="h2">Your badges</span></div>
+      <div class="badges">${liveBadges().map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
+
+      <div class="section-head"><span class="h2">Quick actions</span></div>
+      <div class="card card-pad">
+        ${hubRow("i-share", "Share your trader card", "Flex the streak — post your stats", "tradercard")}
+        ${hubRow("i-flame", "Monthly challenge", "Journal every trade · 30 days", "challenge")}
+        ${hubRow("i-send", "Trade copier", "Mirror VIP signals to your MT5", "copier", true)}
+      </div>
+      <div class="spacer"></div>
+    `);
+    const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
+    [...document.querySelectorAll("[data-dm]")].forEach(n => n.onclick = () => openDm(n.dataset.dm));
+    const tc = $('[data-act="tradercard"]'); if (tc) tc.onclick = openTraderCard;
+    wireCommon();
+    if (maybeExtendStreak()) setTimeout(() => {
+      toast(`Streak extended — ${profStreak()} days`, "i-flame");
+      const sc = document.querySelector(".office-head .streak-chip");
+      if (sc) sc.innerHTML = `${ic("i-flame", "ic")} ${profStreak()}d`;
+    }, 700);
+  };
+
+  // ---- DM thread — scripted replies with a typing indicator ----
+  function openDm(id) {
+    const t = D.dms.find(x => x.id === id); if (!t) return;
+    markDmSeen(id);
+    const listUn = document.querySelector(`[data-dm="${id}"] .dm-un`); if (listUn) listUn.remove();
+    const esc = (s) => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    const bubble = (m) => `<div class="dm-msg${m.me ? " me" : ""}">${m.me ? esc(m.text) : m.text}<span class="dm-t num">${m.time}</span></div>`;
+    openModal(`
+      <div class="dm-head">${av(t.initials, 44)}<div><b>${t.name}${t.role === "Coach" ? ' <span class="vchk">✓</span>' : ""}</b><small>${t.role || "Member"}</small></div></div>
+      <div class="dm-thread" id="dm-thread">${t.msgs.map(bubble).join("")}</div>
+      <div class="dm-compose">
+        <input class="finput" id="dm-in" placeholder="Message ${t.name.split(" ")[0]}…" autocomplete="off" aria-label="Message ${t.name}">
+        <button class="btn btn-gold dm-send" id="dm-send" aria-label="Send">${ic("i-send")}</button>
+      </div>`);
+    const th = $("#dm-thread"), inp = $("#dm-in"), snd = $("#dm-send");
+    th.scrollTop = th.scrollHeight;
+    let ri = 0, timers = [];
+    const send = () => {
+      const v = (inp.value || "").trim(); if (!v) return;
+      inp.value = "";
+      const mine = { me: true, text: v, time: "now" };
+      t.msgs.push(mine);
+      th.insertAdjacentHTML("beforeend", bubble(mine));
+      th.scrollTop = th.scrollHeight;
+      markDmSeen(id);
+      timers.push(setTimeout(() => {
+        th.insertAdjacentHTML("beforeend", `<div class="dm-msg dm-typing" id="dm-typing"><i></i><i></i><i></i></div>`);
+        th.scrollTop = th.scrollHeight;
+        timers.push(setTimeout(() => {
+          const ty = $("#dm-typing"); if (ty) ty.remove();
+          const rep = { text: t.replies[ri % t.replies.length], time: "now" }; ri++;
+          t.msgs.push(rep);
+          th.insertAdjacentHTML("beforeend", bubble(rep));
+          th.scrollTop = th.scrollHeight;
+          markDmSeen(id);
+        }, 1500 + Math.random() * 900));
+      }, 500));
+    };
+    snd.onclick = send;
+    inp.onkeydown = (e) => { if (e.key === "Enter") send(); };
   }
 
   // ---- "Your journey" — milestone tracker (the Duolingo loop, floor-flavoured) ----
@@ -1451,7 +1578,7 @@
         tags: oc === "win" ? ["Followed plan"] : oc === "loss" ? ["Review"] : ["Managed well"],
         note: $("#f-note").value || "No notes added.",
       });
-      recordLog(); addXp(40); // persist journal + streak + leaderboard points + XP
+      recordLog(); addXp(40); setSetting("logDay", ymd()); // persist journal + streak + leaderboard points + XP + daily goal
       closeModal(); journalFilter = "All";
       setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged · +50 pts", "i-check"); }, 320);
     };
@@ -2712,6 +2839,7 @@
     [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
     [...document.querySelectorAll("[data-act=copier]")].forEach(n => n.onclick = openCopier);
     [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
+    [...document.querySelectorAll("[data-act=office]")].forEach(n => n.onclick = () => go("office"));
     [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });

@@ -360,6 +360,40 @@ window.DATA = {
   // ── monthly challenge ──
   challenge: { name:"Journal Every Trade", desc:"Log all your trades for 30 days — build the habit that builds consistency.", done:18, total:30, reward:"Disciplined badge + leaderboard boost", joined:true },
   // ── announcements from the team ──
+  // direct messages — the office inbox (scripted replies cycle per thread)
+  dms: [
+    { id:"mw", name:"Marcus Webb", initials:"MW", role:"Member", last:"2m ago",
+      msgs:[
+        { text:"You catch that London move? Clean as anything.", time:"09:12" },
+        { text:"I waited for the reclaim like Arron said — best entry I've taken all month 🙌", time:"09:13" },
+      ],
+      replies:[
+        "Exactly — patience pays. What was your R on it?",
+        "I'm holding my runner into NY. Stop's at breakeven so I'm relaxed either way.",
+        "Same setup as Tuesday's. The playbook just keeps repeating.",
+      ] },
+    { id:"pn", name:"Priya Nair", initials:"PN", role:"Top 3 · leaderboard", last:"1h ago",
+      msgs:[
+        { text:"Saw you climbing the leaderboard 👀", time:"08:20" },
+        { text:"Keep journaling every trade — that's what got me to top 3.", time:"08:21" },
+      ],
+      replies:[
+        "Honestly, the journal reviews changed everything for me.",
+        "Do the Mindset call on Sunday — most underrated session on the schedule.",
+        "Two good trades a week beats ten forced ones. Quality over quantity.",
+      ] },
+    { id:"ge", name:"Georgie", initials:"GE", role:"Coach", last:"Yesterday",
+      msgs:[
+        { text:"Good question in Thursday's session 👏", time:"Thu" },
+        { text:"Bring your last 3 swing entries to the next call and we'll review them live on the chart.", time:"Thu" },
+      ],
+      replies:[
+        "Perfect — drop them in before 7 and I'll pull them up on the chart.",
+        "That's exactly the habit that separates the consistent traders.",
+        "See you on the call 👊",
+      ] },
+  ],
+
   announcements: [
     { from:BRAND.founder, role:"Founder", time:"2h ago", text:"New York session was textbook today — replay's up in Learn. Watch how we managed the runner." },
     { from:"Team", role: BRAND.name, time:"Yesterday", text:"Dubai meetup tickets are live — 12 spots left. See you on the floor." },
