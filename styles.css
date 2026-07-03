@@ -1204,6 +1204,22 @@ a{color:inherit;text-decoration:none}
 .jny-row.is-done .jny-label{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(var(--gold-rgb),.45);text-decoration-thickness:1px}
 .jny-next{flex:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:rgba(var(--gold-rgb),.1);border:1px solid var(--gold-line);border-radius:var(--r-full);padding:4px 9px}
 .jny-xp{flex:none;font-size:10.5px;font-weight:700;color:var(--faint)}
+.jny-dest{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 6px}
+.jny-dest b{color:var(--gold)}
+.jny-stage{display:flex;align-items:center;gap:10px;margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
+.jny-stage .jny-st-n{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-3);border:1px solid var(--line-2)}
+.jny-stage.is-done .jny-st-n{color:var(--gold);background:rgba(var(--gold-rgb),.12);border-color:var(--gold-line)}
+.jny-st-name{flex:1;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.jny-stage.is-done .jny-st-name{color:var(--gold)}
+.jny-stage .ic{width:13px;height:13px;color:var(--gold)}
+.jny-st-count{font-size:10.5px;font-weight:700;color:var(--faint)}
+.jny-stage + .jny-row::before{display:none}
+.jny-summit{display:flex;align-items:center;gap:12px;margin-top:14px;padding:13px 14px;border-radius:var(--r-md);background:rgba(var(--gold-rgb),.06);border:1px dashed var(--gold-line)}
+.jny-summit .jny-node{background:rgba(var(--gold-rgb),.14);border-color:var(--gold-line);color:var(--gold)}
+.jny-summit .jny-node .ic{width:14px;height:14px}
+.jny-summit b{display:block;font-size:13.5px;margin-bottom:2px}
+.jny-summit small{font-size:11.5px;color:var(--muted);line-height:1.45}
+.jny-summit.is-done{border-style:solid;background:rgba(var(--gold-rgb),.12)}
 /* the office — personal HQ */
 .office-head{display:flex;align-items:center;gap:14px;margin:6px 0 16px}
 .of-id{flex:1;min-width:0}

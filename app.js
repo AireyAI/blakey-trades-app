@@ -677,8 +677,6 @@
         ${liveHomeStats().map(s => `<div class="stat">${ic("i-" + s.ic, "ic")}<b class="num">${s.value}</b><small>${s.label}</small></div>`).join("")}
       </div>
 
-      ${journeyCard()}
-
       ${toolsRow()}
 
       <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community" data-seg="community">Open ›</span></div>
@@ -894,6 +892,8 @@
         <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : `Complete all ${goals.length} to extend your ${profStreak()}-day streak.`}</p>
       </div>
 
+      ${journeyCard()}
+
       <div class="section-head"><span class="h2">Messages</span><span class="more" data-act="members">Members ›</span></div>
       <div class="card card-pad">
         ${D.dms.map(t => {
@@ -972,31 +972,61 @@
     inp.onkeydown = (e) => { if (e.key === "Enter") send(); };
   }
 
-  // ---- "Your journey" — milestone tracker (the Duolingo loop, floor-flavoured) ----
-  function journeySteps() {
+  // ---- "Your journey" — the staged road to a consistently profitable trader.
+  // Every milestone is derived from the member's REAL state (journal, calls, tier, copier, streak, rank).
+  function journeyStages() {
     const js = journalStats(), tier = getSetting("tier", "free");
+    const anyLesson = D.videos.some(v => getVideoProgress(v.id) > 0);
     return [
-      { label: "Joined " + B.floor, done: true },
-      { label: "Took your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
-      { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
-      { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
-      { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
-      { label: "MT5 connected to the copier", done: !!getSetting("copierLinked", false), xp: 150, act: 'data-act="copier"' },
+      { name: "Get on " + B.floor, steps: [
+        { label: "Joined " + B.floor, done: true },
+        { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
+        { label: "MT5 connected to the copier", done: !!getSetting("copierLinked", false), xp: 150, act: 'data-act="copier"' },
+      ] },
+      { name: "Learn the playbook", steps: [
+        { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
+        { label: "Started the education library", done: anyLesson, xp: 50, act: 'data-tab="learn"' },
+        { label: "Took your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
+      ] },
+      { name: "Build the discipline", steps: [
+        { label: "Logged 5 trades in the journal", done: js.count >= 5, xp: 75, act: 'data-act="journal"' },
+        { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
+        { label: "Held a 7-day streak", done: profStreak() >= 7, xp: 75 },
+      ] },
+      { name: "Trade it like a pro", steps: [
+        { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
+        { label: "+15R net on your book", done: js.netR >= 15, xp: 200, act: 'data-act="journal"' },
+        { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 200, act: 'data-act="members"' },
+      ] },
     ];
   }
   function journeyCard() {
-    const steps = journeySteps();
-    const done = steps.filter(s => s.done).length;
-    const nextIdx = steps.findIndex(s => !s.done);
-    return `<div class="card card-pad jny reveal" style="animation-delay:.07s">
-      <div class="sch-head"><span class="eyebrow">${ic("i-trophy", "ic")} Your journey</span><span class="sch-count num">${done}/${steps.length}</span></div>
-      <div class="jny-bar"><i style="width:${Math.round(done / steps.length * 100)}%"></i></div>
-      ${steps.map((s, i) => `
-        <button class="as-btn jny-row ${s.done ? "is-done" : i === nextIdx ? "is-next" : ""}" ${s.act || ""} ${s.done ? 'aria-disabled="true"' : ""}>
-          <span class="jny-node">${s.done ? ic("i-check", "ic") : `<span class="num">${i + 1}</span>`}</span>
-          <span class="jny-label">${s.label}</span>
-          ${s.done ? "" : i === nextIdx ? `<span class="jny-next">Next up${s.xp ? ` · +${s.xp} XP` : ""}</span>` : s.xp ? `<span class="jny-xp num">+${s.xp} XP</span>` : ""}
-        </button>`).join("")}
+    const stages = journeyStages();
+    const flat = stages.flatMap(st => st.steps);
+    const done = flat.filter(s => s.done).length, total = flat.length;
+    let seenNext = false;
+    const curStage = stages.findIndex(st => st.steps.some(s => !s.done));
+    const summit = done === total;
+    return `<div class="card card-pad jny reveal">
+      <div class="sch-head"><span class="eyebrow">${ic("i-pin", "ic")} Your journey</span><span class="sch-count num">${done}/${total}</span></div>
+      <div class="jny-bar"><i style="width:${Math.max(4, Math.round(done / total * 100))}%"></i></div>
+      <p class="jny-dest">Stage ${(curStage === -1 ? stages.length : curStage + 1)} of ${stages.length} · <b>${stages[curStage === -1 ? stages.length - 1 : curStage].name}</b> — destination: consistently profitable, tracked from your real journal.</p>
+      ${stages.map((st, si) => {
+        const stDone = st.steps.every(s => s.done);
+        return `<div class="jny-stage ${stDone ? "is-done" : ""}"><span class="jny-st-n num">${si + 1}</span><span class="jny-st-name">${st.name}</span>${stDone ? ic("i-check", "ic") : `<span class="jny-st-count num">${st.steps.filter(s => s.done).length}/${st.steps.length}</span>`}</div>`
+        + st.steps.map(s => {
+          const isNext = !s.done && !seenNext; if (isNext) seenNext = true;
+          return `<button class="as-btn jny-row ${s.done ? "is-done" : isNext ? "is-next" : ""}" ${(!s.done && s.act) || ""} ${s.done ? 'aria-disabled="true"' : ""}>
+            <span class="jny-node">${s.done ? ic("i-check", "ic") : ""}</span>
+            <span class="jny-label">${s.label}</span>
+            ${s.done ? "" : isNext ? `<span class="jny-next">Next up${s.xp ? ` · +${s.xp} XP` : ""}</span>` : s.xp ? `<span class="jny-xp num">+${s.xp} XP</span>` : ""}
+          </button>`;
+        }).join("");
+      }).join("")}
+      <div class="jny-summit ${summit ? "is-done" : ""}">
+        <span class="jny-node">${ic("i-trophy", "ic")}</span>
+        <div><b>Consistently profitable</b><small>${summit ? "You made it — this is what the numbers say." : "Where the road leads. Every step above moves you closer."}</small></div>
+      </div>
     </div>`;
   }
 
