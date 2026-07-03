@@ -1,32 +1,99 @@
 <!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;box-sizing:border-box}
   html,body{width:1200px;height:630px;overflow:hidden}
-  .card{width:1200px;height:630px;position:relative;background:radial-gradient(120% 110% at 12% 0%,#1a1407 0%,#0b0c11 46%,#070809 100%);font-family:Sora,system-ui,sans-serif;color:#fff;padding:74px 80px;display:flex;flex-direction:column;justify-content:center}
-  .card::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 100% 50%,rgba(199,164,77,.16),transparent 70%)}
-  .chart{position:absolute;right:0;top:0;height:100%;width:55%;opacity:.5}
-  .brand{display:flex;align-items:center;gap:16px;margin-bottom:30px;position:relative;z-index:2}
-  .brand img{height:54px}
-  h1{font-size:84px;font-weight:800;letter-spacing:-.03em;line-height:.98;position:relative;z-index:2}
-  h1 .g{color:#D8B65A}
-  p{font-size:30px;color:#c9cbd2;margin-top:24px;max-width:760px;line-height:1.35;position:relative;z-index:2;font-weight:600}
-  .chips{display:flex;gap:14px;margin-top:38px;position:relative;z-index:2}
-  .chip{font-size:23px;font-weight:700;padding:13px 24px;border-radius:999px;border:1.5px solid rgba(199,164,77,.5);color:#E6C66A;background:rgba(199,164,77,.1)}
-  .dot{display:inline-block;width:13px;height:13px;border-radius:50%;background:#E0301E;margin-right:9px;box-shadow:0 0 0 5px rgba(224,48,30,.25)}
+  .card{width:1200px;height:630px;position:relative;overflow:hidden;background:radial-gradient(130% 120% at 10% -5%,#201708 0%,#0b0c11 44%,#060708 100%);font-family:Sora,system-ui,sans-serif;color:#fff;padding:72px 0 72px 78px;display:flex;align-items:center}
+  /* gold bloom behind the ticket + vignette + grain */
+  .card::before{content:"";position:absolute;inset:0;background:radial-gradient(46% 62% at 82% 46%,rgba(224,178,60,.17),transparent 70%)}
+  .card::after{content:"";position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .left{position:relative;z-index:2;width:600px;flex:none}
+  .brand{display:flex;align-items:center;margin-bottom:34px}
+  .brand img{height:58px}
+  h1{font-size:88px;font-weight:800;letter-spacing:-.033em;line-height:.97}
+  h1 .g{background:linear-gradient(115deg,#8A6620 0%,#E0B23C 26%,#FBEAB0 48%,#ECC85F 62%,#A87C22 88%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  p{font-family:Outfit,system-ui,sans-serif;font-size:29px;color:#c9cbd2;margin-top:26px;max-width:560px;line-height:1.4;font-weight:500}
+  .chips{display:flex;gap:13px;margin-top:40px;flex-wrap:wrap}
+  .chip{font-family:Outfit,sans-serif;font-size:21.5px;font-weight:700;padding:12px 22px;border-radius:999px;border:1.5px solid rgba(224,178,60,.45);color:#F3D277;background:rgba(224,178,60,.09);white-space:nowrap}
+  .chip .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#E0301E;margin-right:9px;box-shadow:0 0 0 5px rgba(224,48,30,.22)}
+  .chip .tg{display:inline-block;width:12px;height:12px;border-radius:50%;background:#2AABEE;margin-right:9px;box-shadow:0 0 0 5px rgba(42,171,238,.18)}
+
+  /* ---- floating glass signal ticket (the app's own vernacular) ---- */
+  .ticket{position:absolute;z-index:2;right:64px;top:50%;transform:translateY(-50%) rotate(-2.6deg);width:452px;border-radius:30px;
+    background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.035));
+    border:1.5px solid rgba(255,255,255,.14);
+    box-shadow:0 44px 90px rgba(0,0,0,.6),0 20px 60px rgba(168,124,34,.22),inset 0 1px 0 rgba(255,255,255,.16);
+    padding:26px 26px 24px}
+  .t-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .t-name{display:flex;align-items:center;gap:12px;font-weight:800;font-size:24px;letter-spacing:-.01em}
+  .t-coin{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#8A6620,#E0B23C 45%,#FBEAB0 60%,#A87C22);display:grid;place-items:center;color:#1A1206;font-size:16px;font-weight:800;font-family:Sora}
+  .t-live{font-family:'JetBrains Mono',monospace;font-size:15.5px;font-weight:700;color:#F3D277;border:1.5px solid rgba(224,178,60,.5);background:rgba(224,178,60,.1);border-radius:999px;padding:8px 15px;display:flex;align-items:center;gap:8px}
+  .t-live i{width:10px;height:10px;border-radius:50%;background:#E0301E;box-shadow:0 0 0 4px rgba(224,48,30,.25)}
+  .t-pair{display:flex;align-items:baseline;gap:12px;margin:2px 2px 12px;font-family:'JetBrains Mono',monospace}
+  .t-pair b{font-size:23px;letter-spacing:.02em}
+  .t-pair .px{font-size:23px;color:#E0B23C;font-weight:700}
+  .t-pair .dir{font-size:15px;font-weight:700;color:#3FBF7F;background:rgba(63,191,127,.12);border:1px solid rgba(63,191,127,.4);border-radius:8px;padding:4px 10px}
+  .cells{display:flex;gap:10px;margin-top:14px}
+  .cell{flex:1;background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:12px 14px}
+  .cell small{display:block;font-family:Outfit,sans-serif;font-size:13.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8f929c;margin-bottom:5px}
+  .cell b{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#F3D277}
+  .cell.sl b{color:#F0565B}.cell.tp b{color:#3FBF7F}
+  .t-foot{margin-top:15px;font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:#9a9da6;display:flex;align-items:center;gap:8px}
+  .t-foot i{width:9px;height:9px;border-radius:50%;background:#2AABEE}
 </style></head>
 <body>
   <div class="card">
-    <svg class="chart" viewBox="0 0 660 630" preserveAspectRatio="xMaxYMid slice">
-      <polyline points="0,470 60,440 120,460 180,380 240,400 300,300 360,330 420,230 480,260 540,150 600,180 660,70" fill="none" stroke="#C7A44D" stroke-width="3" opacity=".7"/>
-      <g fill="#3ECB86" stroke="#3ECB86" stroke-width="9">
-        <line x1="120" y1="420" x2="120" y2="500"/><line x1="240" y1="360" x2="240" y2="440"/><line x1="360" y1="290" x2="360" y2="370"/><line x1="480" y1="220" x2="480" y2="300"/><line x1="600" y1="130" x2="600" y2="220"/>
-      </g>
-    </svg>
-    <div class="brand"><img src="assets/blakey-logo.png" alt="Blakey Trades"></div>
-    <h1>The floor is<br><span class="g">open.</span></h1>
-    <p>Live gold calls, the full education library, and 4,200+ traders who show up every day.</p>
-    <div class="chips"><span class="chip"><span class="dot"></span>Live calls</span><span class="chip">Education</span><span class="chip">Free for members</span></div>
+    <div class="left">
+      <div class="brand"><img src="assets/blakey-logo.png" alt="Blakey Trades"></div>
+      <h1>The floor is<br><span class="g">open.</span></h1>
+      <p>Live gold calls, the full education library, and 4,200+ traders on the floor.</p>
+      <div class="chips">
+        <span class="chip"><span class="dot"></span>Live calls</span>
+        <span class="chip"><span class="tg"></span>Synced from Telegram</span>
+        <span class="chip">Free for members</span>
+      </div>
+    </div>
+
+    <div class="ticket">
+      <div class="t-top">
+        <span class="t-name"><span class="t-coin">BT</span>BT&nbsp;VIP</span>
+        <span class="t-live"><i></i>LIVE</span>
+      </div>
+      <div class="t-pair"><b>XAU/USD</b><span class="px">4,026.50</span><span class="dir">▲ LONG</span></div>
+      <svg width="400" height="168" viewBox="0 0 400 168">
+        <!-- demand zone -->
+        <rect x="0" y="118" width="400" height="30" fill="rgba(224,178,60,.09)"/>
+        <line x1="0" y1="118" x2="400" y2="118" stroke="rgba(224,178,60,.35)" stroke-width="1"/>
+        <!-- levels: TP / entry / SL -->
+        <line x1="0" y1="22"  x2="400" y2="22"  stroke="rgba(63,191,127,.55)" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <line x1="0" y1="126" x2="400" y2="126" stroke="rgba(224,178,60,.7)"  stroke-width="1.5" stroke-dasharray="5 5"/>
+        <line x1="0" y1="156" x2="400" y2="156" stroke="rgba(240,86,91,.55)"  stroke-width="1.5" stroke-dasharray="5 5"/>
+        <!-- candles -->
+        <g stroke-width="2">
+          <line x1="14"  y1="70"  x2="14"  y2="112" stroke="#F0565B"/><rect x="8"   y="78"  width="12" height="24" fill="#F0565B"/>
+          <line x1="42"  y1="82"  x2="42"  y2="124" stroke="#3FBF7F"/><rect x="36"  y="92"  width="12" height="22" fill="#3FBF7F"/>
+          <line x1="70"  y1="92"  x2="70"  y2="132" stroke="#F0565B"/><rect x="64"  y="98"  width="12" height="26" fill="#F0565B"/>
+          <line x1="98"  y1="104" x2="98"  y2="146" stroke="#F0565B"/><rect x="92"  y="112" width="12" height="24" fill="#F0565B"/>
+          <line x1="126" y1="112" x2="126" y2="150" stroke="#3FBF7F"/><rect x="120" y="120" width="12" height="20" fill="#3FBF7F"/>
+          <line x1="154" y1="100" x2="154" y2="140" stroke="#3FBF7F"/><rect x="148" y="106" width="12" height="26" fill="#3FBF7F"/>
+          <line x1="182" y1="84"  x2="182" y2="118" stroke="#3FBF7F"/><rect x="176" y="90"  width="12" height="22" fill="#3FBF7F"/>
+          <line x1="210" y1="88"  x2="210" y2="120" stroke="#F0565B"/><rect x="204" y="92"  width="12" height="18" fill="#F0565B"/>
+          <line x1="238" y1="66"  x2="238" y2="106" stroke="#3FBF7F"/><rect x="232" y="72"  width="12" height="26" fill="#3FBF7F"/>
+          <line x1="266" y1="52"  x2="266" y2="92"  stroke="#3FBF7F"/><rect x="260" y="58"  width="12" height="24" fill="#3FBF7F"/>
+          <line x1="294" y1="58"  x2="294" y2="90"  stroke="#F0565B"/><rect x="288" y="62"  width="12" height="18" fill="#F0565B"/>
+          <line x1="322" y1="40"  x2="322" y2="82"  stroke="#3FBF7F"/><rect x="316" y="46"  width="12" height="26" fill="#3FBF7F"/>
+          <line x1="350" y1="30"  x2="350" y2="70"  stroke="#3FBF7F"/><rect x="344" y="36"  width="12" height="24" fill="#3FBF7F"/>
+          <line x1="378" y1="18"  x2="378" y2="58"  stroke="#3FBF7F"/><rect x="372" y="26"  width="12" height="22" fill="#3FBF7F"/>
+        </g>
+        <circle cx="392" cy="22" r="4" fill="#E0B23C"/>
+      </svg>
+      <div class="cells">
+        <div class="cell"><small>Entry</small><b>4,026.5</b></div>
+        <div class="cell sl"><small>Stop</small><b>4,014.0</b></div>
+        <div class="cell tp"><small>Target</small><b>4,064.0</b></div>
+      </div>
+      <div class="t-foot"><i></i>Live-synced from Telegram · verified members only</div>
+    </div>
   </div>
 </body></html>
