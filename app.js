@@ -831,7 +831,7 @@
     const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
     const healthy = js.pf >= 1 && js.netR >= 0;
     const when = nc ? (nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
-    const unread = unreadAnnouncements(), dmUn = dmUnread();
+    const unread = unreadAnnouncements(), dmUn = dmUnread() + (thisWeeksReview() ? 0 : 1); // DMs + the pending weekly review pull people in
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
       <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your office</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
@@ -886,11 +886,15 @@
         <div class="kv" style="margin-top:2px"><span>${(profXpNext() - profXp()).toLocaleString()} XP to go — log a trade for +40, join a call for +50</span></div>
       </div>
 
+      <div class="badges" style="margin-top:14px">${liveBadges().map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
+
       <div class="card card-pad reveal" style="margin-top:14px">
         <div class="sch-head"><span class="eyebrow">${ic("i-check", "ic")} Today's goals</span><span class="sch-count num">${gDone}/${goals.length}</span></div>
         ${goals.map(g => `<button class="as-btn jny-row ${g.done ? "is-done" : ""}" ${g.done ? 'aria-disabled="true"' : g.act}><span class="jny-node">${g.done ? ic("i-check", "ic") : ""}</span><span class="jny-label">${g.label}</span>${g.done ? "" : `<span class="jny-next">Do it</span>`}</button>`).join("")}
         <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : `Complete all ${goals.length} to extend your ${profStreak()}-day streak.`}</p>
       </div>
+
+      ${weeklyReviewCard()}
 
       ${journeyCard()}
 
@@ -907,9 +911,6 @@
         <div class="stat">${ic("i-target", "ic")}<b class="num">${js.winRate}%</b><small>Win rate</small></div>
         <div class="stat">${ic("i-chart", "ic")}<b class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
       </div>
-
-      <div class="section-head"><span class="h2">Your badges</span></div>
-      <div class="badges">${liveBadges().map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
 
       <div class="section-head"><span class="h2">Quick actions</span></div>
       <div class="card card-pad">
@@ -929,6 +930,84 @@
       if (sc) sc.innerHTML = `${ic("i-flame", "ic")} ${profStreak()}d`;
     }, 700);
   };
+
+  // ---- weekly review — the Friday debrief: honest 1-10 self-scores → a personal Trader Score ----
+  function weekKey() { const d = new Date(), y = d.getFullYear(), start = new Date(y, 0, 1); return y + "-W" + Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7); }
+  function weeklyHistory() { return pState().weekly || []; }
+  function thisWeeksReview() { return weeklyHistory().find(w => w.week === weekKey()) || null; }
+  function scoreBand(s) { return s >= 80 ? "Elite week" : s >= 65 ? "Disciplined" : s >= 50 ? "Building" : "Reset week"; }
+  const WR_QS = [
+    { id: "plan", label: "Followed my trading plan" },
+    { id: "risk", label: "Sized my risk right — never over-risked" },
+    { id: "run", label: "Let winners run — no early exits" },
+    { id: "greed", label: "Took profit at the plan, not out of greed" },
+    { id: "emo", label: "No revenge trades, no FOMO entries" },
+    { id: "journal", label: "Journaled every trade I took" },
+  ];
+  function weeklyReviewCard() {
+    const done = thisWeeksReview();
+    const hist = weeklyHistory();
+    const prev = done ? hist.filter(w => w.week !== weekKey()).slice(-1)[0] : hist.slice(-1)[0];
+    const isFri = [5, 6, 0].includes(new Date().getDay());
+    if (done) {
+      const d = prev ? done.score - prev.score : null;
+      return `<div class="card card-pad wr reveal">
+        <div class="sch-head"><span class="eyebrow">${ic("i-target", "ic")} Weekly review</span><span class="sch-count">done ✓</span></div>
+        <div class="wr-done">
+          <div class="ws-ring" style="background:conic-gradient(var(--gold) ${Math.round(done.score / 100 * 360)}deg, var(--surface-4) 0)"><b class="num">${done.score}</b></div>
+          <div><b class="wr-band">${scoreBand(done.score)}</b><small>Trader score · this week${d != null ? ` · <span class="num ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲" : "▼"} ${Math.abs(d)}</span> vs last` : ""}</small><small>Next review opens Friday.</small></div>
+        </div>
+      </div>`;
+    }
+    return `<button class="as-btn card card-pad wr reveal" data-act="weeklyreview">
+      <div class="sch-head"><span class="eyebrow">${ic("i-target", "ic")} Weekly review</span><span class="sch-count">+75 XP</span></div>
+      <p class="wr-hook">${isFri ? "It's Friday — time for the truth." : "Get ahead of Friday — debrief your week."} Six honest questions, one Trader Score.</p>
+      ${prev ? `<p class="wr-last">Last week: <b class="num">${prev.score}</b> · ${scoreBand(prev.score)}</p>` : ""}
+      <span class="btn btn-gold btn-block" style="margin-top:11px">${ic("i-edit")} Start the review</span>
+    </button>`;
+  }
+  function openWeeklyReview() {
+    if (thisWeeksReview()) { toast("This week's review is done — Friday's next", "i-check"); return; }
+    openModal(`
+      <h3 class="sheet-title">Weekly review</h3>
+      <p class="sheet-sub">Be brutally honest — this score is for you, not the leaderboard. 1 = not at all, 10 = nailed it.</p>
+      ${WR_QS.map(q => `
+        <div class="ws-row">
+          <div class="ws-top"><label for="ws-${q.id}">${q.label}</label><b class="num" id="wsv-${q.id}">5</b></div>
+          <input type="range" class="fd-slider" id="ws-${q.id}" min="1" max="10" step="1" value="5" aria-label="${q.label}">
+        </div>`).join("")}
+      <label class="flabel" for="ws-well">What did you do well?</label>
+      <textarea class="finput ftext" id="ws-well" placeholder="e.g. Waited for the reclaim instead of chasing…"></textarea>
+      <label class="flabel" for="ws-fix">What will you do differently next week?</label>
+      <textarea class="finput ftext" id="ws-fix" placeholder="e.g. Half size on news days…"></textarea>
+      <button class="btn btn-gold btn-block" id="ws-submit" style="margin-top:14px">${ic("i-check")} Get my Trader Score</button>
+      <div class="spacer"></div>`);
+    WR_QS.forEach(q => {
+      const sl = $("#ws-" + q.id), out = $("#wsv-" + q.id);
+      const paint = () => { out.textContent = sl.value; sl.style.background = `linear-gradient(90deg, var(--gold) ${(sl.value - 1) / 9 * 100}%, var(--surface-4) 0)`; };
+      paint(); sl.oninput = paint;
+    });
+    $("#ws-submit").onclick = () => {
+      const dims = WR_QS.map(q => ({ id: q.id, label: q.label, v: +$("#ws-" + q.id).value }));
+      const score = Math.round(dims.reduce((s, d) => s + d.v, 0) / dims.length * 10);
+      const entry = { week: weekKey(), score, dims: dims.map(d => ({ id: d.id, v: d.v })), well: ($("#ws-well").value || "").slice(0, 300), fix: ($("#ws-fix").value || "").slice(0, 300) };
+      pSet({ weekly: [...weeklyHistory().filter(w => w.week !== weekKey()), entry] });
+      addXp(75);
+      const prev = weeklyHistory().filter(w => w.week !== weekKey()).slice(-1)[0];
+      openModal(`
+        <h3 class="sheet-title">Your Trader Score</h3>
+        <div class="wr-result">
+          <div class="ws-ring ws-ring-lg" style="background:conic-gradient(var(--gold) ${Math.round(score / 100 * 360)}deg, var(--surface-4) 0)"><b class="num">${score}</b></div>
+          <b class="wr-band">${scoreBand(score)}</b>
+          <small>${prev ? `${score >= prev.score ? "Up from" : "Down from"} ${prev.score} last week · ` : ""}+75 XP banked</small>
+        </div>
+        ${dims.map(d => `<div class="ws-dim"><span>${d.label}</span><div class="ws-dimbar"><i style="width:${d.v * 10}%"></i></div><b class="num">${d.v}</b></div>`).join("")}
+        ${entry.fix ? `<div class="wr-note">${ic("i-edit", "ic")}<div><b>Next week's fix</b><small>${entry.fix.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</small></div></div>` : ""}
+        <button class="btn btn-gold btn-block" id="wr-close" style="margin-top:14px">See you next Friday</button>`);
+      toast(`Trader score ${score} · +75 XP`, "i-check");
+      $("#wr-close").onclick = () => { closeModal(); setTimeout(() => { if (SCREENS[activeTab]) SCREENS[activeTab](); }, 360); };
+    };
+  }
 
   // ---- DM thread — scripted replies with a typing indicator ----
   function openDm(id) {
@@ -2870,6 +2949,7 @@
     [...document.querySelectorAll("[data-act=copier]")].forEach(n => n.onclick = openCopier);
     [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
     [...document.querySelectorAll("[data-act=office]")].forEach(n => n.onclick = () => go("office"));
+    [...document.querySelectorAll("[data-act=weeklyreview]")].forEach(n => n.onclick = openWeeklyReview);
     [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
