@@ -1210,6 +1210,7 @@ a{color:inherit;text-decoration:none}
 .jny-stage .jny-st-n{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface-3);border:1px solid var(--line-2)}
 .jny-stage.is-done .jny-st-n{color:var(--gold);background:rgba(var(--gold-rgb),.12);border-color:var(--gold-line)}
 .jny-st-name{flex:1;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.jny-pace{font-style:normal;font-size:9.5px;font-weight:600;letter-spacing:.04em;text-transform:none;color:var(--faint);margin-left:8px}
 .jny-stage.is-done .jny-st-name{color:var(--gold)}
 .jny-stage .ic{width:13px;height:13px;color:var(--gold)}
 .jny-st-count{font-size:10.5px;font-weight:700;color:var(--faint)}

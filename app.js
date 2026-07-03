@@ -866,6 +866,7 @@
   }
 
   SCREENS.office = function () {
+    const stagesWon = maybeGrantStageXp(); // grant stage bounties first so the XP bar paints post-award
     const u = D.user, js = journalStats(), goals = dailyGoals(), gDone = goals.filter(g => g.done).length;
     const seen = dmSeenMap();
     setScreen(`
@@ -929,6 +930,7 @@
       const sc = document.querySelector(".office-head .streak-chip");
       if (sc) sc.innerHTML = `${ic("i-flame", "ic")} ${profStreak()}d`;
     }, 700);
+    if (stagesWon) setTimeout(() => toast(`Stage ${stagesWon > 1 ? "rewards" : "reward"} banked · +${stagesWon * 250} XP`, "i-trophy"), 1300);
   };
 
   // ---- weekly review — the Friday debrief: honest 1-10 self-scores → a personal Trader Score ----
@@ -1054,30 +1056,47 @@
   // ---- "Your journey" — the staged road to a consistently profitable trader.
   // Every milestone is derived from the member's REAL state (journal, calls, tier, copier, streak, rank).
   function journeyStages() {
-    const js = journalStats(), tier = getSetting("tier", "free");
+    const js = journalStats(), tier = getSetting("tier", "free"), wk = weeklyHistory();
     const anyLesson = D.videos.some(v => getVideoProgress(v.id) > 0);
     return [
-      { name: "Get on " + B.floor, steps: [
+      { name: "Get on " + B.floor, pace: "day one", steps: [
         { label: "Joined " + B.floor, done: true },
         { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
         { label: "MT5 connected to the copier", done: !!getSetting("copierLinked", false), xp: 150, act: 'data-act="copier"' },
       ] },
-      { name: "Learn the playbook", steps: [
+      { name: "Learn the playbook", pace: "week one", steps: [
         { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
         { label: "Started the education library", done: anyLesson, xp: 50, act: 'data-tab="learn"' },
         { label: "Took your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
       ] },
-      { name: "Build the discipline", steps: [
+      { name: "Build the discipline", pace: "weeks 2–4", steps: [
         { label: "Logged 5 trades in the journal", done: js.count >= 5, xp: 75, act: 'data-act="journal"' },
+        { label: "First weekly review banked", done: wk.length >= 1, xp: 75, act: 'data-act="weeklyreview"' },
         { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
         { label: "Held a 7-day streak", done: profStreak() >= 7, xp: 75 },
       ] },
-      { name: "Trade it like a pro", steps: [
+      { name: "Prove the edge", pace: "months 1–2", steps: [
         { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
         { label: "+15R net on your book", done: js.netR >= 15, xp: 200, act: 'data-act="journal"' },
-        { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 200, act: 'data-act="members"' },
+        { label: "Two Trader Scores of 65+", done: wk.filter(w => w.score >= 65).length >= 2, xp: 150, act: 'data-act="weeklyreview"' },
+        { label: "Held a 14-day streak", done: profStreak() >= 14, xp: 100 },
+      ] },
+      { name: "Trade it like a pro", pace: "the long game", steps: [
+        { label: "+30R net on your book", done: js.netR >= 30, xp: 250, act: 'data-act="journal"' },
+        { label: "Held a 30-day streak", done: profStreak() >= 30, xp: 250 },
+        { label: "Four weekly reviews banked", done: wk.length >= 4, xp: 200, act: 'data-act="weeklyreview"' },
+        { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 300, act: 'data-act="members"' },
       ] },
     ];
+  }
+  // one-time +250 XP bounty when a stage fully completes (checked on office render)
+  function maybeGrantStageXp() {
+    const granted = pState().jnyXp || [];
+    const newly = journeyStages().map((st, i) => st.steps.every(s => s.done) && !granted.includes(i) ? i : -1).filter(i => i >= 0);
+    if (!newly.length) return 0;
+    pSet({ jnyXp: [...granted, ...newly] });
+    newly.forEach(() => addXp(250));
+    return newly.length;
   }
   function journeyCard() {
     const stages = journeyStages();
@@ -1092,7 +1111,7 @@
       <p class="jny-dest">Stage ${(curStage === -1 ? stages.length : curStage + 1)} of ${stages.length} · <b>${stages[curStage === -1 ? stages.length - 1 : curStage].name}</b> — destination: consistently profitable, tracked from your real journal.</p>
       ${stages.map((st, si) => {
         const stDone = st.steps.every(s => s.done);
-        return `<div class="jny-stage ${stDone ? "is-done" : ""}"><span class="jny-st-n num">${si + 1}</span><span class="jny-st-name">${st.name}</span>${stDone ? ic("i-check", "ic") : `<span class="jny-st-count num">${st.steps.filter(s => s.done).length}/${st.steps.length}</span>`}</div>`
+        return `<div class="jny-stage ${stDone ? "is-done" : ""}"><span class="jny-st-n num">${si + 1}</span><span class="jny-st-name">${st.name}<i class="jny-pace">${st.pace}</i></span>${stDone ? ic("i-check", "ic") : `<span class="jny-st-count num">${st.steps.filter(s => s.done).length}/${st.steps.length}</span>`}</div>`
         + st.steps.map(s => {
           const isNext = !s.done && !seenNext; if (isNext) seenNext = true;
           return `<button class="as-btn jny-row ${s.done ? "is-done" : isNext ? "is-next" : ""}" ${(!s.done && s.act) || ""} ${s.done ? 'aria-disabled="true"' : ""}>
