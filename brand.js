@@ -30,6 +30,7 @@ window.BRAND = {
   // ---- market they trade (label only in fast-reskin mode) ----
   market: "XAUUSD",
   marketName: "Gold",
+  ccy: "£",                        // currency members journal their profit/loss in ($, €, etc.)
 
   // ---- brand colour — the WHOLE metallic theme derives from this one hex ----
   accent: "#E0B23C",

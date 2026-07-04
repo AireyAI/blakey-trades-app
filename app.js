@@ -535,7 +535,7 @@
     return [
       { ic: "flame", value: String(profStreak()), label: "Day streak" },
       { ic: "target", value: st.winRate + "%", label: "Win rate" },
-      { ic: "chart", value: st.avgRR.toFixed(1) + "R", label: "Avg R:R" },
+      { ic: "chart", value: money(st.avgRR, false), label: "Avg win" },
     ];
   }
   // ── XP & levelling, earned from real actions (log a trade, pass a quiz, join a live call) ──
@@ -759,9 +759,8 @@
     if (!i) return {};
     const sess = /york/i.test(i.session) ? "New York" : /asia/i.test(i.session) ? "Asia" : "London";
     const oc = i.status === "tp" ? "win" : i.status === "sl" ? "loss" : i.status === "be" ? "be" : "win";
-    const r = i.status === "sl" ? 1 : (parseFloat(i.rr) || 2);
     const ch = (D.channels.find(c => c.id === i.channel) || {}).name || "Signal";
-    return { pair: i.pair, dir: i.dir, session: sess, outcome: oc, r, setup: `${ch} signal`, note: i.note || "" };
+    return { pair: i.pair, dir: i.dir, session: sess, outcome: oc, setup: `${ch} signal`, note: i.note || "" };
   }
 
   // ---- live open-P&L on running signals (driven by the real spot-gold feed) ----
@@ -839,7 +838,7 @@
       ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
       ${row("i-chart", "New signals today", `<span class="num">${sigsToday}</span>`, 'data-tab="signals"')}
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
-      ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</span>`, 'data-act="journal"')}
+      ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</span>`, 'data-act="journal"')}
       ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
       <button class="btn btn-gold btn-block" data-act="office" style="margin-top:13px">${ic("i-home")} Enter your office${dmUn ? `<span class="dm-badge num">${dmUn}</span>` : ""}</button>
     </div>`;
@@ -910,7 +909,7 @@
       <div class="stat-row" style="margin-top:14px">
         <div class="stat">${ic("i-trophy", "ic")}<b class="num">#${myRank()}</b><small>Leaderboard</small></div>
         <div class="stat">${ic("i-target", "ic")}<b class="num">${js.winRate}%</b><small>Win rate</small></div>
-        <div class="stat">${ic("i-chart", "ic")}<b class="num ${js.netR >= 0 ? "up" : "down"}">${js.netR >= 0 ? "+" : ""}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
+        <div class="stat">${ic("i-chart", "ic")}<b class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</b><small>Net result</small></div>
       </div>
 
       <div class="section-head"><span class="h2">Quick actions</span></div>
@@ -1077,12 +1076,12 @@
       ] },
       { name: "Prove the edge", pace: "months 1–2", steps: [
         { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
-        { label: "+15R net on your book", done: js.netR >= 15, xp: 200, act: 'data-act="journal"' },
+        { label: `${money(1000, false)} banked on your book`, done: js.netR >= 1000, xp: 200, act: 'data-act="journal"' },
         { label: "Two Trader Scores of 65+", done: wk.filter(w => w.score >= 65).length >= 2, xp: 150, act: 'data-act="weeklyreview"' },
         { label: "Held a 14-day streak", done: profStreak() >= 14, xp: 100 },
       ] },
       { name: "Trade it like a pro", pace: "the long game", steps: [
-        { label: "+30R net on your book", done: js.netR >= 30, xp: 250, act: 'data-act="journal"' },
+        { label: `${money(5000, false)} banked on your book`, done: js.netR >= 5000, xp: 250, act: 'data-act="journal"' },
         { label: "Held a 30-day streak", done: profStreak() >= 30, xp: 250 },
         { label: "Four weekly reviews banked", done: wk.length >= 4, xp: 200, act: 'data-act="weeklyreview"' },
         { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 300, act: 'data-act="members"' },
@@ -1453,7 +1452,9 @@
 
   // ---- journal ----
   let journalFilter = "All";
-  function resStr(j) { return j.outcome === "be" ? "BE" : (j.r > 0 ? "+" : "") + j.r.toFixed(1) + "R"; }
+  // money formatter — result values are profit/loss in the community's currency
+  function money(v, signed = true) { const n = Math.round(v || 0), c = B.ccy || "£"; const sign = n > 0 ? (signed ? "+" : "") : n < 0 ? "-" : ""; return sign + c + Math.abs(n).toLocaleString(); }
+  function resStr(j) { return j.outcome === "be" ? "BE" : money(j.r); }
   function badTag(t) { return /FOMO|Chased|Off-plan|Counter|Review/i.test(t); }
   function journalStats() {
     const J = D.journal;
@@ -1489,33 +1490,34 @@
       const wins = dec.filter(j => j.outcome === "win").length;
       return { sn, n: es.length, w: wins, l: dec.length - wins, wr: dec.length ? Math.round(wins / dec.length * 100) : 0 };
     }).filter(x => x.n);
-    // best / worst setup by avg R (2+ trades)
+    // best / worst setup by avg profit (2+ trades)
     const bySetup = {};
     J.forEach(j => { const k = j.setup || "—"; (bySetup[k] = bySetup[k] || []).push(j.r); });
     const setups = Object.entries(bySetup).filter(([, rs]) => rs.length >= 2)
       .map(([k, rs]) => ({ k, n: rs.length, avg: rs.reduce((a, b) => a + b, 0) / rs.length }))
       .sort((a, b) => b.avg - a.avg);
-    // R distribution (7 buckets, -2R..+3R+)
-    const edges = [-1.5, -0.5, 0.5, 1.5, 2.5, 3.5];
+    // profit distribution (7 buckets around breakeven)
+    const edges = [-150, -50, 50, 250, 450, 650];
     const buckets = new Array(7).fill(0);
     J.forEach(j => { let b = edges.findIndex(e => j.r < e); if (b < 0) b = 6; buckets[b]++; });
     const maxB = Math.max(...buckets, 1);
-    const labels = ["≤-1.5", "-1", "0", "+1", "+2", "+3", "3+"];
+    const c = B.ccy || "£";
+    const labels = ["≤-" + c + "150", "-" + c + "100", "BE", "+" + c + "200", "+" + c + "400", "+" + c + "600", c + "600+"];
     // one derived sentence — best sess vs worst, or setup edge
     let insight = "";
     const ranked = [...sess].filter(x => x.w + x.l >= 2).sort((a, b) => b.wr - a.wr);
     if (ranked.length >= 2 && ranked[0].wr - ranked[ranked.length - 1].wr >= 25)
       insight = `Your ${ranked[0].sn} win rate (${ranked[0].wr}%) is well clear of ${ranked[ranked.length - 1].sn} (${ranked[ranked.length - 1].wr}%) — your edge lives in the ${ranked[0].sn} ${ranked[0].sn === "Asia" ? "session" : "open"}.`;
-    else if (setups.length >= 2 && setups[0].avg - setups[setups.length - 1].avg >= 1)
-      insight = `“${setups[0].k}” averages ${setups[0].avg >= 0 ? "+" : ""}${setups[0].avg.toFixed(1)}R across ${setups[0].n} trades — lean into it and cut “${setups[setups.length - 1].k}”.`;
+    else if (setups.length >= 2 && setups[0].avg - setups[setups.length - 1].avg >= 100)
+      insight = `“${setups[0].k}” averages ${money(setups[0].avg)} across ${setups[0].n} trades — lean into it and cut “${setups[setups.length - 1].k}”.`;
     return `<div class="card card-pad edge-card reveal">
       <div class="eq-head"><span class="eyebrow">${ic("i-target","ic")} Your edge</span><span class="sub" style="font-size:11px">from ${J.length} logged trades</span></div>
       <div class="edge-sess">${sess.map(x => `<div class="edge-row"><span class="edge-n">${x.sn}</span><div class="edge-bar"><i style="transform:scaleX(${x.wr / 100})"></i></div><b class="num">${x.wr}%</b><small>${x.w}W ${x.l}L</small></div>`).join("")}</div>
       ${setups.length ? `<div class="edge-setups">
-        <div class="edge-set"><span>${ic("i-check","ic")} Best setup</span><b>${setups[0].k}</b><small class="num up">${setups[0].avg >= 0 ? "+" : ""}${setups[0].avg.toFixed(1)}R avg · ${setups[0].n}</small></div>
-        ${setups.length > 1 ? `<div class="edge-set"><span>${ic("i-thumbdown","ic")} Weakest</span><b>${setups[setups.length - 1].k}</b><small class="num ${setups[setups.length - 1].avg < 0 ? "down" : ""}">${setups[setups.length - 1].avg >= 0 ? "+" : ""}${setups[setups.length - 1].avg.toFixed(1)}R avg · ${setups[setups.length - 1].n}</small></div>` : ""}
+        <div class="edge-set"><span>${ic("i-check","ic")} Best setup</span><b>${setups[0].k}</b><small class="num up">${money(setups[0].avg)} avg · ${setups[0].n}</small></div>
+        ${setups.length > 1 ? `<div class="edge-set"><span>${ic("i-thumbdown","ic")} Weakest</span><b>${setups[setups.length - 1].k}</b><small class="num ${setups[setups.length - 1].avg < 0 ? "down" : ""}">${money(setups[setups.length - 1].avg)} avg · ${setups[setups.length - 1].n}</small></div>` : ""}
       </div>` : ""}
-      <div class="edge-histo" role="img" aria-label="Distribution of trade results in R">${buckets.map((b, n) => `<div class="eh-col"><i style="transform:scaleY(${b / maxB})" class="${n < 2 ? "neg" : n === 2 ? "" : "pos"}"></i><small>${labels[n]}</small></div>`).join("")}</div>
+      <div class="edge-histo" role="img" aria-label="Distribution of trade results in ${B.ccy || "£"}">${buckets.map((b, n) => `<div class="eh-col"><i style="transform:scaleY(${b / maxB})" class="${n < 2 ? "neg" : n === 2 ? "" : "pos"}"></i><small>${labels[n]}</small></div>`).join("")}</div>
       ${insight ? `<p class="edge-insight">${insight}</p>` : ""}
     </div>`;
   }
@@ -1524,13 +1526,13 @@
     const items = D.journal.filter(j => journalFilter === "All" ? true : journalFilter === "Wins" ? j.outcome === "win" : j.outcome === "loss");
     body.innerHTML = `
       <div class="jstats reveal">
-        <div class="jstat"><b class="num ${s.netR >= 0 ? "up" : "down"}">${s.netR >= 0 ? "+" : ""}${s.netR.toFixed(1)}R</b><small>Net result</small></div>
+        <div class="jstat"><b class="num ${s.netR >= 0 ? "up" : "down"}">${money(s.netR)}</b><small>Net result</small></div>
         <div class="jstat"><b class="num">${s.wr}%</b><small>Win rate</small></div>
         <div class="jstat"><b class="num">${s.count}</b><small>Trades</small></div>
         <div class="jstat"><b class="num">${s.pf.toFixed(1)}</b><small>Profit factor</small></div>
       </div>
       <div class="card card-pad equity-card">
-        <div class="eq-head"><span class="eyebrow">Equity curve · R</span><span class="num ${s.netR >= 0 ? "up" : "down"}" style="font-size:13px">${s.netR >= 0 ? "+" : ""}${s.netR.toFixed(1)}R</span></div>
+        <div class="eq-head"><span class="eyebrow">Equity curve · ${B.ccy || "£"}</span><span class="num ${s.netR >= 0 ? "up" : "down"}" style="font-size:13px">${money(s.netR)}</span></div>
         <canvas id="equity-cv"></canvas>
       </div>
       ${edgeCard()}
@@ -1632,10 +1634,10 @@
     const long = j.dir === "long";
     x.fillStyle = long ? "#3ECB86" : "#F0565B"; x.font = '700 44px "JetBrains Mono", monospace';
     x.fillText(long ? "▲ LONG" : "▼ SHORT", W / 2, 465);
-    // giant R result
-    const rTxt = j.outcome === "be" ? "BE" : (j.r > 0 ? "+" : "") + j.r.toFixed(1) + "R";
-    x.fillStyle = j.r > 0 ? "#3ECB86" : j.outcome === "be" ? "#9A9AA6" : "#F0565B";
-    x.font = '700 230px "JetBrains Mono", monospace';
+    // giant profit result
+    const rTxt = j.outcome === "be" ? "BE" : money(j.r);
+    x.fillStyle = j.r > 0 ? "#3FBF7F" : j.outcome === "be" ? "#9A9AA6" : "#F0565B";
+    x.font = '700 ' + (rTxt.length > 6 ? 170 : 210) + 'px "JetBrains Mono", monospace';
     x.fillText(rTxt, W / 2, 760);
     // meta line
     x.fillStyle = "rgba(255,255,255,.55)"; x.font = '500 36px "Outfit", sans-serif';
@@ -1683,8 +1685,8 @@
       <div class="fchips" id="f-dir">${[["long", "▲ Long"], ["short", "▼ Short"]].map(([v, l]) => `<button class="fchip ${v === dir ? "on" : ""}" data-fdir="${v}">${l}</button>`).join("")}</div>
       <label class="flabel">Outcome</label>
       <div class="fchips" id="f-oc">${[["win", "Win"], ["loss", "Loss"], ["be", "Breakeven"]].map(([v, l]) => `<button class="fchip ${v === oc ? "on" : ""}" data-foc="${v}">${l}</button>`).join("")}</div>
-      <label class="flabel">Result (R multiple)</label>
-      <input class="finput num" id="f-r" type="number" step="0.1" value="${pre.r != null ? pre.r : "2.0"}" inputmode="decimal">
+      <label class="flabel">Profit / loss (${B.ccy || "£"})</label>
+      <input class="finput num" id="f-pl" type="number" step="1" value="${pre.pl != null ? pre.pl : ""}" placeholder="e.g. 420" inputmode="decimal">
       <label class="flabel">Lot size used</label>
       <input class="finput num" id="f-lot" type="number" step="0.01" min="0" value="${pre.lots != null ? pre.lots : "1.00"}" inputmode="decimal">
       <div class="f-weighted" id="f-weighted"></div>
@@ -1697,21 +1699,20 @@
       <button class="btn btn-gold btn-block" id="f-save" style="margin-top:10px">Save to journal</button>
       <div class="spacer"></div>
     `);
-    // weighted result = R multiple × lots (bigger conviction sizing counts for more)
+    // result = profit / loss in money, signed by the outcome
     const readLots = () => { let l = parseFloat($("#f-lot").value); return isNaN(l) || l < 0 ? 1 : l; };
-    const readBaseR = () => { let r = parseFloat($("#f-r").value); if (isNaN(r)) r = 1; return oc === "be" ? 0 : oc === "loss" ? -Math.abs(r) : Math.abs(r); };
-    const updWeighted = () => {
-      const base = readBaseR(), lots = readLots(), w = base * lots;
-      const el = $("#f-weighted");
-      el.className = "f-weighted " + (w > 0 ? "up" : w < 0 ? "down" : "");
-      el.innerHTML = `${base >= 0 ? "+" : ""}${base.toFixed(1)}R × ${lots.toFixed(2)} lots = <b class="num">${w >= 0 ? "+" : ""}${w.toFixed(2)}R</b>`;
+    const readPL = () => { let v = parseFloat($("#f-pl").value); if (isNaN(v)) v = 0; v = Math.abs(v); return oc === "be" ? 0 : oc === "loss" ? -v : v; };
+    const updResult = () => {
+      const v = readPL(), el = $("#f-weighted");
+      el.className = "f-weighted " + (v > 0 ? "up" : v < 0 ? "down" : "");
+      el.innerHTML = oc === "be" ? "Breakeven — no gain, no loss." : `${oc === "win" ? "Win" : "Loss"} · <b class="num">${money(v)}</b> to your book`;
     };
     [...document.querySelectorAll("[data-fdir]")].forEach(b => b.onclick = () => { dir = b.dataset.fdir; setOn("#f-dir", b); });
-    [...document.querySelectorAll("[data-foc]")].forEach(b => b.onclick = () => { oc = b.dataset.foc; setOn("#f-oc", b); updWeighted(); });
+    [...document.querySelectorAll("[data-foc]")].forEach(b => b.onclick = () => { oc = b.dataset.foc; setOn("#f-oc", b); updResult(); });
     [...document.querySelectorAll("[data-fsess]")].forEach(b => b.onclick = () => { sess = b.dataset.fsess; setOn("#f-sess", b); });
-    $("#f-r").oninput = updWeighted; $("#f-lot").oninput = updWeighted; updWeighted();
+    $("#f-pl").oninput = updResult; updResult();
     $("#f-save").onclick = () => {
-      const lots = readLots(), rv = readBaseR() * lots;
+      const lots = readLots(), rv = readPL();
       D.journal.unshift({
         id: "j" + Date.now(), pair: ($("#f-pair").value || "XAUUSD").toUpperCase(), dir, r: rv, lots, outcome: oc,
         session: sess, date: "Today", setup: $("#f-setup").value || "Setup", channel: "—",
@@ -1887,10 +1888,10 @@
       <div class="section-head"><span class="h2">Your numbers</span><span class="more" data-act="journal">Journal ›</span></div>
       <div class="card card-pad">
         <div class="num-grid">
-          <div class="num-cell"><b class="num ${js.netR>=0?'up':'down'}">${js.netR>=0?'+':''}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
-          <div class="num-cell"><b class="num">${js.avgRR.toFixed(1)}R</b><small>Avg win</small></div>
+          <div class="num-cell"><b class="num ${js.netR>=0?'up':'down'}">${money(js.netR)}</b><small>Net result</small></div>
+          <div class="num-cell"><b class="num">${money(js.avgRR, false)}</b><small>Avg win</small></div>
           <div class="num-cell"><b class="num">${js.pf.toFixed(1)}</b><small>Profit factor</small></div>
-          <div class="num-cell"><b class="num ${bestTrade()>=0?'up':''}">${bestTrade()>=0?'+':''}${bestTrade().toFixed(1)}R</b><small>Best trade</small></div>
+          <div class="num-cell"><b class="num ${bestTrade()>=0?'up':''}">${money(bestTrade())}</b><small>Best trade</small></div>
         </div>
         <div class="sess-block"><div class="sess-h">Win rate by session</div>
           ${sessionStats().map(s => `<div class="sess-row"><span class="sess-name">${s.session}</span><div class="sess-bar"><i style="width:${s.wr}%"></i></div><span class="sess-pct num">${s.wr}%</span></div>`).join("")}
@@ -1973,7 +1974,7 @@
         <div class="tcard-stats">
           <div><b class="num gold-text">${js.winRate}%</b><small>Win rate</small></div>
           <div><b class="num gold-text">${profStreak()}</b><small>Day streak</small></div>
-          <div><b class="num ${js.netR>=0?'up':'down'}">${js.netR>=0?'+':''}${js.netR.toFixed(1)}R</b><small>Net result</small></div>
+          <div><b class="num ${js.netR>=0?'up':'down'}">${money(js.netR)}</b><small>Net result</small></div>
         </div>
         <div class="tcard-foot">${D.user.handle} · ${B.name}</div>
       </div>
@@ -2762,7 +2763,7 @@
     showPush(outcome === "win" ? "🎯 Paper trade closed · target hit" : "Paper trade closed · stopped",
       `${pos.pair} ${pos.dir} · ${r >= 0 ? "+" : ""}${r.toFixed(1)}R at ${pos.riskPct}% risk`);
     setTimeout(() => openLogTrade({
-      pair: pos.pair, dir: pos.dir, session: "London", outcome, r: Math.abs(r),
+      pair: pos.pair, dir: pos.dir, session: "London", outcome,
       setup: "Paper trade", note: `Paper-traded the ${pos.ideaId.toUpperCase()} idea at ${pos.riskPct}% risk — closed ${r >= 0 ? "+" : ""}${r.toFixed(1)}R. Journaled like a real one.`,
     }), 900);
   }
