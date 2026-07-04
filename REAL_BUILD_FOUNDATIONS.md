@@ -1,0 +1,321 @@
+# Blakey Trades — Real App Foundations
+
+How the shipped app gets built when we green-light it. The thing at `blakey-trades.pages.dev` is a
+**clickable pitch demo** (static HTML/JS, all state in the browser). This doc is the blueprint for the
+**real, launchable app**: the backend, the messaging, the live Zoom-in-app pipeline, and everything
+else needed to ship on the App Store + Google Play.
+
+Nothing here needs building today. It exists so that when Arron says go, we move fast and nothing is a
+surprise — the architecture, the costs, and the exact asks of Arron are all decided up front.
+
+---
+
+## 1. The stack (locked)
+
+| Layer | Choice | Why |
+|---|---|---|
+| **App** | React Native + Expo (TypeScript) | One codebase → iOS + Android; reuses our web/React skills; OTA updates via EAS Update (hotfix without a store resubmit); best AI-assisted-build ecosystem. |
+| **Backend** | Supabase (Postgres + Auth + Realtime + Storage + Edge Functions) | One managed service covers auth, database, realtime chat, file storage, and serverless functions. SQL/Postgres = no lock-in. |
+| **Live video** | Zoom → RTMP → Cloudflare Stream → HLS in-app | See §5. Host keeps using Zoom; members watch in-app. |
+| **Education video** | Cloudflare Stream (or Bunny Stream) | Same provider hosts the on-demand library. |
+| **Push** | Expo Push (APNs + FCM), OneSignal later for campaigns | Free, one API for both platforms. |
+| **Payments** | Stripe on the web (not in-app) | Avoids Apple/Google's 30% cut. See §11. |
+| **Distribution** | Ships under Arron's own Apple + Google accounts | Apple §4.2.6 — white-label apps can't mass-ship from our account. See §12. |
+
+The current demo already proves the entire **front-end** (every screen, the office, journal, journey,
+weekly review, signals, live room, IB gate). The real build is mostly **wiring that same UI to a
+backend** + the live-video pipeline + store submission.
+
+---
+
+## 2. Architecture at a glance
+
+```
+                         ┌─────────────────────────────────────────┐
+   Telegram channels ───▶│  Ingest worker (Edge Function / Node)    │
+   (BT VIP, Swing, …)    │  bot reads posts → parses → writes DB    │
+                         └──────────────────┬──────────────────────┘
+                                            ▼
+   Vantage IB list  ─────────────▶  ┌───────────────┐   Realtime   ┌──────────────┐
+   (CSV / partner API)              │   SUPABASE    │◀────────────▶│  RN + Expo   │
+                                    │  Postgres     │   (chat,     │   app        │
+   Stripe (web checkout) ──────────▶│  Auth         │    signals,  │  (iOS +      │
+                                    │  Storage      │    presence) │   Android)   │
+   Zoom ──RTMP──▶ Cloudflare ─HLS──▶│  Edge Fns     │              │              │
+                  Stream            └───────┬───────┘              └──────┬───────┘
+                                            │  push triggers              │ expo-video
+                                            ▼                             ▼ plays HLS
+                                    Expo Push (APNs/FCM) ──────▶  member's phone
+```
+
+---
+
+## 3. Data model (what the demo stores locally → real Postgres tables)
+
+The demo persists everything in `localStorage`. Each of those becomes a table. Concrete starting schema
+(RLS = row-level security; every member only sees/edits their own rows unless noted):
+
+```sql
+-- IDENTITY & MEMBERSHIP
+profiles            (id uuid pk → auth.users, name, initials, bio, created_at)
+memberships         (user_id, tier text /*free|vip|inner*/, vantage_acct text,
+                     vantage_verified bool, copier_linked bool, verified_at)
+                     -- vantage_verified is set by the IB-check job (§7)
+
+-- THE TRADING JOURNAL (money-based, per the demo)
+journal_entries     (id, user_id, pair, dir, outcome, pl numeric, lots numeric,
+                     session, setup, note, tags text[], created_at)
+
+-- GAMIFICATION / RETENTION
+progress            (user_id, xp int, streak int, streak_day date, journey_xp int[],
+                     paths_done text[], quizzes_passed text[])
+weekly_reviews      (id, user_id, week text, score int, dims jsonb, well, fix, created_at)
+daily_state         (user_id, day date, goals_done text[], story_seen date)
+
+-- MESSAGING
+community_messages  (id, user_id, body, created_at)          -- persistent floor chat (§4a)
+dms                 (id, from_id, to_id, body, read bool, created_at)
+posts               (id, user_id, body, tag jsonb, likes int, created_at)  -- community feed
+
+-- SIGNALS (written by the ingest worker, §6 — read-only to members)
+signals             (id, channel, pair, dir, entry, sl, tp jsonb, status,
+                     posted_at, tg_message_id)               -- vip rows gated by RLS to verified members
+signal_updates      (id, signal_id, kind, text, created_at)  -- "partials", "SL to BE", …
+
+-- CONTENT (managed by Arron's team, read-only to members)
+lessons             (id, title, cat, duration, video_id, host, order)
+lesson_progress     (user_id, lesson_id, progress numeric)
+announcements       (id, from_name, role, body, created_at)
+schedule            (id, day, time, session, host)           -- live-call timetable
+live_sessions       (id, title, host, starts_at, stream_id, status)  -- drives the Live tab + push
+
+-- DEVICE / NOTIFS
+devices             (user_id, expo_push_token, platform)     -- for targeted push
+notifications       (id, user_id, icon, text, go, read, created_at)
+```
+
+Everything the demo already computes (win rate, net £, journey stages, edge analytics) runs unchanged —
+it just reads these tables instead of `localStorage`. **RLS is the security spine:** VIP `signals` rows
+are invisible to any member whose `memberships.vantage_verified` is false — the gate is enforced in the
+database, not just the UI.
+
+---
+
+## 4. Messaging — wiring the two chat surfaces
+
+The demo has two chat surfaces that currently share the same script. In the real app they're **two
+distinct channels**, both on **Supabase Realtime**:
+
+**(a) Community chat — the all-day floor** (`community_messages` table)
+- Persistent. Messages saved to Postgres, full history, searchable, moderatable.
+- Wire: `INSERT` into `community_messages` → Supabase **Postgres Changes** pushes it live to every
+  connected member. This is the "Open chat" from the home Community tile and the Community tab.
+
+**(b) Live-room chat — in-session, ephemeral** (during a live call)
+- Fast firehose (hundreds of messages + reactions per minute when a call is live).
+- Wire: Supabase Realtime **Broadcast** (does *not* write every message to Postgres — cheaper, faster).
+  Optionally persist a sampling for replay. This is the chat overlaid on the live video.
+
+**Why Supabase for both:** messages already need to live in Postgres for history/moderation, so we get
+chat "for free" without paying a chat SaaS $400–500/mo. **The one caveat:** a live call spiking to
+1,000–2,000 concurrent members all chatting is the single most likely thing to strain Realtime.
+Mitigation: use Broadcast (not Postgres Changes) for the live firehose, and **load-test at the real peak
+before launch.** If live concurrency ever routinely exceeds ~1,000, we offload *only the live-room chat*
+to Stream (getstream.io) and keep everything else on Supabase. Not needed at launch.
+
+Presence ("4,213 online", "87 watching now") uses Supabase Realtime **Presence** — real, not faked.
+
+---
+
+## 5. Live Zoom calls, played inside the app ⭐
+
+**This is the question that mattered most — here's the definitive answer.**
+
+**Do not embed a Zoom SDK.** Both Zoom SDKs fight Expo (the Meeting SDK is flatly unsupported on Expo),
+they cap at 1,000 real-time users, and they bill *interactive* rates (~$0.0035/user/min = **$840 for a
+2-hour call with 2,000 watchers**) for people who are only watching. Wrong tool.
+
+**The pipeline (recommended):**
+
+```
+Host runs their normal Zoom call
+   │
+   │  Zoom → "Stream to a Custom Live Streaming Service" (RTMP out)   [needs Zoom Pro]
+   ▼
+Cloudflare Stream  (ingests RTMP, transcodes to Low-Latency HLS)
+   │
+   │  .m3u8 HLS stream
+   ▼
+expo-video player in the app   +   our own live chat overlay (§4b)
+```
+
+- **Host side:** zero change to how Arron works. He runs Zoom exactly as now; we just flip on
+  "Custom Live Streaming Service" and point it at our Cloudflare ingest URL. **Requirement: Zoom Pro plan
+  (~$150/yr)** — that's the only host-side cost. No new hardware.
+- **App side:** `expo-video` plays HLS natively on iOS + Android — no custom native module, fully
+  Expo-compatible. Members watch; our in-app chat (§4b) runs as the overlay.
+- **Latency:** ~15–30 seconds behind real-time (Zoom's RTMP-out adds ~10–20s, low-latency HLS adds
+  ~2–5s). Completely fine for "watch the host walk the charts + chat." Not for split-second two-way Q&A.
+- **Cost (real money, scales per viewer):** on Cloudflare Stream ($1 per 1,000 minutes delivered):
+  - **~$60 per 2-hour session at 500 viewers**
+  - **~$240 per 2-hour session at 2,000 viewers**
+  - Monthly at 3 sessions/week: **~$780/mo (500 viewers) → ~$3,100/mo (2,000 viewers).**
+  - This is a genuine per-viewer running cost — worth building into Arron's numbers (his IB revenue
+    comfortably covers it; see the pricing memo).
+
+**Upgrade lever (optional, later):** if the community wants tighter latency or cleaner production, the
+host switches from Zoom to **OBS** (free) streaming direct to Cloudflare — drops the Zoom hop, gets
+~2–5s latency and scene/overlay control. Tradeoff: the host has to run OBS instead of one-click Zoom. We
+start with Zoom (zero friction) and offer OBS as a "pro broadcast" upgrade if they want it.
+
+The demo's Live tab already models this exactly — the "preview the room" stage becomes the real
+`expo-video` player, and the `live_sessions` table + a push trigger drives "🔴 Arron is live now."
+
+---
+
+## 6. Signals — Telegram → app (the ingest pipeline)
+
+Covered in the team message already. Mechanically:
+1. We create a Telegram bot (BotFather — 2 min, ours to manage).
+2. Arron's team adds the bot as **admin** on each signal channel (the only ask of them).
+3. An **ingest worker** (Supabase Edge Function on a schedule, or a small always-on Node service)
+   receives each new post, **parses** it (entry / stop / targets — structured for the initial signal;
+   a lightweight AI extraction step for free-form "partials / SL to BE" updates), and writes to
+   `signals` / `signal_updates`.
+4. Writing a row **triggers push** to verified members and updates the live feed.
+5. Message edits/follow-ups update the same signal in place (keyed on `tg_message_id`).
+
+RLS makes VIP signals visible only to `vantage_verified` members — the gate is in the data layer.
+
+---
+
+## 7. The Vantage IB gate (who actually gets signals)
+
+- Member enters their Vantage account number in the app → stored on `memberships.vantage_acct`.
+- A **verification job** checks it against Arron's IB client list:
+  - **v1 (pragmatic):** Arron exports his IB client list from the Vantage partner portal (CSV) on a
+    schedule; we sync it into a `vantage_ib_accounts` table; the job flips `vantage_verified` where the
+    member's number matches. Daily refresh is plenty; it also *removes* access if an account drops off
+    his IB.
+  - **v2 (if Vantage offers it):** a partner API for live lookups instead of CSV.
+- **The one gap to close** (flagged before): an account number alone isn't proof of ownership. For
+  launch, bind **one account number → one app login** (a shared number can't unlock twice). Stronger
+  later: match an email/phone on file with Vantage, or Vantage OAuth if available.
+- Unverified members see the locked cards + Arron's partner signup link → the gate doubles as an IB
+  growth loop.
+
+---
+
+## 8. The trade copier (mirrors signals to MT5)
+
+The demo's copier is a mockup. The real thing is a **cloud copier bridge** — a service that takes a VIP
+signal and places it on each linked member's MT5 account (via MetaAPI or a similar MT5 bridge), sized to
+the member's risk setting. This is **real, compliance-adjacent infrastructure** (it places live trades
+with real money) and is the heaviest single component — it should be its own build phase, priced
+separately, and shipped only after the core app is proven. It is **not** required for launch: the app
+launches valuable with signals + live + community + journal; the copier is a premium add-on.
+
+---
+
+## 9. Push notifications (the engagement engine)
+
+- **Expo Push** (`expo-notifications`) over APNs + FCM — free, one token per device (`devices` table),
+  fired from Edge Functions.
+- Triggers that matter: new VIP signal, "Arron is live now", streak-about-to-break, DM received, weekly
+  review ready, "your copier just closed a trade." This is what makes people open the app daily — the
+  demo's loops (streaks, journey, weekly review) only reach their full pull once push is firing.
+- **OneSignal** (free under 10k subscribers) as an optional later layer if the team wants no-code
+  scheduled/segmented campaigns without us building that orchestration.
+
+---
+
+## 10. Education video library
+
+- Videos hosted on **Cloudflare Stream** (same provider as live) or **Bunny Stream** (cheapest —
+  ~$0.01/GB storage + delivery). `lessons` table holds metadata + `video_id`; `expo-video` plays them;
+  `lesson_progress` tracks the "continue watching" bar (already in the demo).
+- ~150 videos ≈ **under $1–30/mo** storage depending on provider; delivery scales with views.
+
+---
+
+## 11. Payments / membership (avoiding the 30% cut)
+
+- **The IB revenue never touches store billing** — it's a real-world broker rebate paid to Arron. Zero
+  Apple/Google exposure.
+- **The paid "Inner Circle" tier is billed via Stripe on the web**, and the **app is a login-gated
+  content surface** — the subscription is *not* sold inside the app UI. This is the always-compliant,
+  globally-safe pattern (works outside the US too, where 2025's external-payment rulings don't apply),
+  and it avoids the 30% cut entirely. Stripe takes ~2.9% + 30p.
+- Sign-up + upgrade happen at `blakeytrades.com` → Stripe Checkout → the app just authenticates. (Post-
+  2025 rulings *do* now allow an external Stripe link inside a US app, but web-first is the cleaner,
+  rejection-proof route and we start there.)
+- **Keep the app content/education-only in the store listing** — trading/financial apps draw extra App
+  Review scrutiny; route anything money-adjacent (IB signup, membership) to the web.
+
+---
+
+## 12. App Store + Google Play (accounts & submission)
+
+- **Ships under Arron's own developer accounts** (Apple §4.2.6 forbids mass-shipping white-label client
+  apps from our account). We build and manage; the app lives under Blakey Trades' identity.
+- **Apple:** needs an **organization** Apple Developer account (D-U-N-S number tied to a real legal
+  entity — a Ltd, not a sole trader). $99/yr.
+- **Google Play:** organization account; $25 one-time. (A brand-new *personal* Play account would need a
+  12-tester/14-day closed test first — an org account skips that.)
+- We handle EAS Build (cloud builds, no local Xcode/Gradle), store listings, screenshots, review.
+- **Real native utility is already there** (push, live video, offline journal, native scheduling) so it
+  clears Apple §4.2 "it's just a website" rejection cleanly.
+
+---
+
+## 13. Suggested build order (phased)
+
+| Phase | Ships | Rough scope |
+|---|---|---|
+| **0 — Foundations** | Supabase project, schema, Auth, RN+Expo shell wired to the existing UI | the demo UI, now backed by real accounts + DB |
+| **1 — Signals + gate** | Telegram ingest → signals feed, Vantage IB verify, push | the core value: verified members get live calls on their phone |
+| **2 — Community + live** | Community chat, DMs, feed, live video (Zoom→HLS), presence | the daily-engagement + live-call experience |
+| **3 — Retention** | Journal (real), journey, weekly review, streaks, XP, education library | the "office" — all the addiction loops, now persistent + push-driven |
+| **4 — Store launch** | EAS builds, Arron's accounts, review, go live | on the App Store + Play |
+| **5 — Copier (add-on)** | Cloud MT5 copier bridge | premium, priced separately, after core is proven |
+
+Phases 0–4 are the launchable app. Phase 5 is the big optional add-on.
+
+---
+
+## 14. What we need from Arron (the ask list)
+
+1. **Telegram:** admin access for our bot on each signal channel (30 sec/channel), and confirmation of
+   which channels feed the app.
+2. **Vantage:** confirm he can export his IB client list from the partner portal (and how often), and
+   ask whether Vantage offers a partner API. Also confirm whether members trade **Standard** or **Raw**
+   accounts (affects the rebate value story).
+3. **Zoom:** a **Zoom Pro** plan (~$150/yr) on the account that hosts the live calls.
+4. **Apple + Google accounts:** an **organization** Apple Developer account (needs a registered legal
+   entity + D-U-N-S) and a Google Play developer account, both under Blakey Trades.
+5. **Stripe:** a Blakey Trades Stripe account for the Inner Circle tier (if he runs one).
+6. **Content:** the real education videos, schedule, team bios, and any brand assets.
+
+---
+
+## 15. Monthly running-cost picture (real money, honest ranges)
+
+| Item | Cost |
+|---|---|
+| Supabase (Pro) | ~$25/mo (scales with usage) |
+| Cloudflare Stream — **live** | ~$780/mo (3 calls/wk, 500 viewers) → ~$3,100/mo (2,000 viewers) |
+| Cloudflare/Bunny — education VOD | ~$1–30/mo storage + delivery |
+| Expo / EAS | free → ~$99/mo (EAS Production, optional) |
+| Push (Expo) | free |
+| Stripe | 2.9% + 30p per Inner Circle payment |
+| Apple / Google | $99/yr + $25 once |
+| Zoom Pro (Arron) | ~$150/yr |
+
+The live-streaming line is the only big variable, and it scales with audience — which is exactly the
+audience generating Arron's IB rebates, so it's self-funding. Everything else is small and fixed.
+
+---
+
+*Foundations doc — written 2026-07-04. The demo proves the front end; this is how it becomes the real
+product. Nothing here blocks the pitch; it's the "here's exactly how we'd build it" that closes a
+serious buyer.*
