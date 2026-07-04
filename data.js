@@ -220,7 +220,7 @@ window.DATA = {
   copierTrades: [
     { id:"c4", pair:"XAUUSD", dir:"long", entry:"4,041.50", sl:"4,033.00", tp:"4,062.00", status:"running", result:"Running", time:"Today · 11:05",
       why:"London continuation — price held the 4,041 breaker block after the morning push. The copier added a long on the pullback, targeting the 4,062 liquidity resting above.",
-      review:"Live now, +0.8R and holding above entry. This is a breaker-retest with the trend — the copier's highest win-rate context. Risk is 1% with the stop under the breaker. The review finalises when it closes; watching whether it respects 4,062 or trails past it." },
+      review:"Live now, +0.8R and holding above entry. This is a breaker-retest with the trend — the copier's highest win-rate context. Risk is 1% with the stop under the breaker. The analysis finalises when it closes; watching whether it respects 4,062 or trails past it." },
     { id:"c1", pair:"XAUUSD", dir:"long", entry:"4,024.50", sl:"4,014.00", tp:"4,048.00", status:"tp", result:"+2.3R", time:"Today · 08:12",
       why:"London swept the Asian low at 4,020, then reclaimed the 4,024 order block on the 5-minute. The copier entered on the reclaim-and-hold — stop below the sweep, target at the prior-day high.",
       review:"Textbook A+ execution. The entry came *after* the liquidity sweep, not before — the discipline most retail traders miss. Risk was 1%, stop protected below structure, and the 2.3R came from letting the runner reach prior-day liquidity. One note: it scaled 50% at 1.5R, which locked profit but capped upside on a clean trend day — a wider partial banks more here." },
