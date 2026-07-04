@@ -1685,6 +1685,9 @@
       <div class="fchips" id="f-oc">${[["win", "Win"], ["loss", "Loss"], ["be", "Breakeven"]].map(([v, l]) => `<button class="fchip ${v === oc ? "on" : ""}" data-foc="${v}">${l}</button>`).join("")}</div>
       <label class="flabel">Result (R multiple)</label>
       <input class="finput num" id="f-r" type="number" step="0.1" value="${pre.r != null ? pre.r : "2.0"}" inputmode="decimal">
+      <label class="flabel">Lot size used</label>
+      <input class="finput num" id="f-lot" type="number" step="0.01" min="0" value="${pre.lots != null ? pre.lots : "1.00"}" inputmode="decimal">
+      <div class="f-weighted" id="f-weighted"></div>
       <label class="flabel">Session</label>
       <div class="fchips" id="f-sess">${["London", "New York", "Asia"].map(v => `<button class="fchip ${v === sess ? "on" : ""}" data-fsess="${v}">${v}</button>`).join("")}</div>
       <label class="flabel">Setup</label>
@@ -1694,14 +1697,23 @@
       <button class="btn btn-gold btn-block" id="f-save" style="margin-top:10px">Save to journal</button>
       <div class="spacer"></div>
     `);
+    // weighted result = R multiple × lots (bigger conviction sizing counts for more)
+    const readLots = () => { let l = parseFloat($("#f-lot").value); return isNaN(l) || l < 0 ? 1 : l; };
+    const readBaseR = () => { let r = parseFloat($("#f-r").value); if (isNaN(r)) r = 1; return oc === "be" ? 0 : oc === "loss" ? -Math.abs(r) : Math.abs(r); };
+    const updWeighted = () => {
+      const base = readBaseR(), lots = readLots(), w = base * lots;
+      const el = $("#f-weighted");
+      el.className = "f-weighted " + (w > 0 ? "up" : w < 0 ? "down" : "");
+      el.innerHTML = `${base >= 0 ? "+" : ""}${base.toFixed(1)}R × ${lots.toFixed(2)} lots = <b class="num">${w >= 0 ? "+" : ""}${w.toFixed(2)}R</b>`;
+    };
     [...document.querySelectorAll("[data-fdir]")].forEach(b => b.onclick = () => { dir = b.dataset.fdir; setOn("#f-dir", b); });
-    [...document.querySelectorAll("[data-foc]")].forEach(b => b.onclick = () => { oc = b.dataset.foc; setOn("#f-oc", b); });
+    [...document.querySelectorAll("[data-foc]")].forEach(b => b.onclick = () => { oc = b.dataset.foc; setOn("#f-oc", b); updWeighted(); });
     [...document.querySelectorAll("[data-fsess]")].forEach(b => b.onclick = () => { sess = b.dataset.fsess; setOn("#f-sess", b); });
+    $("#f-r").oninput = updWeighted; $("#f-lot").oninput = updWeighted; updWeighted();
     $("#f-save").onclick = () => {
-      let rv = parseFloat($("#f-r").value); if (isNaN(rv)) rv = 1;
-      rv = oc === "be" ? 0 : oc === "loss" ? -Math.abs(rv) : Math.abs(rv);
+      const lots = readLots(), rv = readBaseR() * lots;
       D.journal.unshift({
-        id: "j" + Date.now(), pair: ($("#f-pair").value || "XAUUSD").toUpperCase(), dir, r: rv, outcome: oc,
+        id: "j" + Date.now(), pair: ($("#f-pair").value || "XAUUSD").toUpperCase(), dir, r: rv, lots, outcome: oc,
         session: sess, date: "Today", setup: $("#f-setup").value || "Setup", channel: "—",
         tags: oc === "win" ? ["Followed plan"] : oc === "loss" ? ["Review"] : ["Managed well"],
         note: $("#f-note").value || "No notes added.",
