@@ -427,6 +427,16 @@
     rs.add(k); pSet({ reminders: [...rs] }); return true;
   }
   function remindBtnLabel(c) { return c && isReminded(c) ? "Reminder set ✓" : "Remind me"; }
+  // scheduled live-call alerts — in the real app these fire from the backend (§9): a 10-minute warning
+  // and a "started" push. Here they preview on reminder-set so the pitch shows exactly what lands.
+  let _callAlertT = [];
+  function previewCallAlerts(nc) {
+    if (!nc) return;
+    _callAlertT.forEach(clearTimeout); _callAlertT = [];
+    const host = nc.host || "the team", sess = nc.session || "Live call";
+    _callAlertT.push(setTimeout(() => showPush(`${sess} starts in 10 minutes`, `Your live call with ${host} is coming up — get ready to join.`), 1600));
+    _callAlertT.push(setTimeout(() => showPush(`🔴 ${sess} has started`, `${host} is live now — tap to join the room.`), 4400));
+  }
   function bumpChallengeDay() {
     const c = liveChallenge(); if (!c.joined) return;
     const s = pState(), today = new Date().toLocaleDateString("en-CA");
@@ -720,7 +730,7 @@
     cleanups.push(() => clearInterval(t));
     wireCommon();
     $("[data-act=joinlive]").onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
-    $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll ping you at the open", "i-check"); };
+    $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
     mountMarketBar();
   };
@@ -1305,10 +1315,15 @@
       const cd = $("#lobby-cd"); let left = nc ? nc.startsIn : 0;
       const paint = () => { if (!cd) return; const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; cd.innerHTML = (d > 0 ? `<span class="cd-cell"><b>${d}</b><small>days</small></span>` : "") + `<span class="cd-cell"><b>${String(h).padStart(2,"0")}</b><small>hrs</small></span><span class="cd-cell"><b>${String(m).padStart(2,"0")}</b><small>min</small></span><span class="cd-cell"><b>${String(s).padStart(2,"0")}</b><small>sec</small></span>`; };
       paint();
-      const lt = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); if (left <= 0) go("live"); }, 1000);
+      let warned = false; // fire the real 10-minute warning once if the countdown reaches it while reminded
+      const lt = setInterval(() => {
+        left = left > 0 ? left - 1 : 0; paint();
+        if (!warned && left <= 600 && left > 0 && nc && isReminded(nc)) { warned = true; showPush(`${nc.session} starts in 10 minutes`, `Your live call with ${nc.host} is coming up — get ready to join.`); }
+        if (left <= 0) { if (nc && isReminded(nc)) showPush(`🔴 ${nc.session} has started`, `${nc.host} is live now — tap to join the room.`); go("live"); }
+      }, 1000);
       cleanups.push(() => clearInterval(lt));
       const pv = $("#live-preview"); if (pv) pv.onclick = () => { livePreview = true; SCREENS.live(); };
-      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) toast("We'll ping you 10 min before the call", "i-bell"); else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
+      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) { toast("We'll alert you 10 minutes before the call", "i-bell"); previewCallAlerts(nc); } else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
       const ac = $("[data-act=add-cal]"); if (ac) ac.onclick = () => downloadCallIcs(nc);
       wireCommon();
       return;
@@ -2261,8 +2276,11 @@
     const out = [], nc = nextCall();
     if (nc) {
       const s = nc.startsIn, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
-      const when = isLiveNow() ? "is live now" : h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`;
-      out.push({ k: "call-" + nc.session, icon: "i-live", text: `${nc.session} ${when} — ${nc.host} hosting`, time: "now", unread: true, go: "live" });
+      const soon = !isLiveNow() && s <= 600;
+      const text = isLiveNow() ? `🔴 ${nc.session} has started — ${nc.host} is live now`
+        : soon ? `${nc.session} starts in ${Math.max(1, m)} min — get ready to join`
+        : `${nc.session} ${h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`} — ${nc.host} hosting`;
+      out.push({ k: "call-" + nc.session, icon: isLiveNow() || soon ? "i-live" : "i-bell", text, time: "now", unread: true, go: "live" });
     }
     (D.schedule || []).forEach(c => {
       if (isReminded(c)) out.push({ k: "rem-" + c.session, icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
