@@ -820,9 +820,9 @@
   // ---- "Your desk" — the member's personalised daily briefing ----
   function copierState() {
     const tier = getSetting("tier", "free");
-    if (tier === "free") return { code: "verify", label: `Verify with ${B.broker} ›`, cls: "gold-tx" };
-    if (!getSetting("copierLinked", false)) return { code: "link", label: "Link MT5 ›", cls: "gold-tx" };
-    return { code: "on", label: "Connected ✓", cls: "up" };
+    if (tier === "free") return { code: "verify", label: "Verify to unlock ›", cls: "gold-tx" };
+    const today = (D.copierTrades || []).filter(t => /Today/.test(t.time)).length;
+    return { code: "on", label: today ? `${today} trade${today > 1 ? "s" : ""} today ›` : "Live ✓", cls: "up" };
   }
   function unreadAnnouncements() { return Math.max(0, D.announcements.length - getSetting("annSeen", 0)); }
   function deskCard() {
@@ -834,7 +834,7 @@
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
       <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your office</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
-      ${row("i-send", "Copier status", cp.label, 'data-act="copier"', cp.cls)}
+      ${row("i-chart", "Auto-copier + AI review", cp.label, 'data-act="copier"', cp.cls)}
       ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
       ${row("i-chart", "New signals today", `<span class="num">${sigsToday}</span>`, 'data-tab="signals"')}
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
@@ -916,7 +916,7 @@
       <div class="card card-pad">
         ${hubRow("i-share", "Share your trader card", "Flex the streak — post your stats", "tradercard")}
         ${hubRow("i-flame", "Monthly challenge", "Journal every trade · 30 days", "challenge")}
-        ${hubRow("i-send", "Trade copier", "Mirror VIP signals to your MT5", "copier", true)}
+        ${hubRow("i-chart", "Auto-copier + AI review", "Every trade the system takes, explained", "copier", true)}
       </div>
       <div class="spacer"></div>
     `);
@@ -1061,7 +1061,7 @@
       { name: "Get on " + B.floor, pace: "day one", steps: [
         { label: "Joined " + B.floor, done: true },
         { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
-        { label: "MT5 connected to the copier", done: !!getSetting("copierLinked", false), xp: 150, act: 'data-act="copier"' },
+        { label: "Read an AI trade review", done: !!getSetting("copierSeen", false), xp: 150, act: 'data-act="copier"' },
       ] },
       { name: "Learn the playbook", pace: "week one", steps: [
         { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
@@ -1127,53 +1127,55 @@
     </div>`;
   }
 
-  // ---- trade copier sheet — mirrors signals to the member's MT5 (real-build: bridge service) ----
+  // ---- auto-copier feed — the system's trades, each with the reasoning + an AI review ----
+  function copierTradeCard(t) {
+    const pill = t.status === "tp" ? `<span class="pill pill-up">${t.result}</span>`
+      : t.status === "sl" ? `<span class="pill pill-down">${t.result}</span>`
+      : `<span class="pill pill-gold"><span class="dot-live"></span> Live</span>`;
+    return `<div class="card ct-card">
+      <div class="ct-top">
+        <div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${t.pair}</span><span class="idea-dir ${t.dir}">${t.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
+        ${pill}
+      </div>
+      <div class="ct-levels">${t.time} · entry <b>${t.entry}</b> · SL <b>${t.sl}</b> · TP <b>${t.tp}</b></div>
+      <div class="ct-why"><span class="ct-lbl">Why it took it</span><p>${t.why}</p></div>
+      <div class="ai-review">
+        <div class="ai-head"><span class="ai-badge">AI</span>AI review</div>
+        <p>${t.review}</p>
+      </div>
+    </div>`;
+  }
   function openCopier() {
     const tier = getSetting("tier", "free");
     if (tier === "free") {
       openModal(`
-        <h3 class="sheet-title">Trade copier</h3>
-        <p class="sheet-sub">The copier mirrors every ${B.short} VIP signal straight to your MT5 account — entries, stops and targets, hands-free.</p>
+        <h3 class="sheet-title">Auto-copier + AI review</h3>
+        <p class="sheet-sub">The auto-copier takes every ${B.short} VIP setup automatically — and the app shows you the trade, <b>why</b> it took it, and an <b>AI review</b> of each one. Learn the logic behind every call.</p>
         <div class="vb-how">
-          <div class="vb-step"><span class="vb-n num">1</span><span>Verify your ${B.broker} account (VIP is free for ${B.name} members).</span></div>
-          <div class="vb-step"><span class="vb-n num">2</span><span>Link your MT5 login — the copier runs in the cloud, your platform can stay closed.</span></div>
-          <div class="vb-step"><span class="vb-n num">3</span><span>Set your risk per trade. Every signal mirrors automatically.</span></div>
+          <div class="vb-step"><span class="vb-n num">1</span><span>Every trade the system takes appears here in real time.</span></div>
+          <div class="vb-step"><span class="vb-n num">2</span><span>See the exact reasoning — the setup, the entry model, the risk.</span></div>
+          <div class="vb-step"><span class="vb-n num">3</span><span>An AI review breaks down what was good, what to watch, and the repeatable lesson.</span></div>
         </div>
-        <button class="btn btn-gold btn-block" data-act="verifyib" style="margin-top:14px">${ic("i-shield")} Verify with ${B.broker} first</button>
-        <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Copying live trades carries risk — you stay in control of risk per trade.</p>`);
+        <button class="btn btn-gold btn-block" data-act="verifyib" style="margin-top:14px">${ic("i-shield")} Verify with ${B.broker} to unlock</button>
+        <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Educational only — the trades are the system's, shown to help you learn. Not financial advice.</p>`);
       wireCommon();
       return;
     }
-    const linked = getSetting("copierLinked", false);
-    const acct = getSetting("vantageAcct", "");
+    setSetting("copierSeen", true);
+    const trades = D.copierTrades || [];
+    const running = trades.filter(t => t.status === "running").length;
     openModal(`
-      <h3 class="sheet-title">Trade copier</h3>
-      <p class="sheet-sub">${linked ? "Live — every VIP signal mirrors to your MT5 automatically." : `Link your MT5 account and every ${B.short} VIP signal mirrors automatically.`}</p>
-      <div class="card card-pad" style="margin:10px 0 14px">
-        <div class="kv"><span>Status</span><b class="${linked ? "up" : ""}">${linked ? "Connected ✓" : "Not linked"}</b></div>
-        <div class="kv"><span>${B.broker} account</span><b class="num">${acct ? "•••• " + acct.slice(-3) : "Verified ✓"}</b></div>
-        <div class="kv"><span>Risk per trade</span><b class="num">1.0%</b></div>
-        ${linked ? `<div class="kv"><span>Last mirrored</span><b>${D.ideas[0].pair} ${D.ideas[0].dir === "long" ? "▲" : "▼"} · ${D.ideas[0].time}</b></div>` : ""}
+      <h3 class="sheet-title">Auto-copier + AI review</h3>
+      <p class="sheet-sub">Every trade the system takes — with the reasoning and an AI review, so you learn from each one.</p>
+      <div class="ct-summary">
+        <div class="ct-sum"><b class="num">${trades.length}</b><small>Trades shown</small></div>
+        <div class="ct-sum"><b class="num up">${running}</b><small>Live now</small></div>
+        <div class="ct-sum"><b class="num gold-text">100%</b><small>AI reviewed</small></div>
       </div>
-      ${linked
-        ? `<button class="btn btn-ghost btn-block" id="cp-pause">${ic("i-play")} Pause copier</button>`
-        : `<button class="btn btn-gold btn-block" id="cp-link">${ic("i-send")} Connect MT5 to the copier</button>`}
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Demo — the live copier is part of the full build. Copying live trades carries risk.</p>`);
-    const lk = $("#cp-link");
-    if (lk) lk.onclick = () => {
-      lk.disabled = true; lk.textContent = "Linking MT5…";
-      setTimeout(() => {
-        setSetting("copierLinked", true);
-        closeModal();
-        setTimeout(() => {
-          showPush("Copier connected ✓", `${B.short} VIP signals now mirror to your MT5`);
-          toast("Copier connected", "i-check");
-          if (SCREENS[activeTab]) SCREENS[activeTab]();
-        }, 380);
-      }, 1200);
-    };
-    const ps = $("#cp-pause");
-    if (ps) ps.onclick = () => { setSetting("copierLinked", false); closeModal(); toast("Copier paused", "i-check"); setTimeout(() => { if (SCREENS[activeTab]) SCREENS[activeTab](); }, 360); };
+      <div class="ct-feed">${trades.map(copierTradeCard).join("")}</div>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Educational only — the trades are the system's. Not financial advice.</p>
+      <div class="spacer"></div>`);
+    wireCommon();
   }
 
   // home "on the floor" card — one-tap into the community chat

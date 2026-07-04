@@ -1180,6 +1180,23 @@ a{color:inherit;text-decoration:none}
 .vb-how{margin:4px 0 6px;padding:13px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
 .vb-step{display:flex;gap:11px;align-items:flex-start;font-size:12.5px;color:var(--muted);line-height:1.5}
 .vb-step .vb-n{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--gold);background:rgba(var(--gold-rgb),.1);border:1px solid var(--gold-line)}
+/* auto-copier feed + AI review */
+.ct-summary{display:flex;gap:10px;margin:4px 0 14px}
+.ct-sum{flex:1;text-align:center;padding:11px 6px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line)}
+.ct-sum b{display:block;font-size:19px;margin-bottom:2px}
+.ct-sum b .ic{width:16px;height:16px;vertical-align:-2px}
+.ct-sum small{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.ct-feed{display:flex;flex-direction:column;gap:12px}
+.ct-card{padding:14px}
+.ct-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.ct-levels{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:12px}
+.ct-levels b{color:var(--text)}
+.ct-lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+.ct-why p{font-size:12.5px;line-height:1.55;color:var(--muted);margin:0}
+.ai-review{margin-top:13px;padding:12px 13px;border-radius:var(--r-md);background:rgba(var(--gold-rgb),.06);border:1px solid var(--gold-line)}
+.ai-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px}
+.ai-badge{display:inline-grid;place-items:center;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--on-accent,#1A1206);background:var(--gold-foil,var(--gold));border-radius:5px;padding:2px 5px}
+.ai-review p{font-size:12.5px;line-height:1.6;color:var(--text);margin:0}
 /* "Your desk" — personalised daily briefing */
 .desk,.jny{margin-top:14px}
 .streak-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold);background:rgba(var(--gold-rgb),.09);border:1px solid var(--gold-line);border-radius:var(--r-full);padding:5px 11px}
