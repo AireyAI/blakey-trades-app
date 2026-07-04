@@ -105,6 +105,89 @@ database, not just the UI.
 
 ---
 
+## 3a. Accounts & security — 5,000 members, zero crossed wires
+
+**The requirement:** every member has their own account, and it must be *impossible* for one member to
+ever see or land in another member's account — no "logged into the wrong person" bugs, no leaked
+journals, no crossed data. At 5,000 users this has to be perfect. Here's exactly how it's guaranteed.
+
+### The demo has no accounts (and that's fine)
+The pitch demo is deliberately **single-user**: everyone sees the same "Jordan Hale" profile and their
+data lives only in their own browser. There are no accounts to mix up because there's no backend yet.
+"Multi-user-ready" is a property of the **real build**, not the demo — never describe the demo as ready
+for 5,000 live accounts.
+
+### We do NOT hand-roll login
+The "wrong account" class of bug almost always comes from a home-made authentication system. We don't
+build one. **Supabase Auth** handles accounts, passwords, "Sign in with Apple/Google", email
+verification, password resets, and secure session tokens — the same infrastructure running in thousands
+of production apps. Each logged-in member is a stable `auth.users.id` (a UUID). The app never guesses who
+you are; it reads it from a cryptographically-signed token the member can't forge.
+
+### Row-Level Security (RLS) — the database itself refuses to leak
+This is the guarantee. **RLS is a rule enforced at the database layer, below the app**, on every table.
+The rule on a member-owned table is, in plain terms: *"you may only read or write rows where `user_id`
+equals your own logged-in id."* Example for the journal:
+
+```sql
+alter table journal_entries enable row level security;
+
+create policy "own journal only"
+  on journal_entries for all
+  using ( auth.uid() = user_id )        -- can only READ your own rows
+  with check ( auth.uid() = user_id );  -- can only WRITE rows tagged as yours
+```
+
+Because this lives in the database, **even if the app had a bug**, the database will not return User A's
+rows to User B — it's not the UI deciding who sees what, it's Postgres itself. This is the mechanism that
+makes cross-account leakage effectively impossible when the policies are correct.
+
+### The rules, table by table
+- **Personal data** (profile, journal, weekly reviews, progress, DMs, devices, notifications, saved
+  videos, lesson progress): `auth.uid() = user_id` — yours only.
+- **Shared-but-owned** (community messages, posts): everyone can *read* the shared feed; you can only
+  *write/edit/delete your own* rows.
+- **The IB gate, enforced in the DB** (not just the UI): VIP `signals` and the auto-copier feed carry a
+  policy like `using ( exists(select 1 from memberships m where m.user_id = auth.uid() and
+  m.vantage_verified) )`. An unverified member can't reach a live VIP signal even by manipulating the
+  app — the database withholds the rows.
+- **Content** (lessons, announcements, schedule): read-only to all members; writable only by Arron's team
+  (an admin role).
+- **Default-deny:** RLS is enabled on **every** table, and the default is "no access" — a table with no
+  policy returns nothing. There is no table left open by omission.
+
+### It's not "perfect" until we've tried to break it
+RLS being *available* is not the same as it being *correct* — a missing or sloppy policy is exactly how
+real apps leak. So this is a **hard pre-launch gate, not a hope**:
+
+1. **Every table has an explicit RLS policy** — reviewed one by one, no exceptions.
+2. **A dedicated break-in test:** we create several test accounts and *actively attack* — logged in as
+   User A, we programmatically attempt to read and write User B's journal, DMs, signals, profile, and
+   settings by every route (direct API calls, forged ids, tampered requests). It ships **only when every
+   one of those attempts fails.**
+3. **The IB gate is attacked too:** a free/unverified test account tries to pull VIP signals and the
+   copier feed; must return nothing.
+4. **Session integrity:** confirm tokens can't be reused across users and that logout fully clears
+   access.
+
+This break-in pass is treated like testing a payment system — non-negotiable, and the app does not go
+live until it passes. (Optionally, an automated version of these tests runs on every future update, so a
+later change can never silently re-open a hole.)
+
+### Scale
+5,000 accounts is **small**. Supabase/Postgres routinely runs apps with hundreds of thousands to
+millions of users; 5,000 sits comfortably inside the low-cost tier. Account isolation and scale are both
+solved problems here — the work is doing the RLS setup deliberately and running the break-in test, not
+inventing anything.
+
+**What you can honestly tell Arron:** *"Every member gets their own account on the same authentication
+infrastructure thousands of production apps use, and each person's data is walled off at the database
+level — not just in the app. Before launch we run a dedicated test where we actively try to access other
+users' accounts and confirm we can't. 5,000 users is a small, comfortable scale for it."* That's true —
+and it's the responsible claim, versus pretending the demo is already there.
+
+---
+
 ## 4. Messaging — wiring the two chat surfaces
 
 The demo has two chat surfaces that currently share the same script. In the real app they're **two
@@ -292,14 +375,17 @@ The demo already shows this feature (the "Auto-copier" card → the AI-review fe
 
 | Phase | Ships | Rough scope |
 |---|---|---|
-| **0 — Foundations** | Supabase project, schema, Auth, RN+Expo shell wired to the existing UI | the demo UI, now backed by real accounts + DB |
+| **0 — Foundations** | Supabase project, schema, Auth, **RLS on every table** (§3a), RN+Expo shell wired to the existing UI | the demo UI, now backed by real accounts + DB, isolated per-user from day one |
 | **1 — Signals + gate** | Telegram ingest → signals feed, Vantage IB verify, push | the core value: verified members get live calls on their phone |
 | **2 — Community + live** | Community chat, DMs, feed, live video (Zoom→HLS), presence | the daily-engagement + live-call experience |
 | **3 — Retention + AI review** | Journal (real), journey, weekly review, streaks, XP, education library, auto-copier feed + AI trade review | the "office" — all the addiction loops + the AI-coaching layer, persistent + push-driven |
+| **3.5 — Security break-in test** | Dedicated attack pass on account isolation + the IB gate (§3a) | **hard gate** — prove no member can reach another's data before any launch |
 | **4 — Store launch** | EAS builds, Arron's accounts, review, go live | on the App Store + Play |
 
-Phases 0–4 are the launchable app. The auto-copier + AI-review feed (§8) is a core feature in Phase 3,
-not a deferred add-on — dropping the MT5 execution bridge removed the only heavy/compliance-risky piece.
+Phases 0–4 are the launchable app. Account isolation (RLS) is built in **Phase 0** and **verified by an
+adversarial break-in test in Phase 3.5** — a non-negotiable gate before the app goes near the store (§3a).
+The auto-copier + AI-review feed (§8) is a core feature in Phase 3, not a deferred add-on — dropping the
+MT5 execution bridge removed the only heavy/compliance-risky piece.
 
 ---
 
