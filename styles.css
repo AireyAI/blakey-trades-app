@@ -278,6 +278,8 @@ a{color:inherit;text-decoration:none}
 .live-banner .lb-row{display:flex;align-items:center;justify-content:space-between}
 .live-banner h3{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.02em;line-height:1.1;margin:11px 0 4px}
 .countdown{display:flex;gap:7px;margin-top:13px}
+.cd-wrap{font-size:12.5px;color:var(--muted);padding:11px 2px 2px;line-height:1.5}
+.lobby-cd .cd-wrap{text-align:center;padding-bottom:14px}
 /* (dead dark-only .cd-cell removed — the canonical theme-safe rule lives in the lobby section) */
 .cd-cell b{font-family:var(--mono);font-size:21px;font-weight:700;display:block;line-height:1}
 .cd-cell span{font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}

@@ -148,15 +148,30 @@
     return null;
   }
   function nextCall() {
-    const now = Date.now();
+    const now = Date.now(), todayIdx = new Date().getDay();
+    const sched = D.schedule || [];
+    // feature TODAY's session for the whole day: upcoming-later-today → count down; already-run → show as today's (replay)
+    const todays = sched.filter(c => DAY_IDX[c.day] === todayIdx)
+      .map(c => ({ c, inst: ukInstantOnDay(c.day, c.time, now) }))
+      .filter(x => x.inst != null)
+      .sort((a, b) => a.inst - b.inst);
+    if (todays.length) {
+      const up = todays.find(x => x.inst > now);
+      if (up) return { ...up.c, startsIn: Math.floor((up.inst - now) / 1000), passed: false };
+      // no upcoming call left today — feature the most recent one; "passed" only once its live window has ended
+      const last = todays[todays.length - 1];
+      const withinWindow = now <= last.inst + 75 * 60000;
+      return { ...last.c, startsIn: 0, passed: !withinWindow };
+    }
+    // no call today → the soonest upcoming call on a future day
     let best = null, bestMs = Infinity;
-    for (const c of (D.schedule || [])) {
+    for (const c of sched) {
       const ms = ukInstantForDay(c.day, c.time, now);
       if (ms == null) continue;
       const diff = ms - now;
       if (diff < bestMs) { bestMs = diff; best = c; }
     }
-    return best ? { ...best, startsIn: Math.floor(bestMs / 1000) } : null;
+    return best ? { ...best, startsIn: Math.floor(bestMs / 1000), passed: false } : null;
   }
   // the call that's live right now (within its window) else the next one — all from the real schedule
   function liveCallInfo() {
@@ -589,7 +604,7 @@
     const pts = (bd && bd.points) || [];
     cards.push({ eyebrow: "Morning brief", h: (bd && bd.headline) || "Mapping today's session", body: `${bd && bd.bias ? `<span class="pill pill-gold" style="margin-bottom:14px">${bd.bias}</span>` : ""}${pts.slice(0, 2).map(p => `<p><b style="color:var(--gold)">${p.label}</b> — ${p.text}</p>`).join("")}` });
     cards.push({ eyebrow: "Signals today", h: `${todays.length} calls on the floor`, body: `<div class="st-sigs">${todays.slice(0, 4).map(i => `<div class="st-sig"><span>${i.pair} ${i.dir === "long" ? "▲" : "▼"}</span><b class="num ${i.status === "tp" ? "up" : i.status === "sl" ? "down" : ""}">${i.status === "tp" ? "Hit TP " + i.result : i.status === "sl" ? "Stopped " + i.result : i.status === "be" ? "BE" : "Running"}</b></div>`).join("")}</div>` });
-    if (nc) cards.push({ eyebrow: "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${DAY_FULL[nc.day]} ${nc.at}</div>`, cta: { label: "Set a reminder", go: "live" } });
+    if (nc) cards.push({ eyebrow: nc.passed ? "Today's session" : "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${DAY_FULL[nc.day]} ${nc.at}</div>`, cta: { label: nc.passed ? "Watch the replay" : "Set a reminder", go: nc.passed ? "learn" : "live" } });
     cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><div class="st-big num up">${w.ret}</div><p>${w.winRate} win rate · ${w.trades} trades</p>` });
     cards.push({ eyebrow: "Monthly challenge", h: "Journal every trade", body: `<div class="st-big num gold-text">${ch.done}<small style="font-size:22px">/${ch.total}</small></div><p>days logged — keep the streak alive</p>`, cta: { label: "Log a trade", go: "community" } });
     return cards;
@@ -670,15 +685,17 @@
         <canvas class="market-bg" data-chart="ambient" data-seed="7"></canvas>
         <div class="lb-inner">
           <div class="lb-row">
-            <span class="eyebrow">Next live call · ${DAY_FULL[nc.day]} ${nc.at}</span>
-            <span class="pill pill-live"><span class="dot-live"></span> Live call</span>
+            <span class="eyebrow">${nc.passed ? "Today's session" : "Next live call"} · ${DAY_FULL[nc.day]} ${nc.at}</span>
+            ${nc.passed ? `<span class="pill">Replay soon</span>` : `<span class="pill pill-live"><span class="dot-live"></span> Live call</span>`}
           </div>
           <h3>${nc.session}</h3>
-          <div class="sub" style="font-size:12.5px">Hosted by ${nc.host}</div>
+          <div class="sub" style="font-size:12.5px">Hosted by ${nc.host}${nc.passed ? " · wrapped for today" : ""}</div>
           <div class="countdown" id="cd"></div>
           <div style="display:flex;gap:10px;margin-top:15px">
-            <button class="btn btn-gold" style="flex:1" data-act="joinlive">${ic("i-live")} Join live</button>
-            <button class="btn btn-ghost btn-sm" data-act="remind" style="height:52px;padding:0 16px">${remindBtnLabel(nc)}</button>
+            ${nc.passed
+              ? `<button class="btn btn-gold" style="flex:1" data-tab="learn">${ic("i-play")} Watch replays</button>`
+              : `<button class="btn btn-gold" style="flex:1" data-act="joinlive">${ic("i-live")} Join live</button>
+            <button class="btn btn-ghost btn-sm" data-act="remind" style="height:52px;padding:0 16px">${remindBtnLabel(nc)}</button>`}
           </div>
         </div>
       </div>
@@ -708,29 +725,35 @@
       <div class="spacer"></div>
     `);
     // countdown to the next scheduled call — build cells once, roll only the digits that change
-    let left = nc.startsIn;
     const cd = $("#cd");
-    const cdLabels = nc.startsIn >= 86400 ? ["Days", "Hrs", "Min"] : ["Hrs", "Min", "Sec"];
-    cd.innerHTML = cdLabels.map(l => `<div class="cd-cell"><b class="num">00</b><span>${l}</span></div>`).join("");
-    const cdB = [...cd.querySelectorAll(".cd-cell b")];
-    const paint = () => {
-      const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
-      const vals = d > 0 ? [d, h, m] : [h, m, s];
-      vals.forEach((n, i) => {
-        const str = String(n).padStart(2, "0");
-        const b = cdB[i];
-        if (b && b.textContent !== str) {
-          b.textContent = str;
-          if (!reduceMotion()) { b.classList.remove("cd-tick"); void b.offsetWidth; b.classList.add("cd-tick"); }
-        }
-      });
-    };
-    paint();
-    const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); }, 1000);
-    cleanups.push(() => clearInterval(t));
+    if (nc.passed) {
+      cd.innerHTML = `<div class="cd-wrap">That's a wrap for today — the replay lands in Learn</div>`;
+    } else if (nc.startsIn <= 0) {
+      cd.innerHTML = `<div class="cd-wrap" style="color:var(--gold)">${ic("i-live", "ic")} Live now — join the room</div>`;
+    } else {
+      let left = nc.startsIn;
+      const cdLabels = nc.startsIn >= 86400 ? ["Days", "Hrs", "Min"] : ["Hrs", "Min", "Sec"];
+      cd.innerHTML = cdLabels.map(l => `<div class="cd-cell"><b class="num">00</b><span>${l}</span></div>`).join("");
+      const cdB = [...cd.querySelectorAll(".cd-cell b")];
+      const paint = () => {
+        const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+        const vals = d > 0 ? [d, h, m] : [h, m, s];
+        vals.forEach((n, i) => {
+          const str = String(n).padStart(2, "0");
+          const b = cdB[i];
+          if (b && b.textContent !== str) {
+            b.textContent = str;
+            if (!reduceMotion()) { b.classList.remove("cd-tick"); void b.offsetWidth; b.classList.add("cd-tick"); }
+          }
+        });
+      };
+      paint();
+      const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); }, 1000);
+      cleanups.push(() => clearInterval(t));
+    }
     wireCommon();
-    $("[data-act=joinlive]").onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
-    $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
+    const jl = $("[data-act=joinlive]"); if (jl) jl.onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
+    const rm2 = $("[data-act=remind]"); if (rm2) rm2.onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
     const hlk = $("[data-lockvip]"); if (hlk) hlk.onclick = IB ? openVerifyBroker : openMembership;
     mountMarketBar();
@@ -840,7 +863,7 @@
     const js = journalStats(), cp = copierState(), nc = nextCall();
     const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
     const healthy = js.pf >= 1 && js.netR >= 0;
-    const when = nc ? (nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
+    const when = nc ? (nc.passed ? "Replay soon" : nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
     const unread = unreadAnnouncements(), dmUn = dmUnread() + (thisWeeksReview() ? 0 : 1); // DMs + the pending weekly review pull people in
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
@@ -1286,7 +1309,7 @@
     return `<div id="live-lobby">
         <canvas class="market-bg" data-chart="ambient" data-seed="9"></canvas>
         <div class="lobby-inner">
-          <span class="pill pill-gold">${ic("i-live","ic")} Next live call</span>
+          <span class="pill pill-gold">${ic("i-live","ic")} ${nc && nc.passed ? "Today's session" : "Next live call"}</span>
           <h2 class="lobby-title">${nc ? nc.session : "Live trading room"}</h2>
           <div class="lobby-host">${nc ? `with ${nc.host} · ${DAY_FULL[nc.day]} ${nc.at}` : "Schedule coming up"}</div>
           <div class="countdown lobby-cd" id="lobby-cd"></div>
@@ -1316,16 +1339,22 @@
       </div>
     `);
     if (!live) {
-      const cd = $("#lobby-cd"); let left = nc ? nc.startsIn : 0;
-      const paint = () => { if (!cd) return; const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; cd.innerHTML = (d > 0 ? `<span class="cd-cell"><b>${d}</b><small>days</small></span>` : "") + `<span class="cd-cell"><b>${String(h).padStart(2,"0")}</b><small>hrs</small></span><span class="cd-cell"><b>${String(m).padStart(2,"0")}</b><small>min</small></span><span class="cd-cell"><b>${String(s).padStart(2,"0")}</b><small>sec</small></span>`; };
-      paint();
-      let warned = false; // fire the real 10-minute warning once if the countdown reaches it while reminded
-      const lt = setInterval(() => {
-        left = left > 0 ? left - 1 : 0; paint();
-        if (!warned && left <= 600 && left > 0 && nc && isReminded(nc)) { warned = true; showPush(`${nc.session} starts in 10 minutes`, `Your live call with ${nc.host} is coming up — get ready to join.`); }
-        if (left <= 0) { if (nc && isReminded(nc)) showPush(`🔴 ${nc.session} has started`, `${nc.host} is live now — tap to join the room.`); go("live"); }
-      }, 1000);
-      cleanups.push(() => clearInterval(lt));
+      const cd = $("#lobby-cd");
+      if (nc && nc.passed) {
+        // today's session already ran — no countdown, no auto-rejoin loop
+        if (cd) cd.innerHTML = `<div class="cd-wrap">That's a wrap for today — the replay lands in Learn</div>`;
+      } else {
+        let left = nc ? nc.startsIn : 0;
+        const paint = () => { if (!cd) return; const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; cd.innerHTML = (d > 0 ? `<span class="cd-cell"><b>${d}</b><small>days</small></span>` : "") + `<span class="cd-cell"><b>${String(h).padStart(2,"0")}</b><small>hrs</small></span><span class="cd-cell"><b>${String(m).padStart(2,"0")}</b><small>min</small></span><span class="cd-cell"><b>${String(s).padStart(2,"0")}</b><small>sec</small></span>`; };
+        paint();
+        let warned = false; // fire the real 10-minute warning once if the countdown reaches it while reminded
+        const lt = setInterval(() => {
+          left = left > 0 ? left - 1 : 0; paint();
+          if (!warned && left <= 600 && left > 0 && nc && isReminded(nc)) { warned = true; showPush(`${nc.session} starts in 10 minutes`, `Your live call with ${nc.host} is coming up — get ready to join.`); }
+          if (left <= 0) { if (nc && isReminded(nc)) showPush(`🔴 ${nc.session} has started`, `${nc.host} is live now — tap to join the room.`); go("live"); }
+        }, 1000);
+        cleanups.push(() => clearInterval(lt));
+      }
       const pv = $("#live-preview"); if (pv) pv.onclick = () => { livePreview = true; SCREENS.live(); };
       const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) { toast("We'll alert you 10 minutes before the call", "i-bell"); previewCallAlerts(nc); } else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
       const ac = $("[data-act=add-cal]"); if (ac) ac.onclick = () => downloadCallIcs(nc);
@@ -2282,11 +2311,12 @@
     const out = [], nc = nextCall();
     if (nc) {
       const s = nc.startsIn, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
-      const soon = !isLiveNow() && s <= 600;
+      const soon = !isLiveNow() && !nc.passed && s <= 600;
       const text = isLiveNow() ? `🔴 ${nc.session} has started — ${nc.host} is live now`
+        : nc.passed ? `Today's ${nc.session} session has wrapped — replay coming to Learn`
         : soon ? `${nc.session} starts in ${Math.max(1, m)} min — get ready to join`
         : `${nc.session} ${h > 0 ? `starts in ${h}h ${m}m` : `starts in ${m}m`} — ${nc.host} hosting`;
-      out.push({ k: "call-" + nc.session, icon: isLiveNow() || soon ? "i-live" : "i-bell", text, time: "now", unread: true, go: "live" });
+      out.push({ k: "call-" + nc.session, icon: isLiveNow() || soon ? "i-live" : "i-bell", text, time: "now", unread: !nc.passed, go: nc.passed ? "learn" : "live" });
     }
     (D.schedule || []).forEach(c => {
       if (isReminded(c)) out.push({ k: "rem-" + c.session, icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
