@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blakey Trades — Telegram Signal Integration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#B4831E; --gold-hi:#E0B23C; --ink:#141118; --body:#39343f; --muted:#726b78;
+    --line:#e7e2ea; --soft:#faf8f5; --soft-gold:#fbf5e6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{ size:A4; margin:18mm 16mm; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:Inter,system-ui,sans-serif; color:var(--body); font-size:10.6pt; line-height:1.62; }
+  h1,h2,h3{ font-family:Sora,sans-serif; color:var(--ink); letter-spacing:-.01em; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* cover header */
+  .head{ border-bottom:2px solid var(--gold); padding-bottom:16px; margin-bottom:22px; display:flex; align-items:flex-end; justify-content:space-between; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .mark{ width:42px; height:42px; border-radius:11px; background:linear-gradient(150deg,#2a2118,#141118); color:var(--gold-hi); display:flex; align-items:center; justify-content:center; font-family:Sora; font-weight:800; font-size:17px; border:1px solid #cbb37a; }
+  .brand b{ font-family:Sora; font-weight:800; font-size:15pt; color:var(--ink); display:block; line-height:1.1; }
+  .brand span{ font-size:8.5pt; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .doctag{ text-align:right; font-size:8.5pt; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); font-weight:600; }
+
+  h1{ font-size:22pt; font-weight:800; line-height:1.12; margin-bottom:8px; }
+  .lede{ font-size:11.2pt; color:var(--body); max-width:92%; }
+  .lede b{ color:var(--ink); }
+
+  .callout{ background:var(--soft-gold); border:1px solid #ecdcae; border-radius:12px; padding:14px 16px; margin:18px 0 4px; font-size:10.4pt; }
+  .callout b{ color:var(--gold); }
+
+  h2{ font-size:13.5pt; font-weight:700; margin:26px 0 4px; padding-top:14px; border-top:1px solid var(--line); }
+  h2 .n{ color:var(--gold); margin-right:8px; }
+  .sub{ color:var(--muted); font-size:9.6pt; margin-bottom:12px; }
+
+  /* pipeline flow */
+  .flow{ display:flex; flex-direction:column; gap:0; margin:8px 0 6px; }
+  .step{ display:flex; gap:13px; align-items:flex-start; position:relative; padding-bottom:15px; }
+  .step:not(:last-child)::before{ content:""; position:absolute; left:15px; top:31px; bottom:0; width:2px; background:var(--line); }
+  .dot{ flex:none; width:32px; height:32px; border-radius:9px; background:var(--soft-gold); border:1px solid #e6d09a; color:var(--gold); font-family:Sora; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; z-index:1; }
+  .step .c b{ font-family:Sora; font-size:10.8pt; color:var(--ink); display:block; margin-bottom:1px; }
+  .step .c p{ font-size:9.9pt; color:var(--body); }
+
+  ol.steps{ margin:6px 0 4px 0; padding:0; list-style:none; counter-reset:s; }
+  ol.steps li{ counter-increment:s; position:relative; padding:8px 0 8px 34px; border-bottom:1px solid var(--line); font-size:10.2pt; }
+  ol.steps li:last-child{ border-bottom:none; }
+  ol.steps li::before{ content:counter(s); position:absolute; left:0; top:7px; width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font-family:Sora; font-weight:700; font-size:10px; display:flex; align-items:center; justify-content:center; }
+  ol.steps li b{ color:var(--ink); }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
+  .card{ border:1px solid var(--line); border-radius:11px; padding:13px 15px; background:var(--soft); }
+  .card h3{ font-size:10.6pt; font-weight:700; margin-bottom:4px; }
+  .card p{ font-size:9.7pt; color:var(--body); }
+  .tag{ display:inline-block; font-size:8pt; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--gold); background:var(--soft-gold); border:1px solid #ecdcae; border-radius:20px; padding:2px 9px; margin-bottom:7px; }
+
+  .msg{ background:#f4f1ee; border-left:3px solid var(--gold); border-radius:0 8px 8px 0; padding:10px 13px; margin:9px 0; font-size:9.6pt; }
+  .msg .mono{ color:var(--ink); }
+
+  .check{ list-style:none; padding:0; margin:8px 0; }
+  .check li{ padding:7px 0 7px 26px; position:relative; font-size:10.3pt; border-bottom:1px solid var(--line); }
+  .check li:last-child{ border-bottom:none; }
+  .check li::before{ content:"✓"; position:absolute; left:0; top:6px; color:#fff; background:var(--gold); width:18px; height:18px; border-radius:50%; font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+  .check li b{ color:var(--ink); }
+
+  .foot{ margin-top:26px; padding-top:12px; border-top:1px solid var(--line); font-size:8.6pt; color:var(--muted); display:flex; justify-content:space-between; }
+
+  .avoid-break{ break-inside:avoid; }
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <div class="brand">
+      <div class="mark">BT</div>
+      <div><b>Blakey Trades</b><span>App Integration</span></div>
+    </div>
+    <div class="doctag">Signal Integration Guide</div>
+  </div>
+
+  <h1>How your signals reach the app</h1>
+  <p class="lede">This explains exactly how the trade signals you post in Telegram appear inside the Blakey Trades app — automatically, in seconds, for your verified members. <b>Nothing changes about how you work.</b> You keep posting in Telegram exactly as you do now; the app reads your calls and delivers them. You never post in two places.</p>
+
+  <div class="callout">
+    <b>The one thing we need from you:</b> add our app's bot as an administrator on each of your signal channels. It takes about 30 seconds per channel. That's the only action required on your side — everything after that is automatic. Full steps are in Section 2.
+  </div>
+
+  <h2><span class="n">1</span>How it works</h2>
+  <p class="sub">From the moment you hit send in Telegram to a notification on your member's phone — in seconds.</p>
+  <div class="flow">
+    <div class="step avoid-break">
+      <div class="dot">1</div>
+      <div class="c"><b>You post a signal in Telegram</b><p>Exactly as you do today — entry, stop, targets — in your VIP, Swing, Zones or Scalps channels. No new tools, no new steps.</p></div>
+    </div>
+    <div class="step avoid-break">
+      <div class="dot">2</div>
+      <div class="c"><b>Our bot reads the post instantly</b><p>A private bot — created and managed entirely by us — sits quietly in your channels as an admin. The instant you post, it receives the message. Your members never see it; it doesn't post anything.</p></div>
+    </div>
+    <div class="step avoid-break">
+      <div class="dot">3</div>
+      <div class="c"><b>The signal is read and structured</b><p>The system reads your call and pulls out the details — pair, direction, entry, stop and every target — and files them as a clean, tappable trade in the app.</p></div>
+    </div>
+    <div class="step avoid-break">
+      <div class="dot">4</div>
+      <div class="c"><b>It's delivered to verified members</b><p>The trade appears live in the app's signal feed and a push notification lands on every verified member's phone — typically within a few seconds of you posting.</p></div>
+    </div>
+    <div class="step avoid-break">
+      <div class="dot">5</div>
+      <div class="c"><b>Your follow-ups keep it updated</b><p>When you post an update — "partials here", "stop to breakeven", "closed +40 pips" — the app updates the same trade in place, so members always see its current state, not a cluttered stream.</p></div>
+    </div>
+  </div>
+
+  <h2><span class="n">2</span>What we need from you</h2>
+  <p class="sub">Add our bot as an administrator on each signal channel. We'll send you the bot's exact username; then, in Telegram:</p>
+  <ol class="steps">
+    <li>Open the channel in Telegram and tap the <b>channel name</b> at the top.</li>
+    <li>Tap <b>Administrators</b> (under "Manage Channel" on some versions).</li>
+    <li>Tap <b>Add Administrator</b> and search the bot username we give you.</li>
+    <li>Select it and tap <b>Save/Done</b>. It only needs to read posts — you can leave every other permission off.</li>
+    <li><b>Repeat for each signal channel</b> you want feeding the app.</li>
+  </ol>
+  <div class="callout" style="margin-top:14px">
+    <b>Is this safe?</b> Being an admin is simply what Telegram requires for a bot to receive a channel's posts — it does <b>not</b> give anyone control of your channel, and your subscribers won't see any change. You can remove the bot at any time.
+  </div>
+
+  <h2><span class="n">3</span>What happens to each signal</h2>
+  <div class="grid2">
+    <div class="card avoid-break">
+      <span class="tag">Entry signals</span>
+      <h3>Read cleanly, every time</h3>
+      <p>Your entry, stop and all targets are pulled out and shown as a proper trade card — with a live chart, the levels, and its status (running / hit target / stopped).</p>
+    </div>
+    <div class="card avoid-break">
+      <span class="tag">Follow-up updates</span>
+      <h3>Attached to the right trade</h3>
+      <p>"Partials", "SL to breakeven", "closed" — these attach to the original call and update its status, rather than appearing as loose, confusing messages.</p>
+    </div>
+    <div class="card avoid-break">
+      <span class="tag">Edits</span>
+      <h3>Kept in sync</h3>
+      <p>If you edit a message in Telegram, the app updates that same trade — so what members see always matches what you posted.</p>
+    </div>
+    <div class="card avoid-break">
+      <span class="tag">Education &amp; chat</span>
+      <h3>Stays where it belongs</h3>
+      <p>Only your trade calls are turned into signals. General chat and education aren't mistaken for trades — the system knows the difference.</p>
+    </div>
+  </div>
+  <div class="msg avoid-break">
+    <b>Example.</b> You post in Telegram:<br>
+    <span class="mono">🔴 SELL XAUUSD — Entry 4,051, SL 4,059, TP1 4,043 · TP2 4,035</span><br>
+    Seconds later every verified member gets a push — <span class="mono">"🔴 BT VIP · New gold call"</span> — and taps into a full trade card with the chart and levels already laid out.
+  </div>
+
+  <h2><span class="n">4</span>Who receives the signals</h2>
+  <p class="sub">Your calls only go to the members who should have them.</p>
+  <p>Every signal is delivered <b>only to verified members</b> — the traders confirmed under your broker partnership. Anyone not verified sees that a live call is running but the entry, stop and targets stay locked, with a prompt to get verified. So the app doesn't just deliver your signals faster than Telegram — it makes sure they reach the right people, and turns the lock screen into a route for new members to join properly.</p>
+
+  <h2><span class="n">5</span>Your workflow — unchanged</h2>
+  <ul class="check">
+    <li>You <b>post once</b>, in Telegram, exactly as you do now.</li>
+    <li>No new app, dashboard or tool to learn — you change nothing.</li>
+    <li>The app becomes the premium, members-only home for your calls — with push alerts, a verified track record, and everything gated to your members.</li>
+    <li>You can add or remove the bot from any channel whenever you like — you stay in full control.</li>
+  </ul>
+
+  <h2><span class="n">6</span>Summary — the ask</h2>
+  <p class="sub">Everything we need to switch this on:</p>
+  <ul class="check">
+    <li><b>Admin access</b> for our bot on each signal channel (we send you the username; ~30 seconds per channel — Section 2).</li>
+    <li><b>Confirm which channels</b> should feed the app.</li>
+  </ul>
+  <p style="margin-top:10px">That's it. Once the bot is an admin on your channels, your signals start flowing into the app automatically. Any questions, we're happy to walk through it live.</p>
+
+  <div class="foot">
+    <span>Blakey Trades — App Integration Guide</span>
+    <span>Telegram → App signal pipeline</span>
+  </div>
+
+</body>
+</html>
