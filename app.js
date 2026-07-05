@@ -693,7 +693,7 @@
       ${floorCard()}
 
       <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
-      ${ideaCard(ideas)}
+      ${(getSetting("tier", "free") === "free" && ideas.status === "running") ? lockedSignalCard(ideas) : ideaCard(ideas)}
 
       <div class="section-head"><span class="h2">Trader of the week</span><span class="more" data-tab="community">View ›</span></div>
       ${totwMini()}
@@ -732,6 +732,7 @@
     $("[data-act=joinlive]").onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
     $("[data-act=remind]").onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
+    const hlk = $("[data-lockvip]"); if (hlk) hlk.onclick = IB ? openVerifyBroker : openMembership;
     mountMarketBar();
   };
 
@@ -2153,6 +2154,8 @@
 
   function openIdea(id) {
     const i = D.ideas.find(x => x.id === id) || D.ideas[0];
+    // hard gate: a free member can never open a LIVE (running) entry's detail — verify with the broker first
+    if (getSetting("tier", "free") === "free" && i.status === "running") { return IB ? openVerifyBroker() : openMembership(); }
     const sell = i.dir === "short";
     const st = i.status === "tp" ? `<span class="pill pill-up">${ic("i-check","ic")} Hit TP ${i.result}</span>`
       : i.status === "sl" ? `<span class="pill pill-down">Stopped ${i.result}</span>`
@@ -2391,7 +2394,7 @@
     const list = $("#chan-list");
     lastChanId = id;
     const tier = getSetting("tier", "free");
-    list.innerHTML = items.map(x => (id === "vip" && tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
+    list.innerHTML = items.map(x => (tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
     requestAnimationFrame(() => Charts.initIn(list));
     [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
     const lk = list.querySelector("[data-lockvip]"); if (lk) lk.onclick = IB ? openVerifyBroker : openMembership;
@@ -2713,16 +2716,16 @@
     };
     $("#vb-open").onclick = () => toast(`Opens ${B.founderFirst}'s ${B.broker} partner link`, "i-chev");
   }
-  // a locked "next VIP call" card — the paywall mechanic, shown in the VIP feed to free users
-  // the paywall mechanic: live/running VIP entries are locked for free members — closed results stay public
+  // locked signal card — the paywall mechanic across EVERY channel: live/running entries are locked for
+  // free members and require Vantage verification; closed results stay public as the track-record teaser.
   function lockedSignalCard(i) {
     return `<div class="card idea sig-locked" data-lockvip>
       <div class="sl-blur" aria-hidden="true">
-        <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${i.pair}</span><span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div><span class="pill pill-gold"><span class="dot-live"></span> VIP</span></div>
+        <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${i.pair}</span><span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div><span class="pill pill-gold"><span class="dot-live"></span> LIVE</span></div>
         <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas></div>
         <div class="ticket"><div class="cell"><small>Entry</small><b class="num">4,0••–4,0••</b></div><div class="cell sl"><small>Stop</small><b class="num">4,0••</b></div><div class="cell tp"><small>Target</small><b class="num">4,0••</b></div></div>
       </div>
-      <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Live VIP signal · running now</b><small>Closed results below are public. Live entries are for verified members — ${IB ? `link your ${B.broker} account` : "unlock"} to see the entry, stop &amp; all 6 targets.</small><div class="sl-meta"><span class="dot-live"></span>Posted 4m ago · <span data-vipviewers>87</span> VIP viewing now</div><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
+      <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Live signal · members only</b><small>Live entries are for verified members — ${IB ? `link your ${B.broker} account` : "unlock VIP"} to see the entry, stop &amp; targets.</small><div class="sl-meta"><span class="dot-live"></span>Posted 4m ago · <span data-vipviewers>87</span> watching now</div><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
     </div>`;
   }
   // ---- paper trading: one live mock position, anchored at the current price ----

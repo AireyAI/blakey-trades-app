@@ -94,6 +94,9 @@ window.DATA = {
       entry:"4,063.00", sl:"4,074.00", tp:"4,035.00", rr:"2.5", status:"running",
       note:"Weekly supply 4,062–4,065 overhead. Watch for rejection wicks into this zone for shorts." },
     // SN Scalps — fast intraday
+    { id:"sc0", channel:"scalps", pair:"XAUUSD", dir:"long", session:"NY scalp", time:"3m ago",
+      entry:"4,039.50", sl:"4,036.50", tp:"4,046.00", rr:"2.2", status:"running", result:"Running",
+      note:"M1 break-and-retest off the NY open. In on the reclaim, targeting the session high." },
     { id:"sc1", channel:"scalps", pair:"XAUUSD", dir:"long", session:"NY scalp", time:"12m ago",
       entry:"4,031.00", sl:"4,028.00", tp:"4,038.00", rr:"2.3", status:"tp", result:"+7.0",
       note:"M1 break of structure off the NY open. Quick scalp, partials fast." },
@@ -104,6 +107,9 @@ window.DATA = {
       entry:"4,037.50", sl:"4,035.00", tp:"4,043.00", rr:"2.2", status:"sl", result:"-2.5",
       note:"VWAP reclaim rolled over and stopped for -2.5. Scalping is a game of small losses and bigger winners — this is one of the small ones, taken without hesitation." },
     // Signal IQ — mechanical bot
+    { id:"iq0", channel:"iq", pair:"XAUUSD", dir:"long", session:"Auto", time:"09:00",
+      entry:"4,041.00", sl:"4,031.00", tp:"4,061.00", rr:"2.0", status:"running", result:"Running",
+      note:"Mechanical signal — trend + momentum filter aligned long. No discretion, fixed 2R target." },
     { id:"iq1", channel:"iq", pair:"XAUUSD", dir:"long", session:"Auto", time:"06:00",
       entry:"4,020.00", sl:"4,010.00", tp:"4,040.00", rr:"2.0", status:"tp", result:"+20.0",
       note:"Mechanical signal — trend + momentum filter aligned long. No discretion, fixed 2R target." },
