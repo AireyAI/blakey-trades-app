@@ -9,7 +9,7 @@
 <style>
   :root{
     --gold:#B4831E; --gold-hi:#E0B23C; --ink:#141118; --body:#39343f; --muted:#726b78;
-    --line:#e7e2ea; --soft:#faf8f5; --soft-gold:#fbf5e6;
+    --line:#e7e2ea; --soft-gold:#fbf5e6;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   @page{ size:A4; margin:18mm 16mm; }
@@ -50,12 +50,6 @@
   ol.steps li:last-child{ border-bottom:none; }
   ol.steps li::before{ content:counter(s); position:absolute; left:0; top:7px; width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font-family:Sora; font-weight:700; font-size:10px; display:flex; align-items:center; justify-content:center; }
   ol.steps li b{ color:var(--ink); }
-
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
-  .card{ border:1px solid var(--line); border-radius:11px; padding:13px 15px; background:var(--soft); }
-  .card h3{ font-size:10.6pt; font-weight:700; margin-bottom:4px; }
-  .card p{ font-size:9.7pt; color:var(--body); }
-  .tag{ display:inline-block; font-size:8pt; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--gold); background:var(--soft-gold); border:1px solid #ecdcae; border-radius:20px; padding:2px 9px; margin-bottom:7px; }
 
   .msg{ background:#f4f1ee; border-left:3px solid var(--gold); border-radius:0 8px 8px 0; padding:10px 13px; margin:9px 0; font-size:9.6pt; }
   .msg .mono{ color:var(--ink); }
@@ -131,54 +125,21 @@
     <b>Is this safe?</b> Being an admin is simply what Telegram requires for a bot to receive a channel's posts — it does <b>not</b> give anyone control of your channel, and your subscribers won't see any change. You can remove the bot at any time.
   </div>
 
-  <h2><span class="n">3</span>What happens to each signal</h2>
-  <div class="grid2">
-    <div class="card avoid-break">
-      <span class="tag">Entry signals</span>
-      <h3>Read cleanly, every time</h3>
-      <p>Your entry, stop and all targets are pulled out and shown as a proper trade card — with a live chart, the levels, and its status (running / hit target / stopped).</p>
-    </div>
-    <div class="card avoid-break">
-      <span class="tag">Follow-up updates</span>
-      <h3>Attached to the right trade</h3>
-      <p>"Partials", "SL to breakeven", "closed" — these attach to the original call and update its status, rather than appearing as loose, confusing messages.</p>
-    </div>
-    <div class="card avoid-break">
-      <span class="tag">Edits</span>
-      <h3>Kept in sync</h3>
-      <p>If you edit a message in Telegram, the app updates that same trade — so what members see always matches what you posted.</p>
-    </div>
-    <div class="card avoid-break">
-      <span class="tag">Education &amp; chat</span>
-      <h3>Stays where it belongs</h3>
-      <p>Only your trade calls are turned into signals. General chat and education aren't mistaken for trades — the system knows the difference.</p>
-    </div>
-  </div>
+  <h2><span class="n">3</span>What your members see</h2>
+  <ul class="check">
+    <li>Your entry, stop and targets become a full trade card — <b>live chart, levels, and status</b> (running / hit target / stopped).</li>
+    <li>Follow-ups — "partials", "SL to breakeven", "closed" — <b>update that same card</b>, not a cluttered stream of new messages.</li>
+    <li>Only <b>verified members</b> (confirmed under your broker partnership) see the entry, stop and targets. Anyone else sees a call is running but stays locked out — with a prompt to get verified.</li>
+  </ul>
   <div class="msg avoid-break">
     <b>Example.</b> You post in Telegram:<br>
     <span class="mono">🔴 SELL XAUUSD — Entry 4,051, SL 4,059, TP1 4,043 · TP2 4,035</span><br>
     Seconds later every verified member gets a push — <span class="mono">"🔴 BT VIP · New gold call"</span> — and taps into a full trade card with the chart and levels already laid out.
   </div>
 
-  <h2><span class="n">4</span>Who receives the signals</h2>
-  <p class="sub">Your calls only go to the members who should have them.</p>
-  <p>Every signal is delivered <b>only to verified members</b> — the traders confirmed under your broker partnership. Anyone not verified sees that a live call is running but the entry, stop and targets stay locked, with a prompt to get verified. So the app doesn't just deliver your signals faster than Telegram — it makes sure they reach the right people, and turns the lock screen into a route for new members to join properly.</p>
-
-  <h2><span class="n">5</span>Your workflow — unchanged</h2>
-  <ul class="check">
-    <li>You <b>post once</b>, in Telegram, exactly as you do now.</li>
-    <li>No new app, dashboard or tool to learn — you change nothing.</li>
-    <li>The app becomes the premium, members-only home for your calls — with push alerts, a verified track record, and everything gated to your members.</li>
-    <li>You can add or remove the bot from any channel whenever you like — you stay in full control.</li>
-  </ul>
-
-  <h2><span class="n">6</span>Summary — the ask</h2>
-  <p class="sub">Everything we need to switch this on:</p>
-  <ul class="check">
-    <li><b>Admin access</b> for <b class="mono">@Blakeytradesappbot</b> on each signal channel (~30 seconds per channel — Section 2).</li>
-    <li><b>Confirm which channels</b> should feed the app.</li>
-  </ul>
-  <p style="margin-top:10px">That's it. Once the bot is an admin on your channels, your signals start flowing into the app automatically. Any questions, we're happy to walk through it live.</p>
+  <div class="callout" style="margin-top:24px">
+    <b>The ask, in short:</b> add <b class="mono">@Blakeytradesappbot</b> as an administrator on each signal channel you want feeding the app (Section 2), and confirm which channels those are. That's it — your signals start flowing automatically. Any questions, we're happy to walk through it live.
+  </div>
 
   <div class="foot">
     <span>Blakey Trades — App Integration Guide</span>
