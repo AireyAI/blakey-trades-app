@@ -860,11 +860,14 @@
   function dmUnread() { const seen = dmSeenMap(); return (D.dms || []).reduce((s, t) => s + Math.max(0, t.msgs.length - (seen[t.id] || 0)), 0); }
   function markDmSeen(id) { const t = D.dms.find(x => x.id === id); if (t) pSet({ dmSeen: { ...dmSeenMap(), [id]: t.msgs.length } }); }
   function dailyGoals() {
-    return [
+    const g = [
       { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
       { label: "Check today's signals", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
       { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
     ];
+    // every Monday: plan the week around the economic calendar
+    if (new Date().getDay() === 1) g.unshift({ label: "Check the week's news", done: getSetting("newsWeek", "") === weekKey(), act: 'data-act="calendar"' });
+    return g;
   }
   function maybeExtendStreak() {
     if (getSetting("streakDay", "") === ymd()) return false;
@@ -2469,6 +2472,7 @@
     return Object.keys(byDay).map(d => `<div class="cal-day">${d}</div>${byDay[d].map(e => `<div class="cal-row"><span class="cal-time num">${e.time}</span><span class="cal-cur">${e.cur}</span><span class="cal-ev">${e.event}${(e.forecast || e.previous) ? `<small class="cal-fp num">Forecast ${e.forecast || "–"} · Prev ${e.previous || "–"}</small>` : ""}</span><span class="cal-imp imp-${e.impact}">${e.impact}</span></div>`).join("")}`).join("");
   }
   function openCalendar() {
+    setSetting("newsWeek", weekKey()); // marks the Monday "check the week's news" goal done
     const live = !!(liveCal && liveCal.length);
     const subLive = `<span class="cal-live">● Live</span> · news that moves gold · times UK`;
     openModal(`<h3 class="sheet-title">Market news</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
