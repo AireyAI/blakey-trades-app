@@ -14,7 +14,7 @@ const types = {
 
 http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split("?")[0]);
-  if (p === "/") p = "/index.html";
+  if (p.endsWith("/")) p += "index.html"; // directory index, same behavior as Cloudflare Pages
   const rel = path.normalize(p).replace(/^(\.\.(\/|\\|$))+/, "").replace(/^\/+/, "");
   const f = path.resolve(root, rel);
   if (f !== root && !f.startsWith(root + path.sep)) { res.writeHead(403); return res.end("Forbidden"); }

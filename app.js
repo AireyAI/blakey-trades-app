@@ -173,6 +173,11 @@
     }
     return best ? { ...best, startsIn: Math.floor(bestMs / 1000), passed: false } : null;
   }
+  function callDayLabel(c) { // "Tonight"/"Today" when the call is today, else the day name
+    if (!c || !c.day) return "Soon";
+    if (c.passed || (c.startsIn != null && c.startsIn < 86400 && DAY_IDX[c.day] === new Date().getDay())) return parseInt(c.time) >= 17 ? "Tonight" : "Today";
+    return DAY_FULL[c.day] || c.day;
+  }
   // the call that's live right now (within its window) else the next one — all from the real schedule
   function liveCallInfo() {
     const now = new Date();
@@ -384,11 +389,18 @@
   function pState() { try { return JSON.parse(localStorage.getItem(PSTORE) || "null") || {}; } catch (e) { return {}; } }
   function pSave(s) { try { localStorage.setItem(PSTORE, JSON.stringify(s)); } catch (e) {} }
   function pSet(patch) { const s = pState(); Object.assign(s, patch); pSave(s); return s; }
+  function deriveHandle(nm) { const h = (nm || "").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, ""); return "@" + (h || "trader"); }
+  function syncPersona() { // handle + the leaderboard "You" row follow the display name — no Jordan Hale ghost
+    D.user.handle = deriveHandle(D.user.name);
+    const me = D.leaderboard.find(r => r.me);
+    if (me) { me.name = D.user.name; me.handle = D.user.handle; me.initials = D.user.initials; }
+  }
   function hydrateProfile() { // first run seeds storage with the demo journal; thereafter it's the source of truth
     const s = pState();
     if (Array.isArray(s.journal)) D.journal = s.journal;
     else pSet({ journal: D.journal, streak: D.user.streak, lbPoints: 3480 });
     if (s.name) { D.user.name = s.name; D.user.first = s.first || s.name.split(/\s+/)[0]; D.user.initials = s.initials || D.user.initials; }
+    syncPersona();
     if (s.country) D.user.country = s.country;
     if (s.pathDone) D.paths.forEach(p => { if (s.pathDone[p.id] != null) p.done = Math.min(s.pathDone[p.id], p.lessons); });
     if (s.videoProgress) D.videos.forEach(v => { if (s.videoProgress[v.id] != null) v.progress = s.videoProgress[v.id]; });
@@ -604,7 +616,7 @@
     const pts = (bd && bd.points) || [];
     cards.push({ eyebrow: "Morning brief", h: (bd && bd.headline) || "Mapping today's session", body: `${bd && bd.bias ? `<span class="pill pill-gold" style="margin-bottom:14px">${bd.bias}</span>` : ""}${pts.slice(0, 2).map(p => `<p><b style="color:var(--gold)">${p.label}</b> — ${p.text}</p>`).join("")}` });
     cards.push({ eyebrow: "Signals today", h: `${todays.length} calls on the floor`, body: `<div class="st-sigs">${todays.slice(0, 4).map(i => `<div class="st-sig"><span>${i.pair} ${i.dir === "long" ? "▲" : "▼"}</span><b class="num ${i.status === "tp" ? "up" : i.status === "sl" ? "down" : ""}">${i.status === "tp" ? "Hit TP " + i.result : i.status === "sl" ? "Stopped " + i.result : i.status === "be" ? "BE" : "Running"}</b></div>`).join("")}</div>` });
-    if (nc) cards.push({ eyebrow: nc.passed ? "Today's session" : "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${DAY_FULL[nc.day]} ${nc.at}</div>`, cta: { label: nc.passed ? "Watch the replay" : "Set a reminder", go: nc.passed ? "learn" : "live" } });
+    if (nc) cards.push({ eyebrow: nc.passed ? "Today's session" : "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${callDayLabel(nc)} ${nc.at}</div>`, cta: { label: nc.passed ? "Watch the replay" : "Set a reminder", go: nc.passed ? "learn" : "live" } });
     cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><div class="st-big num up">${w.ret}</div><p>${w.winRate} win rate · ${w.trades} trades</p>` });
     cards.push({ eyebrow: "Monthly challenge", h: "Journal every trade", body: `<div class="st-big num gold-text">${ch.done}<small style="font-size:22px">/${ch.total}</small></div><p>days logged — keep the streak alive</p>`, cta: { label: "Log a trade", go: "community" } });
     return cards;
@@ -685,7 +697,7 @@
         <canvas class="market-bg" data-chart="ambient" data-seed="7"></canvas>
         <div class="lb-inner">
           <div class="lb-row">
-            <span class="eyebrow">${nc.passed ? "Today's session" : "Next live call"} · ${DAY_FULL[nc.day]} ${nc.at}</span>
+            <span class="eyebrow">${nc.passed ? "Today's session" : "Next live call"} · ${callDayLabel(nc)} ${nc.at}</span>
             ${nc.passed ? `<span class="pill">Replay soon</span>` : `<span class="pill pill-live"><span class="dot-live"></span> Live call</span>`}
           </div>
           <h3>${nc.session}</h3>
@@ -1311,7 +1323,7 @@
         <div class="lobby-inner">
           <span class="pill pill-gold">${ic("i-live","ic")} ${nc && nc.passed ? "Today's session" : "Next live call"}</span>
           <h2 class="lobby-title">${nc ? nc.session : "Live trading room"}</h2>
-          <div class="lobby-host">${nc ? `with ${nc.host} · ${DAY_FULL[nc.day]} ${nc.at}` : "Schedule coming up"}</div>
+          <div class="lobby-host">${nc ? `with ${nc.host} · ${callDayLabel(nc)} ${nc.at}` : "Schedule coming up"}</div>
           <div class="countdown lobby-cd" id="lobby-cd"></div>
           <div class="lobby-actions">
             <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} ${remindBtnLabel(nc)}</button>
@@ -1371,7 +1383,7 @@
       const node = document.createElement("div");
       node.className = "chat-msg" + (m.host ? " host" : "");
       node.innerHTML = m.host
-        ? `<div class="ct"><b>${m.name} · Host</b>${m.text}</div>`
+        ? `<div class="ct"><b>${m.name} · ${m.name === B.founderFirst ? "Founder" : "Host"}</b>${m.text}</div>`
         : `${av(m.initials, 28, "quiet")}<div class="ct"><b>${m.name}</b>${m.text}</div>`;
       chat.appendChild(node);
       while (chat.children.length > 14) chat.removeChild(chat.firstChild);
@@ -2010,6 +2022,7 @@
       const nm = ($("#ep-name").value || "").trim(); if (!nm) return;
       D.user.name = nm; D.user.first = nm.split(/\s+/)[0];
       D.user.initials = nm.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || D.user.initials;
+      syncPersona();
       pSet({ name: D.user.name, first: D.user.first, initials: D.user.initials });
       closeModal(); SCREENS.profile(); toast("Profile updated", "i-check");
     };
@@ -2061,7 +2074,7 @@
       <div class="acct-h">Account</div>
       <div class="card card-pad">
         ${acctRow("i-tg","Email","jordan.hale@gmail.com")}
-        ${acctRow("i-tg","Telegram","@jhale_fx · linked")}
+        ${acctRow("i-tg","Telegram",`${D.user.handle} · linked`)}
         ${acctRow("i-dollar","Membership","BT VIP — free",true)}
       </div>
       <div class="acct-h">Security</div>
@@ -3143,7 +3156,7 @@
       else { const onc = nextCall() || { session: "Live trading", host: "the team", day: "Mon", at: "" }; body = `
         <div class="ob-top"><span class="eyebrow">Step 4 of 4</span><h2 class="h2" style="margin:8px 0 4px">Your first live call</h2><p class="sub">This is where it clicks — trade the session live, with the room.</p></div>
         <div class="card ob-call">
-          <div class="ob-call-row"><span class="pill pill-live"><span class="dot-live"></span> ${DAY_FULL[onc.day] || "Soon"}</span><span class="num" style="color:var(--gold);font-weight:700">${onc.at || ""}</span></div>
+          <div class="ob-call-row"><span class="pill pill-live"><span class="dot-live"></span> ${callDayLabel(onc)}</span><span class="num" style="color:var(--gold);font-weight:700">${onc.at || ""}</span></div>
           <h3 style="font-family:var(--display);font-weight:700;font-size:17px;margin:11px 0 3px">${onc.session}</h3>
           <div class="sub" style="font-size:12.5px">Hosted by ${onc.host} <span class="vchk">✓</span></div>
           <button class="btn btn-ghost btn-block" data-cal style="margin-top:14px">${ic("i-cal")} Add to calendar</button>
@@ -3161,6 +3174,7 @@
               D.user.name = first;
               const parts = first.split(/\s+/).filter(Boolean);
               D.user.initials = parts.map(w => w[0]).join("").slice(0, 2).toUpperCase() || D.user.initials;
+              syncPersona();
             }
           }
           if (countryEl) D.user.country = countryEl.value;
@@ -3216,7 +3230,7 @@
     setTimeout(() => {
       const sp = $("#screen-splash");
       sp.style.transition = "opacity .5s"; sp.style.opacity = "0";
-      setTimeout(() => { sp.remove(); showLogin(); }, 520);
+      setTimeout(() => { sp.remove(); if (isSignedIn() && pState().onboardingDone) { renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); } else showLogin(); }, 520);
     }, 1700);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
