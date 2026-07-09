@@ -77,7 +77,7 @@
     haptic(8);
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
-    if (tab === "signals") setSetting("sigDay", ymd()); // daily-goal signal
+    if (tab === "signals") { setSetting("sigDay", ymd()); checkStreakEarned(); } // daily-goal signal
     if (!_navSilent) { try { history.pushState({ t: tab }, ""); } catch (e) {} }
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => { t.classList.toggle("active", t.dataset.tab === tab); t.setAttribute("aria-current", t.dataset.tab === tab ? "page" : "false"); });
@@ -271,7 +271,7 @@
       if (!isFinite(lvl)) return;
       const met = a.cond === "above" ? px >= lvl : px <= lvl;
       if (!alertsArmed) { a._armed = !met; return; }         // don't fire pre-existing states on load
-      if (a.on && met && a._armed) { a._armed = false; a.on = false; toast(`${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price} — ${a.note}`, "i-bell"); } // one-shot, like a real price alert
+      if (a.on && met && a._armed) { a._armed = false; a.on = false; saveAlerts(); toast(`${a.sym} ${a.cond === "above" ? "▲" : "▼"} ${a.price} — ${a.note}`, "i-bell"); } // one-shot — persist, or it re-fires on reload
       if (!met) a._armed = true;                             // re-arm once price moves back off the level
     });
     alertsArmed = true;
@@ -386,9 +386,12 @@
   // Makes the prototype cohesive: a logged trade feeds win-rate / R:R / streak / leaderboard / badges,
   // all saved on the device. (True cross-device sync + real auth is the production app.)
   const PSTORE = "bt_profile_v1";
-  function pState() { try { return JSON.parse(localStorage.getItem(PSTORE) || "null") || {}; } catch (e) { return {}; } }
-  function pSave(s) { try { localStorage.setItem(PSTORE, JSON.stringify(s)); } catch (e) {} }
+  let _pCache = null; // parsed-profile memo — a single home render reads state ~50×; parse once, refresh on save
+  function pState() { if (_pCache) return _pCache; try { _pCache = JSON.parse(localStorage.getItem(PSTORE) || "null") || {}; } catch (e) { _pCache = {}; } return _pCache; }
+  function pSave(s) { try { localStorage.setItem(PSTORE, JSON.stringify(s)); } catch (e) {} _pCache = s; }
   function pSet(patch) { const s = pState(); Object.assign(s, patch); pSave(s); return s; }
+  const cleanText = s => String(s || "").replace(/[<>]/g, "").trim(); // free-text inputs land in innerHTML templates — strip tag chars at save
+  const escAttr = s => String(s || "").replace(/"/g, "&quot;");       // for value="…" attribute interpolation (names like O"Brien)
   function deriveHandle(nm) { const h = (nm || "").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, ""); return "@" + (h || "trader"); }
   function syncPersona() { // handle + the leaderboard "You" row follow the display name — no Jordan Hale ghost
     D.user.handle = deriveHandle(D.user.name);
@@ -407,6 +410,7 @@
     if (s.challenge) Object.assign(D.challenge, s.challenge);
     if (Array.isArray(s.alerts)) D.alerts = s.alerts;
     if (Array.isArray(s.posts)) D.posts = s.posts;
+    if (Array.isArray(s.dms)) D.dms = s.dms;
   }
   function callKey(c) { return c.day + "|" + c.time + "|" + c.session; }
   function getTook(id) { return (pState().took || {})[id] || null; }
@@ -471,8 +475,8 @@
     s.lastChallengeDay = today; pSave(s);
     saveChallenge({ done: Math.min(c.done + 1, c.total) });
   }
-  function saveAlerts() { pSet({ alerts: D.alerts }); }
-  function savePosts() { pSet({ posts: D.posts }); }
+  function saveAlerts() { pSet({ alerts: D.alerts.map(({ _armed, ...a }) => a) }); } // _armed is runtime-only — don't serialize it
+  function savePosts() { pSet({ posts: D.posts.slice(0, 60) }); } // newest-first feed — cap the persisted tail
   function getSetting(key, def) { const v = (pState().settings || {})[key]; return v != null ? v : def; }
   function setSetting(key, val) { pSet({ settings: { ...(pState().settings || {}), [key]: val } }); }
   // ---- theme (dark default / light) ----
@@ -539,17 +543,27 @@
   function callsJoined() { const s = pState(); return s.calls != null ? s.calls : D.user.sessions; }
   function bumpCalls() { const s = pState(), today = new Date().toLocaleDateString("en-CA"); if (s.lastCallDay === today) return false; s.calls = (s.calls != null ? s.calls : D.user.sessions) + 1; s.lastCallDay = today; pSave(s); return true; }
   // journalStats() is the canonical one defined below — extended with winRate + avgRR for these helpers
-  function profStreak() { const s = pState(); return s.streak != null ? s.streak : D.user.streak; }
+  const yday = () => new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
+  function profStreak() { // live streak: decays to 0 once a day is missed (no streakDay yet = fresh demo, show the seed)
+    const s = pState(), last = (s.settings || {}).streakDay || "";
+    const cur = s.streak != null ? s.streak : D.user.streak;
+    if (!last) return cur;
+    return (last === ymd() || last === yday()) ? cur : 0;
+  }
+  function bestStreak() { // high-water mark — journey milestones + badges never un-complete after a break
+    const s = pState();
+    return Math.max(s.maxStreak || 0, s.streak != null ? s.streak : D.user.streak);
+  }
   function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
-  function recordLog() { // a logged trade earns points + extends the streak once per day, and persists the journal
-    const s = pState(), today = new Date().toLocaleDateString("en-CA");
-    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
-    if (s.lastLogDay !== today) {
-      if (s.lastLogDay === yesterday) s.streak = (s.streak != null ? s.streak : D.user.streak) + 1;
-      else if (s.lastLogDay) s.streak = 1;
-      else if (s.streak == null) s.streak = D.user.streak;
-    } else if (s.streak == null) s.streak = D.user.streak;
-    s.lastLogDay = today;
+  function jDate(j) { // stored ISO day → live label; seed entries without .day keep their hand-written label
+    if (!j.day) return j.date;
+    if (j.day === ymd()) return "Today";
+    if (j.day === yday()) return "Yesterday";
+    return new Date(j.day + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  function recordLog() { // a logged trade earns points + persists the journal (streak is owned by maybeExtendStreak)
+    const s = pState();
+    s.lastLogDay = new Date().toLocaleDateString("en-CA");
     s.lbPoints = (s.lbPoints != null ? s.lbPoints : 3480) + 50;
     s.journal = D.journal;
     pSave(s);
@@ -564,7 +578,7 @@
   function myRank() { const me = liveLeaderboard().find(r => r.me); return me ? me.rank : 99; }
   function liveBadges() { // unlock from real stats where computable
     const st = journalStats(), streak = profStreak(), rank = myRank();
-    const cond = { "18-day streak": streak >= 18, "60% win rate": st.winRate >= 60, "Journaled 40": st.count >= 40, "Top 10": rank <= 10, "100 trades": st.count >= 100 };
+    const cond = { "18-day streak": bestStreak() >= 18, "60% win rate": st.winRate >= 60, "Journaled 40": st.count >= 40, "Top 10": rank <= 10, "100 trades": st.count >= 100 };
     return D.badges.map(b => ({ ...b, on: (b.name in cond) ? cond[b.name] : b.on }));
   }
   function liveHomeStats() {
@@ -665,6 +679,7 @@
     function close() {
       cancelAnimationFrame(timer);
       setSetting("storySeen", ymd());
+      checkStreakEarned();
       el.classList.remove("show"); setTimeout(() => el.remove(), 380);
       const strip = document.querySelector(".story-strip .story-ring"); if (strip) strip.classList.add("seen");
       document.removeEventListener("keydown", onKey);
@@ -743,12 +758,13 @@
     } else if (nc.startsIn <= 0) {
       cd.innerHTML = `<div class="cd-wrap" style="color:var(--gold)">${ic("i-live", "ic")} Live now — join the room</div>`;
     } else {
-      let left = nc.startsIn;
-      const cdLabels = nc.startsIn >= 86400 ? ["Days", "Hrs", "Min"] : ["Hrs", "Min", "Sec"];
-      cd.innerHTML = cdLabels.map(l => `<div class="cd-cell"><b class="num">00</b><span>${l}</span></div>`).join("");
-      const cdB = [...cd.querySelectorAll(".cd-cell b")];
+      let left = nc.startsIn, cdDays = null;
+      const cdB = []; // (re)build cells whenever the label tier flips — a countdown crossing the 24h line must not show hours under "Days"
+      const buildCells = days => { cdDays = days; cd.innerHTML = (days ? ["Days", "Hrs", "Min"] : ["Hrs", "Min", "Sec"]).map(l => `<div class="cd-cell"><b class="num">00</b><span>${l}</span></div>`).join(""); cdB.length = 0; cdB.push(...cd.querySelectorAll(".cd-cell b")); };
+      buildCells(nc.startsIn >= 86400);
       const paint = () => {
         const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+        if ((d > 0) !== cdDays) buildCells(d > 0);
         const vals = d > 0 ? [d, h, m] : [h, m, s];
         vals.forEach((n, i) => {
           const str = String(n).padStart(2, "0");
@@ -760,7 +776,8 @@
         });
       };
       paint();
-      const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); }, 1000);
+      const flip = left > 0; // one-time: a countdown that actually reaches zero re-renders home into its live state (guard stops a 0-start loop)
+      const t = setInterval(() => { left = left > 0 ? left - 1 : 0; paint(); if (left <= 0 && flip) { clearInterval(t); if (activeTab === "home") SCREENS.home(); } }, 1000);
       cleanups.push(() => clearInterval(t));
     }
     wireCommon();
@@ -875,7 +892,7 @@
     const js = journalStats(), cp = copierState(), nc = nextCall();
     const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
     const healthy = js.pf >= 1 && js.netR >= 0;
-    const when = nc ? (nc.passed ? "Replay soon" : nc.startsIn < 86400 ? (parseInt(nc.time) >= 17 ? "Tonight" : "Today") + " " + nc.at : `${DAY_FULL[nc.day]} ${nc.at}`) : "";
+    const when = nc ? (nc.passed ? "Replay soon" : `${callDayLabel(nc)} ${nc.at}`) : ""; // callDayLabel checks the real weekday — "Tonight" only when it IS today
     const unread = unreadAnnouncements(), dmUn = dmUnread() + (thisWeeksReview() ? 0 : 1); // DMs + the pending weekly review pull people in
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
@@ -904,13 +921,19 @@
     if (new Date().getDay() === 1) g.unshift({ label: "Check the week's news", done: getSetting("newsWeek", "") === weekKey(), act: 'data-act="calendar"' });
     return g;
   }
-  function maybeExtendStreak() {
-    if (getSetting("streakDay", "") === ymd()) return false;
+  function maybeExtendStreak() { // the ONE streak owner: all goals done → +1 if yesterday extended too, else restart at 1
+    const last = getSetting("streakDay", "");
+    if (last === ymd()) return false;
     if (!dailyGoals().every(g => g.done)) return false;
     const s = pState();
-    pSet({ streak: (s.streak != null ? s.streak : D.user.streak) + 1 });
+    const cur = s.streak != null ? s.streak : D.user.streak;
+    const streak = (!last || last === yday()) ? cur + 1 : 1; // no history yet = fresh demo, compound the seed
+    pSet({ streak, maxStreak: Math.max(streak, s.maxStreak || cur) });
     setSetting("streakDay", ymd());
     return true;
+  }
+  function checkStreakEarned() { // call after any action that can complete the last daily goal
+    if (maybeExtendStreak()) setTimeout(() => toast(`Streak extended — ${profStreak()} days 🔥`, "i-flame"), 800);
   }
 
   SCREENS.office = function () {
@@ -940,7 +963,7 @@
       <div class="card card-pad reveal" style="margin-top:14px">
         <div class="sch-head"><span class="eyebrow">${ic("i-check", "ic")} Today's goals</span><span class="sch-count num">${gDone}/${goals.length}</span></div>
         ${goals.map(g => `<button class="as-btn jny-row ${g.done ? "is-done" : ""}" ${g.done ? 'aria-disabled="true"' : g.act}><span class="jny-node">${g.done ? ic("i-check", "ic") : ""}</span><span class="jny-label">${g.label}</span>${g.done ? "" : `<span class="jny-next">Do it</span>`}</button>`).join("")}
-        <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : `Complete all ${goals.length} to extend your ${profStreak()}-day streak.`}</p>
+        <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : profStreak() > 0 ? `Complete all ${goals.length} to extend your ${profStreak()}-day streak.` : `Complete all ${goals.length} to start a new streak.`}</p>
       </div>
 
       ${weeklyReviewCard()}
@@ -1081,6 +1104,7 @@
       inp.value = "";
       const mine = { me: true, text: v, time: "now" };
       t.msgs.push(mine);
+      pSet({ dms: D.dms }); // sent DMs survive reload
       th.insertAdjacentHTML("beforeend", bubble(mine));
       th.scrollTop = th.scrollHeight;
       markDmSeen(id);
@@ -1091,6 +1115,7 @@
           const ty = $("#dm-typing"); if (ty) ty.remove();
           const rep = { text: t.replies[ri % t.replies.length], time: "now" }; ri++;
           t.msgs.push(rep);
+          pSet({ dms: D.dms });
           th.insertAdjacentHTML("beforeend", bubble(rep));
           th.scrollTop = th.scrollHeight;
           markDmSeen(id);
@@ -1099,6 +1124,7 @@
     };
     snd.onclick = send;
     inp.onkeydown = (e) => { if (e.key === "Enter") send(); };
+    onModalClose(() => timers.forEach(clearTimeout));
   }
 
   // ---- "Your journey" — the staged road to a consistently profitable trader.
@@ -1121,17 +1147,17 @@
         { label: "Logged 5 trades in the journal", done: js.count >= 5, xp: 75, act: 'data-act="journal"' },
         { label: "First weekly review banked", done: wk.length >= 1, xp: 75, act: 'data-act="weeklyreview"' },
         { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
-        { label: "Held a 7-day streak", done: profStreak() >= 7, xp: 75 },
+        { label: "Held a 7-day streak", done: bestStreak() >= 7, xp: 75 },
       ] },
       { name: "Prove the edge", pace: "months 1–2", steps: [
         { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
         { label: `${money(1000, false)} banked on your book`, done: js.netR >= 1000, xp: 200, act: 'data-act="journal"' },
         { label: "Two Trader Scores of 65+", done: wk.filter(w => w.score >= 65).length >= 2, xp: 150, act: 'data-act="weeklyreview"' },
-        { label: "Held a 14-day streak", done: profStreak() >= 14, xp: 100 },
+        { label: "Held a 14-day streak", done: bestStreak() >= 14, xp: 100 },
       ] },
       { name: "Trade it like a pro", pace: "the long game", steps: [
         { label: `${money(5000, false)} banked on your book`, done: js.netR >= 5000, xp: 250, act: 'data-act="journal"' },
-        { label: "Held a 30-day streak", done: profStreak() >= 30, xp: 250 },
+        { label: "Held a 30-day streak", done: bestStreak() >= 30, xp: 250 },
         { label: "Four weekly reviews banked", done: wk.length >= 4, xp: 200, act: 'data-act="weeklyreview"' },
         { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 300, act: 'data-act="members"' },
       ] },
@@ -1536,7 +1562,7 @@
         <div class="jc-pair">${ic("i-chart","ic")}<b>${j.pair}</b><span class="idea-dir ${j.dir}">${j.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         ${pill}
       </div>
-      <div class="jc-meta">${j.setup} · ${j.session} · ${j.date}${from}</div>
+      <div class="jc-meta">${j.setup} · ${j.session} · ${jDate(j)}${from}</div>
       <div class="jc-note">${j.note}</div>
       <div class="jc-tags">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
     </button>`;
@@ -1636,9 +1662,10 @@
       <div class="section-head"><span class="h2">From the floor</span></div>
       ${D.posts.map(post).join("")}
       <div class="spacer"></div>`;
-    [...document.querySelectorAll(".post-actions .like")].forEach(a => a.onclick = () => {
+    [...document.querySelectorAll(".post-actions .like")].forEach((a, i) => a.onclick = () => {
       const liked = a.classList.toggle("liked"); const c = a.querySelector("span"); let n = +c.dataset.n;
       n += liked ? 1 : -1; c.dataset.n = n; c.textContent = n;
+      const p = D.posts[i]; if (p) { p.liked = liked; p.likes = n; savePosts(); } // DOM order mirrors D.posts — persist so likes survive re-render
     });
     const cbtn = body.querySelector("[data-act=chat]"); if (cbtn) cbtn.onclick = openChat;
     const chbtn = body.querySelector("[data-act=challenge]"); if (chbtn) chbtn.onclick = openChallenge;
@@ -1652,7 +1679,7 @@
         <div class="jc-pair">${ic("i-chart","ic")}<b style="font-family:var(--display);font-size:19px">${j.pair}</b><span class="idea-dir ${j.dir}">${j.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         <span class="pill ${j.outcome === "win" ? "pill-up" : j.outcome === "loss" ? "pill-down" : ""}">${resStr(j)}</span>
       </div>
-      <div class="jc-meta" style="margin:10px 2px">${j.setup} · ${j.session} session · ${j.date}${j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · from ${j.channel}` : ""}</div>
+      <div class="jc-meta" style="margin:10px 2px">${j.setup} · ${j.session} session · ${jDate(j)}${j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · from ${j.channel}` : ""}</div>
       <span class="eyebrow" style="display:block;margin:8px 0 6px">Reflection</span>
       <p class="sub">${j.note}</p>
       <div class="jc-tags" style="margin-top:13px">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
@@ -1776,12 +1803,12 @@
     $("#f-save").onclick = () => {
       const lots = readLots(), rv = readPL();
       D.journal.unshift({
-        id: "j" + Date.now(), pair: ($("#f-pair").value || "XAUUSD").toUpperCase(), dir, r: rv, lots, outcome: oc,
-        session: sess, date: "Today", setup: $("#f-setup").value || "Setup", channel: "—",
+        id: "j" + Date.now(), pair: (cleanText($("#f-pair").value) || "XAUUSD").toUpperCase(), dir, r: rv, lots, outcome: oc,
+        session: sess, date: "Today", day: ymd(), setup: cleanText($("#f-setup").value) || "Setup", channel: "—",
         tags: oc === "win" ? ["Followed plan"] : oc === "loss" ? ["Review"] : ["Managed well"],
-        note: $("#f-note").value || "No notes added.",
+        note: cleanText($("#f-note").value) || "No notes added.",
       });
-      recordLog(); addXp(40); setSetting("logDay", ymd()); // persist journal + streak + leaderboard points + XP + daily goal
+      recordLog(); addXp(40); setSetting("logDay", ymd()); checkStreakEarned(); // persist journal + points + XP + daily goal + streak check
       closeModal(); journalFilter = "All";
       setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged · +50 pts", "i-check"); }, 320);
     };
@@ -1979,7 +2006,7 @@
       <div class="section-head"><span class="h2">Trade journal</span><span class="more" data-act="journal">Open journal ›</span></div>
       <div class="card card-pad">
         ${D.journal.slice(0,4).map((j,i)=>`<div class="journal" ${i===3?'style="border-bottom:none"':''}>
-          <div class="jp"><b>${j.pair} ${j.dir==='long'?'▲':'▼'}</b><small>${j.setup} · ${j.session} · ${j.date}</small></div>
+          <div class="jp"><b>${j.pair} ${j.dir==='long'?'▲':'▼'}</b><small>${j.setup} · ${j.session} · ${jDate(j)}</small></div>
           <div class="res num ${j.outcome==='win'?'up':j.outcome==='loss'?'down':''}">${resStr(j)}</div></div>`).join("")}
       </div>
 
@@ -2015,11 +2042,11 @@
     openModal(`<h2 class="h2" style="margin:2px 0 4px">Edit profile</h2>
       <p class="sub" style="font-size:12px;margin-bottom:15px">This is how the floor sees you.</p>
       <label class="flabel">Display name</label>
-      <input class="finput" id="ep-name" value="${D.user.name}">
+      <input class="finput" id="ep-name" value="${escAttr(D.user.name)}">
       <button class="btn btn-gold btn-block" id="ep-save" style="margin-top:16px">Save</button>
       <div class="spacer"></div>`);
     const s = $("#ep-save"); if (s) s.onclick = () => {
-      const nm = ($("#ep-name").value || "").trim(); if (!nm) return;
+      const nm = cleanText($("#ep-name").value); if (!nm) return;
       D.user.name = nm; D.user.first = nm.split(/\s+/)[0];
       D.user.initials = nm.split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || D.user.initials;
       syncPersona();
@@ -2092,7 +2119,7 @@
       </div>
       <p class="sub" style="font-size:11px;text-align:center;margin:16px 0 2px;color:var(--faint)">Educational community · capital at risk · not financial advice.</p>
       <div class="spacer"></div>`);
-    [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
+    [...$("#modal").querySelectorAll(".toggle")].forEach(t => t.onclick = () => { // modal-scoped — must not steal the profile screen's toggles behind the sheet
       const on = t.classList.toggle("on");
       t.setAttribute("aria-checked", on);
       if (t.id === "sec-2fa") { setSetting("twofa", on); toast(on ? "Two-factor enabled" : "Two-factor off", on ? "i-shield" : null); }
@@ -2104,6 +2131,7 @@
   let _lastFocus = null;
   function openModal(html) {
     const m = $("#modal");
+    clearTimeout(_modalWipeT); // a close-then-reopen inside 350ms must not have the stale wipe blank the new sheet
     _lastFocus = document.activeElement;
     m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><button class="sheet-grab" aria-label="Close"></button>${html}</div>`;
     void m.offsetWidth;                                             // reflow so the translateY(100%) start state paints → slide-up actually animates
@@ -2141,7 +2169,10 @@
     sh.addEventListener("touchend", end);
     sh.addEventListener("touchcancel", end);
   }
-  function closeModal() { const m = $("#modal"); if (!m.classList.contains("open")) return; m.classList.remove("open"); setTimeout(() => { m.innerHTML = ""; }, 350); try { _lastFocus && _lastFocus.focus && _lastFocus.focus({ preventScroll: true }); } catch (e) {} }
+  let modalCleanups = []; // timers/intervals owned by the open sheet — flushed on close so nothing runs against detached DOM
+  let _modalWipeT = null;
+  function onModalClose(fn) { modalCleanups.push(fn); }
+  function closeModal() { const m = $("#modal"); if (!m.classList.contains("open")) return; m.classList.remove("open"); modalCleanups.forEach(fn => { try { fn(); } catch (e) {} }); modalCleanups = []; _modalWipeT = setTimeout(() => { m.innerHTML = ""; }, 350); try { _lastFocus && _lastFocus.focus && _lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 
   function openPlayer(id) {
     const v = D.videos.find(x => x.id === id) || D.videos[0];
@@ -2192,6 +2223,7 @@
           if (activeTab === "learn") SCREENS.learn(); else if (activeTab === "home") SCREENS.home();
         }
       }, 900);
+      onModalClose(() => clearInterval(tick));
     };
     [...document.querySelectorAll("[data-pp]")].forEach(b => b.onclick = play);
     const sv = $("[data-act=save]"); if (sv) sv.onclick = () => { const on = toggleSaved(v.id); sv.textContent = on ? "Saved ✓" : "+ List"; toast(on ? "Saved to your list" : "Removed from list", on ? "i-check" : null); };
@@ -2443,7 +2475,7 @@
     list.innerHTML = items.map(x => (tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
     requestAnimationFrame(() => Charts.initIn(list));
     [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
-    const lk = list.querySelector("[data-lockvip]"); if (lk) lk.onclick = IB ? openVerifyBroker : openMembership;
+    [...list.querySelectorAll("[data-lockvip]")].forEach(lk => lk.onclick = IB ? openVerifyBroker : openMembership); // a channel can have several running (locked) ideas
     const vv = list.querySelector("[data-vipviewers]");
     if (vv && !reduceMotion()) { const iv = setInterval(() => { if (document.hidden) return; let n = +vv.textContent + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)); n = Math.max(72, Math.min(103, n)); vv.textContent = n; }, 4000); cleanups.push(() => clearInterval(iv)); }
     wireTook();
@@ -2465,11 +2497,12 @@
       <h3 class="sheet-title">Risk calculator</h3><p class="sheet-sub">Position size from your risk — XAUUSD.</p>
       <label class="flabel">Account balance ($)</label><input class="finput num" id="c-bal" inputmode="decimal" value="10000">
       <label class="flabel">Risk per trade (%)</label><input class="finput num" id="c-risk" inputmode="decimal" value="1">
-      <div class="calc-2"><div><label class="flabel">Entry</label><input class="finput num" id="c-entry" inputmode="decimal" value="2946.5"></div><div><label class="flabel">Stop loss</label><input class="finput num" id="c-sl" inputmode="decimal" value="2934.0"></div></div>
+      <div class="calc-2"><div><label class="flabel">Entry</label><input class="finput num" id="c-entry" inputmode="decimal" value="4026.5"></div><div><label class="flabel">Stop loss</label><input class="finput num" id="c-sl" inputmode="decimal" value="4014.0"></div></div>
       <div id="calc-out"></div>`);
+    const numVal = el => parseFloat(String(el.value).replace(/,/g, "")) || 0; // prices get typed with commas — "4,026.5" must not parse as 4
     const calc = () => {
-      const bal = parseFloat($("#c-bal").value) || 0, risk = parseFloat($("#c-risk").value) || 0;
-      const entry = parseFloat($("#c-entry").value) || 0, sl = parseFloat($("#c-sl").value) || 0;
+      const bal = numVal($("#c-bal")), risk = numVal($("#c-risk"));
+      const entry = numVal($("#c-entry")), sl = numVal($("#c-sl"));
       const riskUSD = bal * risk / 100, dist = Math.abs(entry - sl), perLot = dist * 100;
       const lots = perLot > 0 ? riskUSD / perLot : 0;
       const out = $("#calc-out"); if (!out) return;
@@ -2515,7 +2548,7 @@
     return Object.keys(byDay).map(d => `<div class="cal-day">${d}</div>${byDay[d].map(e => `<div class="cal-row"><span class="cal-time num">${e.time}</span><span class="cal-cur">${e.cur}</span><span class="cal-ev">${e.event}${(e.forecast || e.previous) ? `<small class="cal-fp num">Forecast ${e.forecast || "–"} · Prev ${e.previous || "–"}</small>` : ""}</span><span class="cal-imp imp-${e.impact}">${e.impact}</span></div>`).join("")}`).join("");
   }
   function openCalendar() {
-    setSetting("newsWeek", weekKey()); // marks the Monday "check the week's news" goal done
+    setSetting("newsWeek", weekKey()); checkStreakEarned(); // marks the Monday "check the week's news" goal done
     const live = !!(liveCal && liveCal.length);
     const subLive = `<span class="cal-live">● Live</span> · news that moves gold · times UK`;
     openModal(`<h3 class="sheet-title">Market news</h3><p class="sheet-sub">${live ? subLive : "News that moves gold · times UK"}</p><div class="cal" id="cal-list">${calRowsHtml(live ? liveCal : D.calendar)}</div>`);
@@ -2532,7 +2565,7 @@
     openModal(`<h3 class="sheet-title">Price alerts</h3><p class="sheet-sub">Get pinged when gold hits your level.</p><div id="alert-list">${list()}</div><label class="flabel" style="margin-top:16px">New gold alert</label><div class="calc-2"><input class="finput num" id="al-px" inputmode="decimal" placeholder="e.g. 2,960" aria-label="Alert price level"><button class="btn btn-gold" id="al-add" style="height:50px;flex:none;padding:0 18px">${ic("i-plus")} Add</button></div>`);
     const wire = () => [...document.querySelectorAll("[data-al]")].forEach(b => b.onclick = () => { const a = D.alerts[+b.dataset.al]; a.on = !a.on; b.classList.toggle("on", a.on); saveAlerts(); });
     wire();
-    const add = $("#al-add"); if (add) add.onclick = () => { const px = $("#al-px").value.trim(); if (!px) return; D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px, note: "Custom alert", on: true }); saveAlerts(); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
+    const add = $("#al-add"); if (add) add.onclick = () => { const px = parseFloat($("#al-px").value.replace(/,/g, "")); if (!isFinite(px) || px <= 0) { toast("Enter a valid price", null); return; } D.alerts.unshift({ sym: "XAUUSD", cond: "above", price: px.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), note: "Custom alert", on: true }); saveAlerts(); $("#alert-list").innerHTML = list(); wire(); $("#al-px").value = ""; toast("Alert set", "i-check"); };
   }
   // ── Gold price tool: live spot gold in the community's currencies ──
   // USD = real spot (gold-api, shared with the market bar); GBP/EUR = ECB daily (frankfurter); AED = its fixed USD peg.
@@ -2915,7 +2948,7 @@
       const mine = { name: D.user.name, initials: D.user.initials, text: safe, me: true };
       append(mine);
       inp.value = "";
-      pSet({ chatHistory: [...(pState().chatHistory || []), mine] });
+      pSet({ chatHistory: [...(pState().chatHistory || []), mine].slice(-100) }); // cap — the blob is re-parsed on every state read
       const reply = sent === 0
         ? { name: B.founder, initials: B.founderInitials, text: `Welcome to ${B.floor}, ${D.user.first} — good to have you here.`, host: true }
         : floorReplies[(sent - 1) % floorReplies.length];
@@ -3027,10 +3060,12 @@
   }
 
   function wireCommon() {
-    [...document.querySelectorAll("[data-tab]")].forEach(n => n.addEventListener("click", e => { e.stopPropagation(); if (n.dataset.seg) circleTab = n.dataset.seg; go(n.dataset.tab); }));
+    // onclick assignment (not addEventListener) — wireCommon re-runs every render and the tab bar
+    // persists across renders, so additive listeners stack up and compound go() re-renders per tap
+    [...document.querySelectorAll("[data-tab]")].forEach(n => n.onclick = e => { e.stopPropagation(); if (n.dataset.seg) circleTab = n.dataset.seg; go(n.dataset.tab); });
     [...document.querySelectorAll("[data-path]")].forEach(n => n.onclick = () => openPath(n.dataset.path));
-    [...document.querySelectorAll("[data-video]")].forEach(n => n.addEventListener("click", () => openPlayer(n.dataset.video)));
-    [...document.querySelectorAll("[data-idea]")].forEach(n => n.addEventListener("click", () => openIdea(n.dataset.idea)));
+    [...document.querySelectorAll("[data-video]")].forEach(n => n.onclick = () => openPlayer(n.dataset.video));
+    [...document.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
     [...document.querySelectorAll("[data-act=notif]")].forEach(n => n.onclick = openNotifications);
     [...document.querySelectorAll("[data-act=theme-top]")].forEach(n => n.onclick = () => themeFade(t => { n.innerHTML = ic(t === "light" ? "i-moon" : "i-sun"); toast(t === "light" ? "Light mode" : "Dark mode", "i-moon"); }));
     [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
@@ -3141,7 +3176,7 @@
         <button class="btn btn-gold btn-block" data-next>Get started</button>`;
       else if (step === 1) body = `
         <div class="ob-top"><span class="eyebrow">Step 2 of 4</span><h2 class="h2" style="margin:8px 0 4px">What should we call you?</h2><p class="sub">So the floor knows who's in the room.</p></div>
-        <label class="flabel">Display name</label><input class="finput" id="ob-name" value="${D.user.first}">
+        <label class="flabel">Display name</label><input class="finput" id="ob-name" value="${escAttr(D.user.first)}">
         <label class="flabel">Where are you based?</label>
         <div class="fselect-wrap">
           <select class="fselect" id="ob-country">${(D.countries || []).map(c => `<option value="${c}"${c === "United Kingdom" ? " selected" : ""}>${c}</option>`).join("")}</select>
@@ -3168,7 +3203,7 @@
         if (step === 1) {
           const nameEl = el.querySelector("#ob-name"), countryEl = el.querySelector("#ob-country");
           if (nameEl) {
-            const first = nameEl.value.trim();
+            const first = cleanText(nameEl.value);
             if (first) {
               D.user.first = first;
               D.user.name = first;

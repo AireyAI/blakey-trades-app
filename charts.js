@@ -78,16 +78,19 @@
     }
   }
 
-  function drawAmbient(ctx, w, h, pts, off) {
+  function drawAmbient(ctx, w, h, pts, off, cachedGrad) {
     ctx.clearRect(0, 0, w, h);
     const lo = Math.min(...pts), hi = Math.max(...pts), rng2 = (hi - lo) || 1;
     const Y = p => h - 10 - (p - lo) / rng2 * (h - 26);
     const step = w / (pts.length - 2);
     ctx.beginPath();
     for (let i = 0; i < pts.length; i++) { const x = i * step - off * step; const y = Y(pts[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    // area
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, "rgba(" + GOLD_RGB + ",0.22)"); grad.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
+    // area (gradient allocation hoisted to the caller's cache — this runs every paint)
+    let grad = cachedGrad;
+    if (!grad) {
+      grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "rgba(" + GOLD_RGB + ",0.22)"); grad.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
+    }
     ctx.lineTo(w, h); ctx.lineTo(-step, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
     // line
     ctx.beginPath();
@@ -114,14 +117,17 @@
     const r = rng(seed); const N = 60; let pts = [];
     let base = 4020; for (let i = 0; i < N; i++) { base += (r() - 0.46) * 6; pts.push(base); }
     if (reduce) { drawAmbient(ctx, w, h, pts, 0); return; }
-    let off = 0, acc = 0, fc = 0;
+    let off = 0, acc = 0, fc = 0, pAcc = 1, grad = null; // pAcc starts past the threshold so start()'s tick(0) paints at once
     const chart = { cv, tick(dt) {
-      acc += dt;
+      acc += dt; pAcc += dt;
       if (acc > 0.10) { acc = 0; pts.push(pts[pts.length - 1] + (Math.sin(off / 3) * 2.4) + (rng(off * 7 + seed)() - 0.5) * 5); pts.shift(); }
       off = (off + dt * 0.9) % 1;
       // resize check throttled to every 32nd frame — clientWidth forces a layout flush
-      if ((fc = (fc + 1) & 31) === 0) { const want = Math.min(cv.clientWidth || w, 2000); if (want && Math.abs(want - w) > 1) { const f = fit(cv); ctx = f.ctx; w = f.w; h = f.h; } }
-      drawAmbient(ctx, w, h, pts, off);
+      if ((fc = (fc + 1) & 31) === 0) { const want = Math.min(cv.clientWidth || w, 2000); if (want && Math.abs(want - w) > 1) { const f = fit(cv); ctx = f.ctx; w = f.w; h = f.h; grad = null; pAcc = 1; } }
+      if (pAcc < 0.05) return; // ~20fps repaint — indistinguishable for a slow drift, 1/3 the raster cost (shadowBlur is pricey)
+      pAcc = 0;
+      if (!grad) { grad = ctx.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, "rgba(" + GOLD_RGB + ",0.22)"); grad.addColorStop(1, "rgba(" + GOLD_RGB + ",0)"); }
+      drawAmbient(ctx, w, h, pts, off, grad);
     } };
     start(chart);
   }
