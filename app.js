@@ -555,6 +555,15 @@
     return Math.max(s.maxStreak || 0, s.streak != null ? s.streak : D.user.streak);
   }
   function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
+  // ---- VIP re-verification: a linked account must stay funded + re-confirm periodically, not unlock VIP forever on one link ----
+  const VIP_MIN_DEPOSIT = 200; // $ — mirrors the "minimum deposit to unlock" gate; a $0 linked account earns Arron nothing
+  const VIP_REVERIFY_DAYS = 30; // periodic re-check that the account is still funded & trading
+  function daysSince(dstr) { if (!dstr) return Infinity; return Math.floor((Date.now() - new Date(dstr + "T00:00:00").getTime()) / 86400000); }
+  function vipLapsed() { // true only for the IB partner model — a paid VIP model has no broker link to lapse
+    if (!IB || getSetting("tier", "free") !== "vip") return false;
+    return daysSince(getSetting("vantageLastCheck", "")) >= VIP_REVERIFY_DAYS;
+  }
+  function effectiveTier() { return vipLapsed() ? "free" : getSetting("tier", "free"); } // content gates read this, not the raw setting
   function jDate(j) { // stored ISO day → live label; seed entries without .day keep their hand-written label
     if (!j.day) return j.date;
     if (j.day === ymd()) return "Today";
@@ -737,7 +746,7 @@
       ${floorCard()}
 
       <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
-      ${(getSetting("tier", "free") === "free" && ideas.status === "running") ? lockedSignalCard(ideas) : ideaCard(ideas)}
+      ${(effectiveTier() === "free" && ideas.status === "running") ? lockedSignalCard(ideas) : ideaCard(ideas)}
 
       <div class="section-head"><span class="h2">Trader of the week</span><span class="more" data-tab="community">View ›</span></div>
       ${totwMini()}
@@ -882,8 +891,8 @@
 
   // ---- "Your desk" — the member's personalised daily briefing ----
   function copierState() {
-    const tier = getSetting("tier", "free");
-    if (tier === "free") return { code: "verify", label: "Verify to unlock ›", cls: "gold-tx" };
+    const tier = effectiveTier();
+    if (tier === "free") return { code: "verify", label: vipLapsed() ? "Re-verify to unlock ›" : "Verify to unlock ›", cls: "gold-tx" };
     const today = (D.copierTrades || []).filter(t => /Today/.test(t.time)).length;
     return { code: "on", label: today ? `${today} trade${today > 1 ? "s" : ""} today ›` : "Live ✓", cls: "up" };
   }
@@ -915,6 +924,7 @@
     const g = [
       { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
       { label: "Check today's signals", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
+      { label: "Quick check-in", done: getSetting("checkinDay", "") === ymd(), act: 'data-act="checkin"' },
       { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
     ];
     // every Monday: plan the week around the economic calendar
@@ -1005,10 +1015,61 @@
   };
 
   // ---- weekly review — the Friday debrief: honest 1-10 self-scores → a personal Trader Score ----
-  function weekKey() { const d = new Date(), y = d.getFullYear(), start = new Date(y, 0, 1); return y + "-W" + Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7); }
+  function weekKey(d) { d = d || new Date(); const y = d.getFullYear(), start = new Date(y, 0, 1); return y + "-W" + Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7); }
   function weeklyHistory() { return pState().weekly || []; }
   function thisWeeksReview() { return weeklyHistory().find(w => w.week === weekKey()) || null; }
   function scoreBand(s) { return s >= 80 ? "Elite week" : s >= 65 ? "Disciplined" : s >= 50 ? "Building" : "Reset week"; }
+  // ---- daily check-in — a 5-second discipline pulse every day, not just the Friday review; prefills that review's sliders ----
+  const DAILY_QS = [
+    { id: "plan", label: "Followed your plan today?", wr: "plan" },
+    { id: "lots", label: "Used the correct lot size?", wr: "risk" },
+    { id: "emo", label: "No revenge trades or FOMO entries?", wr: "emo" },
+  ];
+  function checkinsHistory() { return pState().checkins || {}; }
+  function todaysCheckin() { return checkinsHistory()[ymd()] || null; }
+  function weekCheckins() { const hist = checkinsHistory(); return Object.keys(hist).filter(day => weekKey(new Date(day + "T12:00:00")) === weekKey()).map(day => hist[day]); }
+  function checkinPrefill(wrId) { // this week's yes-rate for the matching daily question → a 1-10 default for the Friday slider
+    const q = DAILY_QS.find(d => d.wr === wrId); if (!q) return 5;
+    const wk = weekCheckins().filter(c => c[q.id] != null);
+    if (!wk.length) return 5;
+    return Math.max(1, Math.min(10, Math.round(wk.filter(c => c[q.id] === true).length / wk.length * 10) || 1));
+  }
+  function openDailyCheckin() {
+    const existing = todaysCheckin() || {};
+    openModal(`
+      <h3 class="sheet-title">Quick check-in</h3>
+      <p class="sheet-sub">Three honest taps — this feeds your Friday Trader Score.</p>
+      <div class="dci-list">${DAILY_QS.map(q => `
+        <div class="dci-row" data-dci="${q.id}">
+          <span class="dci-q">${q.label}</span>
+          <div class="dci-btns">
+            <button class="dci-btn yes ${existing[q.id] === true ? "on" : ""}" data-val="yes">${ic("i-check", "ic")} Yes</button>
+            <button class="dci-btn no ${existing[q.id] === false ? "on" : ""}" data-val="no">✕ No</button>
+          </div>
+        </div>`).join("")}</div>
+      <button class="btn btn-gold btn-block" id="dci-submit" style="margin-top:14px">${ic("i-check")} Save check-in</button>
+      <div class="spacer"></div>`);
+    const answers = { ...existing };
+    const submit = $("#dci-submit");
+    const refreshSubmit = () => { submit.disabled = DAILY_QS.some(q => answers[q.id] == null); };
+    refreshSubmit();
+    [...document.querySelectorAll(".dci-row")].forEach(row => {
+      const id = row.dataset.dci;
+      [...row.querySelectorAll(".dci-btn")].forEach(b => b.onclick = () => {
+        answers[id] = b.dataset.val === "yes";
+        [...row.querySelectorAll(".dci-btn")].forEach(x => x.classList.toggle("on", x === b));
+        refreshSubmit();
+      });
+    });
+    submit.onclick = () => {
+      pSet({ checkins: { ...checkinsHistory(), [ymd()]: answers } });
+      setSetting("checkinDay", ymd());
+      addXp(20);
+      checkStreakEarned();
+      closeModal();
+      setTimeout(() => { toast("Check-in saved · +20 XP", "i-check"); if (SCREENS[activeTab]) SCREENS[activeTab](); }, 360);
+    };
+  }
   const WR_QS = [
     { id: "plan", label: "Followed my trading plan" },
     { id: "risk", label: "Sized my risk right — never over-risked" },
@@ -1044,11 +1105,12 @@
     openModal(`
       <h3 class="sheet-title">Weekly review</h3>
       <p class="sheet-sub">Be brutally honest — this score is for you, not the leaderboard. 1 = not at all, 10 = nailed it.</p>
-      ${WR_QS.map(q => `
+      ${WR_QS.map(q => { const pre = checkinPrefill(q.id); return `
         <div class="ws-row">
-          <div class="ws-top"><label for="ws-${q.id}">${q.label}</label><b class="num" id="wsv-${q.id}">5</b></div>
-          <input type="range" class="fd-slider" id="ws-${q.id}" min="1" max="10" step="1" value="5" aria-label="${q.label}">
-        </div>`).join("")}
+          <div class="ws-top"><label for="ws-${q.id}">${q.label}</label><b class="num" id="wsv-${q.id}">${pre}</b></div>
+          <input type="range" class="fd-slider" id="ws-${q.id}" min="1" max="10" step="1" value="${pre}" aria-label="${q.label}">
+        </div>`; }).join("")}
+      ${weekCheckins().length ? `<p class="sub" style="font-size:11px;margin:2px 2px 12px;color:var(--muted)">${ic("i-check", "ic")} Some sliders are prefilled from this week's ${weekCheckins().length} daily check-in${weekCheckins().length > 1 ? "s" : ""} — adjust anything that's off.</p>` : ""}
       <label class="flabel" for="ws-well">What did you do well?</label>
       <textarea class="finput ftext" id="ws-well" placeholder="e.g. Waited for the reclaim instead of chasing…"></textarea>
       <label class="flabel" for="ws-fix">What will you do differently next week?</label>
@@ -1221,7 +1283,7 @@
     </div>`;
   }
   function openCopier() {
-    const tier = getSetting("tier", "free");
+    const tier = effectiveTier();
     if (tier === "free") {
       openModal(`
         <h3 class="sheet-title">Auto-copier + analysis</h3>
@@ -1964,7 +2026,9 @@
         <div class="kv"><span>${profXpNext()-profXp()} XP to go — log a trade for +40, pass a path quiz for +60</span></div>
       </div>
 
-      ${getSetting("tier", "free") === "vip"
+      ${vipLapsed()
+        ? `<button class="up-card reveal" data-act="verifyib"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Re-verify to keep VIP</b><small>Your ${VIP_REVERIFY_DAYS}-day ${B.broker} check is due</small></div><span class="up-cta">Re-verify ${ic("i-chev","ic")}</span></button>`
+        : getSetting("tier", "free") === "vip"
         ? `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-trophy","ic")}</div><div class="up-body"><b>${B.short} VIP · Active</b><small>Full signals, the live room &amp; all education</small></div><span class="pill pill-gold">VIP</span></button>`
         : `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Unlock ${B.short} VIP</b><small>Full signals, the live room &amp; all education</small></div><span class="up-cta">See plans ${ic("i-chev","ic")}</span></button>`}
 
@@ -2090,19 +2154,31 @@
   function acctRow(icon, label, val, last) {
     return `<div class="settings-row"${last ? ' style="border-bottom:none"' : ''}>${ic(icon)}<span class="lbl">${label}</span><span class="val">${val || ""}</span>${ic("i-chev","ic")}</div>`;
   }
+  function vantageStatusRow() { // the IB re-verification state — surfaced here so a lapsed link is never a silent surprise
+    if (!IB) return "";
+    const tier = getSetting("tier", "free"), acct = getSetting("vantageAcct", null), lapsed = vipLapsed();
+    if (tier !== "vip" || !acct) return acctRow("i-shield", `${B.broker} verification`, "Not linked");
+    const dep = getSetting("vantageDeposit", null);
+    const next = VIP_REVERIFY_DAYS - daysSince(getSetting("vantageLastCheck", ""));
+    return acctRow("i-shield", `${B.broker} account`, `${acct}${dep ? ` · $${Number(dep).toLocaleString()}` : ""} · ${lapsed ? "re-verify needed" : `re-checks in ${Math.max(0, next)}d`}`);
+  }
   function openAccountSecurity() {
-    const u = D.user;
+    const u = D.user, lapsed = vipLapsed(), tier = getSetting("tier", "free");
     openModal(`<h3 class="sheet-title">Account &amp; security</h3>
       <p class="sheet-sub">Your membership, login and data — all in one place.</p>
       <div class="acct-card">
         <div class="acct-id">${av(u.initials, 44)}<div class="acct-meta"><b>${u.name}</b><small>${u.handle} · Member since 2025</small></div></div>
-        <div class="acct-tags">${getSetting("tier", "free") === "vip" ? `<span class="pill pill-gold">${ic("i-trophy","ic")} ${B.short} VIP · Active</span>` : `<span class="pill">Free member</span><span class="acct-free">Free · partner-funded</span>`}</div>
+        <div class="acct-tags">${lapsed ? `<span class="pill" style="background:rgba(224,178,60,.14);color:var(--gold)">${ic("i-shield","ic")} Re-verify needed</span>` : tier === "vip" ? `<span class="pill pill-gold">${ic("i-trophy","ic")} ${B.short} VIP · Active</span>` : `<span class="pill">Free member</span><span class="acct-free">Free · partner-funded</span>`}</div>
       </div>
+      ${IB && tier === "vip" ? `<div class="wr-note" style="margin:2px 0 12px">${ic("i-shield", "ic")}<div><b>${lapsed ? "Re-verification overdue" : "Re-verifies periodically"}</b><small>${lapsed ? `Your ${VIP_REVERIFY_DAYS}-day activity check is overdue — confirm you're still funded with ${B.broker} to restore VIP.` : `${B.short} VIP re-checks every ${VIP_REVERIFY_DAYS} days that your ${B.broker} account is still funded (min $${VIP_MIN_DEPOSIT}) and trading — this protects the partner rebate the free tier runs on.`}</small></div></div>
+      <button class="btn ${lapsed ? "btn-gold" : "btn-ghost"} btn-block" id="acct-reverify" style="margin-bottom:8px">${ic(lapsed ? "i-shield" : "i-check", "ic")} ${lapsed ? "Re-verify now" : "Re-verify early"}</button>
+      <button class="btn btn-ghost btn-sm btn-block" id="acct-agecheck" style="margin-bottom:14px">Demo: simulate ${VIP_REVERIFY_DAYS + 1} days later</button>` : ""}
       <div class="acct-h">Account</div>
       <div class="card card-pad">
         ${acctRow("i-tg","Email","jordan.hale@gmail.com")}
         ${acctRow("i-tg","Telegram",`${D.user.handle} · linked`)}
-        ${acctRow("i-dollar","Membership","BT VIP — free",true)}
+        ${vantageStatusRow()}
+        ${acctRow("i-dollar","Membership", lapsed ? "Paused — re-verify" : tier === "vip" ? `${B.short} VIP — free` : "Free — partner-funded", true)}
       </div>
       <div class="acct-h">Security</div>
       <div class="card card-pad">
@@ -2119,6 +2195,13 @@
       </div>
       <p class="sub" style="font-size:11px;text-align:center;margin:16px 0 2px;color:var(--faint)">Educational community · capital at risk · not financial advice.</p>
       <div class="spacer"></div>`);
+    const rv = $("#acct-reverify"); if (rv) rv.onclick = () => openVerifyBroker();
+    const ac = $("#acct-agecheck"); if (ac) ac.onclick = () => { // demo-only lever: ages the last-check date so the reverify state is visible without waiting a real month
+      const back = new Date(Date.now() - (VIP_REVERIFY_DAYS + 1) * 86400000).toLocaleDateString("en-CA");
+      setSetting("vantageLastCheck", back);
+      toast(`Simulated ${VIP_REVERIFY_DAYS + 1} days — VIP re-check now due`, "i-shield");
+      closeModal(); setTimeout(() => { openAccountSecurity(); rerenderAfterTier(); }, 360);
+    };
     [...$("#modal").querySelectorAll(".toggle")].forEach(t => t.onclick = () => { // modal-scoped — must not steal the profile screen's toggles behind the sheet
       const on = t.classList.toggle("on");
       t.setAttribute("aria-checked", on);
@@ -2232,7 +2315,7 @@
   function openIdea(id) {
     const i = D.ideas.find(x => x.id === id) || D.ideas[0];
     // hard gate: a free member can never open a LIVE (running) entry's detail — verify with the broker first
-    if (getSetting("tier", "free") === "free" && i.status === "running") { return IB ? openVerifyBroker() : openMembership(); }
+    if (effectiveTier() === "free" && i.status === "running") { return IB ? openVerifyBroker() : openMembership(); }
     const sell = i.dir === "short";
     const st = i.status === "tp" ? `<span class="pill pill-up">${ic("i-check","ic")} Hit TP ${i.result}</span>`
       : i.status === "sl" ? `<span class="pill pill-down">Stopped ${i.result}</span>`
@@ -2471,7 +2554,7 @@
     $("[data-tg]").onclick = () => toast(`Opens ${c.name} on Telegram`, "i-tg");
     const list = $("#chan-list");
     lastChanId = id;
-    const tier = getSetting("tier", "free");
+    const tier = effectiveTier();
     list.innerHTML = items.map(x => (tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
     requestAnimationFrame(() => Charts.initIn(list));
     [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
@@ -2718,7 +2801,7 @@
   ];
   function rerenderAfterTier() { if (lastChanId && $("#chan-list")) openChannel(lastChanId); else if (SCREENS[activeTab]) SCREENS[activeTab](); }
   function openMembership() {
-    const tierNow = getSetting("tier", "free");
+    const tierNow = effectiveTier(), lapsed = vipLapsed();
     const cards = PLANS.map(t => {
       const cur = t.id === tierNow;
       return `
@@ -2734,6 +2817,7 @@
     openModal(`
       <h3 class="sheet-title">Membership</h3>
       <p class="sheet-sub">${IB ? `${B.short} VIP is partner-funded — free when you trade with ${B.broker} under ${B.name}. Inner Circle pricing is yours to set.` : "Your community, your pricing — you set the price when you launch."}</p>
+      ${lapsed ? `<div class="tg-sync" style="margin-bottom:12px"><span class="tg-syncdot" style="background:var(--gold)"></span><div class="tg-sync-tx"><b>Your VIP re-check is due</b><small>Confirm your ${B.broker} account is still funded to restore VIP.</small></div></div>` : ""}
       <div class="tiers">${cards}</div>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Free members keep getting calls in Telegram. VIP unlocks the full app.</p>
       ${getSetting("tier", "free") !== "free" ? `<button class="btn btn-ghost btn-sm btn-block" id="demo-reset" style="margin-top:10px">Demo: reset to Free</button>` : ""}`);
@@ -2763,38 +2847,53 @@
       };
     });
   }
-  // ---- broker (IB) verification — VIP is free for members trading under the founder's partner link ----
+  // ---- broker (IB) verification — VIP is free for members trading under the founder's partner link,
+  // gated on a minimum funded balance (not a bare link) and re-confirmed every VIP_REVERIFY_DAYS ----
   function openVerifyBroker() {
+    const already = getSetting("vantageAcct", null);
+    const reverify = !!already && getSetting("tier", "free") === "vip"; // re-confirming an existing link, not linking fresh
     openModal(`
-      <h3 class="sheet-title">Unlock ${B.short} VIP</h3>
-      <p class="sheet-sub">${B.short} VIP is free — funded by the ${B.name} × ${B.broker} partnership. Link a ${B.broker} account opened under ${B.name} and every signal unlocks.</p>
+      <h3 class="sheet-title">${reverify ? `Confirm your ${B.broker} account` : `Unlock ${B.short} VIP`}</h3>
+      <p class="sheet-sub">${reverify
+        ? `${B.short} VIP re-checks every ${VIP_REVERIFY_DAYS} days that your ${B.broker} account is still funded and trading — confirm your balance to keep it active.`
+        : `${B.short} VIP is free — funded by the ${B.name} × ${B.broker} partnership. Link a ${B.broker} account opened under ${B.name}, funded with at least $${VIP_MIN_DEPOSIT}, and every signal unlocks.`}</p>
       <div class="vb-how">
+        ${reverify ? `
+        <div class="vb-step"><span class="vb-n num">1</span><span>Linked account: <b class="num">${already}</b></span></div>
+        <div class="vb-step"><span class="vb-n num">2</span><span>Enter your current balance — still needs to be $${VIP_MIN_DEPOSIT}+.</span></div>
+        <div class="vb-step"><span class="vb-n num">3</span><span>We re-confirm with ${B.broker} — VIP stays active for another ${VIP_REVERIFY_DAYS} days.</span></div>` : `
         <div class="vb-step"><span class="vb-n num">1</span><span>Open your ${B.broker} account through ${B.founderFirst}'s partner link — or ask support to move an existing one under ${B.name}.</span></div>
-        <div class="vb-step"><span class="vb-n num">2</span><span>Enter your ${B.broker} account number below.</span></div>
-        <div class="vb-step"><span class="vb-n num">3</span><span>We verify it against the ${B.name} partner list — VIP unlocks instantly.</span></div>
+        <div class="vb-step"><span class="vb-n num">2</span><span>Enter your account number and current balance (min $${VIP_MIN_DEPOSIT}).</span></div>
+        <div class="vb-step"><span class="vb-n num">3</span><span>We verify it against the ${B.name} partner list — VIP unlocks instantly.</span></div>`}
       </div>
-      <label class="flabel" for="vb-acct">${B.broker} account number</label>
-      <input class="finput num" id="vb-acct" inputmode="numeric" autocomplete="off" placeholder="e.g. 8 0 4 2 1 9 7">
-      <button class="btn btn-gold btn-block" id="vb-verify" style="margin-top:14px">${ic("i-shield")} Verify &amp; unlock VIP</button>
-      <button class="btn btn-ghost btn-block" id="vb-open" style="margin-top:10px">${ic("i-chev")} New to ${B.broker}? Open an account</button>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Demo — verification is simulated. The live app checks your account against the ${B.name} partner (IB) list with ${B.broker}.</p>`);
-    const btn = $("#vb-verify"), inp = $("#vb-acct");
+      ${reverify ? "" : `<label class="flabel" for="vb-acct">${B.broker} account number</label>
+      <input class="finput num" id="vb-acct" inputmode="numeric" autocomplete="off" placeholder="e.g. 8 0 4 2 1 9 7">`}
+      <label class="flabel" for="vb-bal">Account balance ($)</label>
+      <input class="finput num" id="vb-bal" inputmode="decimal" autocomplete="off" placeholder="e.g. 500">
+      <button class="btn btn-gold btn-block" id="vb-verify" style="margin-top:14px">${ic("i-shield")} ${reverify ? "Confirm &amp; keep VIP" : "Verify &amp; unlock VIP"}</button>
+      ${reverify ? "" : `<button class="btn btn-ghost btn-block" id="vb-open" style="margin-top:10px">${ic("i-chev")} New to ${B.broker}? Open an account</button>`}
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Demo — verification is simulated. The live app checks your account and balance against the ${B.name} partner (IB) list with ${B.broker}, and re-confirms every ${VIP_REVERIFY_DAYS} days.</p>`);
+    const btn = $("#vb-verify"), balInp = $("#vb-bal"), acctInp = $("#vb-acct");
     btn.onclick = () => {
-      const v = (inp.value || "").replace(/\D/g, "");
-      if (v.length < 6) { inp.focus(); toast(`Enter your ${B.broker} account number`, "i-shield"); return; }
+      const acct = reverify ? already : (acctInp.value || "").replace(/\D/g, "");
+      if (!reverify && acct.length < 6) { acctInp.focus(); toast(`Enter your ${B.broker} account number`, "i-shield"); return; }
+      const bal = parseFloat((balInp.value || "").replace(/,/g, ""));
+      if (!isFinite(bal) || bal < VIP_MIN_DEPOSIT) { balInp.focus(); toast(`Minimum $${VIP_MIN_DEPOSIT} balance to unlock VIP`, "i-shield"); return; }
       btn.disabled = true; btn.textContent = `Checking with ${B.broker}…`;
       setTimeout(() => {
         setSetting("tier", "vip");
-        setSetting("vantageAcct", v);
+        setSetting("vantageAcct", acct);
+        setSetting("vantageDeposit", bal);
+        setSetting("vantageLastCheck", ymd());
         closeModal();
         setTimeout(() => {
-          showPush(`Account verified ✓`, `${B.short} VIP unlocked — every signal, the live room & the library`);
-          toast("Verified — VIP unlocked", "i-check");
+          showPush(reverify ? "VIP re-verified ✓" : "Account verified ✓", reverify ? `${B.short} VIP stays active — nice work staying funded.` : `${B.short} VIP unlocked — every signal, the live room & the library`);
+          toast(reverify ? "Re-verified — VIP active" : "Verified — VIP unlocked", "i-check");
           rerenderAfterTier();
         }, 380);
       }, 1400);
     };
-    $("#vb-open").onclick = () => toast(`Opens ${B.founderFirst}'s ${B.broker} partner link`, "i-chev");
+    if (!reverify) $("#vb-open").onclick = () => toast(`Opens ${B.founderFirst}'s ${B.broker} partner link`, "i-chev");
   }
   // locked signal card — the paywall mechanic across EVERY channel: live/running entries are locked for
   // free members and require Vantage verification; closed results stay public as the track-record teaser.
@@ -2883,7 +2982,7 @@
         <div class="fd-stat"><b class="num up">+87</b><small>New this week</small></div>
         <div class="fd-stat"><b class="num gold-text" id="fd-mrr-stat">£—</b><small>MRR · ${IB ? "Inner Circle" : "your price"}</small></div>
       </div>
-      ${IB ? `<div class="fd-ib">${ic("i-shield", "ic")}<div><b>${B.broker} partner rebates</b><small>Every VIP member is verified under your IB — you earn on every lot they trade, on top of memberships. Unverified accounts never see a live entry.</small></div></div>` : ""}
+      ${IB ? `<div class="fd-ib">${ic("i-shield", "ic")}<div><b>${B.broker} partner rebates</b><small>Every VIP member links a ${B.broker} account funded with at least $${VIP_MIN_DEPOSIT}, and re-confirms it every ${VIP_REVERIFY_DAYS} days — a linked-then-abandoned account loses VIP automatically. Unverified accounts never see a live entry.</small></div></div>` : ""}
       <div class="fd-price">
         <div class="fd-price-top"><span class="eyebrow" id="fd-price-label">${IB ? "Inner Circle price" : "VIP price"}</span><b class="fd-mrr" id="fd-mrr">£—</b></div>
         <input type="range" class="fd-slider" id="fd-slider" min="${IB ? 29 : 9}" max="${IB ? 299 : 99}" step="${IB ? 5 : 1}" aria-label="Set your ${IB ? "Inner Circle" : "VIP"} monthly price">
@@ -3087,6 +3186,7 @@
     [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
     [...document.querySelectorAll("[data-act=office]")].forEach(n => n.onclick = () => go("office"));
     [...document.querySelectorAll("[data-act=weeklyreview]")].forEach(n => n.onclick = openWeeklyReview);
+    [...document.querySelectorAll("[data-act=checkin]")].forEach(n => n.onclick = openDailyCheckin);
     [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
