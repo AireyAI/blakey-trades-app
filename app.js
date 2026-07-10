@@ -68,7 +68,7 @@
       }
     }
     scroller.scrollTop = 0;
-    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b").forEach(countUp); paintOpenPl(); });
+    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b, .book-net b.num").forEach(countUp); paintOpenPl(); });
   }
 
   const SCREENS = {};
@@ -713,6 +713,7 @@
     const watching = D.videos.filter(x => getVideoProgress(x.id) > 0);
     setScreen(`
       ${header()}
+      ${bookCard()}
       ${marketBar()}
       ${storyStrip()}
       ${deskCard()}
@@ -794,6 +795,7 @@
     const rm2 = $("[data-act=remind]"); if (rm2) rm2.onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
     const hlk = $("[data-lockvip]"); if (hlk) hlk.onclick = IB ? openVerifyBroker : openMembership;
+    const beq = $("#book-eq"); if (beq && Charts.drawEquity) requestAnimationFrame(() => Charts.drawEquity(beq, D.journal.map(j => j.r).slice().reverse()));
     mountMarketBar();
   };
 
@@ -897,6 +899,23 @@
     return { code: "on", label: today ? `${today} trade${today > 1 ? "s" : ""} today ›` : "Live ✓", cls: "up" };
   }
   function unreadAnnouncements() { return Math.max(0, D.announcements.length - getSetting("annSeen", 0)); }
+  // ---- the book card — the member's P&L cast in bullion: the one physical object on Home ----
+  function bookCard() {
+    const js = journalStats(), tier = effectiveTier(), up = js.netR >= 0;
+    return `<button class="as-btn book-card reveal" data-act="journal" aria-label="Open your journal — net result ${money(js.netR)}">
+      <canvas id="book-eq" class="book-eq" aria-hidden="true"></canvas>
+      <div class="book-in">
+        <div class="book-top">
+          <span class="eyebrow">${ic("i-book", "ic")} Your book</span>
+          <span class="book-chips"><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}d</span>${tier === "vip" ? `<span class="pill pill-gold">VIP</span>` : ""}</span>
+        </div>
+        <div class="book-net"><b class="num ${up ? "up" : "down"}">${money(js.netR)}</b></div>
+        <div class="book-sub">${js.count} trades · ${js.winRate}% win rate · profit factor ${js.pf.toFixed(1)}</div>
+        <div class="book-foot"><span>Level ${profLevel()} · ${tierName(profLevel())}</span><span class="book-go">Journal ${ic("i-chev", "ic")}</span></div>
+      </div>
+      <i class="book-sheen" aria-hidden="true"></i>
+    </button>`;
+  }
   function deskCard() {
     const js = journalStats(), cp = copierState(), nc = nextCall();
     const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);

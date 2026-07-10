@@ -691,6 +691,36 @@ a{color:inherit;text-decoration:none}
 .floor-cta svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8}
 [data-theme="light"] .floor-stack .fs-av .av{border-color:#fff;background:#E7E4DA;color:#55545C}
 
+/* ===== the book card — P&L cast in bullion; deliberately stays dark in light mode (metal object, like .tcard) ===== */
+.book-card{display:block;width:100%;text-align:left;position:relative;overflow:hidden;margin-top:14px;padding:0;border-radius:20px;
+  background-image:var(--grain),linear-gradient(160deg,#1c1608,#0c0d12);
+  border:1px solid rgba(224,178,60,.30);
+  box-shadow:inset 0 1px 0 rgba(255,252,235,.13),0 22px 52px -26px rgba(7,5,2,.85);
+  transition:transform .15s var(--ease-spring);cursor:pointer}
+.book-card:active{transform:scale(.985)}
+/* fixed mini-palette: the card is always-dark, so it must not inherit light-theme text/token flips */
+.book-card .eyebrow{color:#E0B23C}
+.book-card .streak-chip{color:#E0B23C;background:rgba(224,178,60,.10);border-color:rgba(224,178,60,.28)}
+.book-card .num.up{color:#3FBF7F}
+.book-card .num.down{color:#F0565B}
+.book-eq{position:absolute;left:0;right:0;bottom:0;display:block;width:100%;height:58px;opacity:.5;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 55%);mask-image:linear-gradient(180deg,transparent,#000 55%)}
+.book-in{position:relative;z-index:2;padding:16px 16px 13px}
+.book-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.book-chips{display:flex;align-items:center;gap:7px}
+.book-net{margin-top:12px}
+.book-net b{font-size:42px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.book-sub{margin-top:7px;font-size:12px;color:#938e99}
+.book-foot{display:flex;align-items:center;justify-content:space-between;margin-top:18px;font-size:11.5px;color:#767181}
+.book-go{display:flex;align-items:center;gap:2px;color:#E0B23C;font-weight:700;font-size:12px}
+.book-go svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
+/* one-time foil sweep across the metal on entry */
+.book-sheen{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,244,214,.10) 46%,rgba(255,244,214,.02) 53%,transparent 66%);
+  transform:translateX(-130%);animation:bookSheen 1.5s .55s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes bookSheen{to{transform:translateX(130%)}}
+@media (prefers-reduced-motion: reduce){.book-sheen{animation:none;opacity:0}}
+
 /* ===== money story: membership / paywall / founder desk / push / tg-sync ===== */
 .up-card{display:flex;align-items:center;gap:13px;width:100%;margin-top:13px;padding:14px;border-radius:var(--r-lg);
   background:linear-gradient(135deg,rgba(var(--gold-rgb),.16),rgba(var(--gold-rgb),.045));border:1px solid var(--gold-line);
