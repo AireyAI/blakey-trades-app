@@ -297,9 +297,156 @@ window.DATA = {
     { id:"risk", name:"Risk & Psychology", level:"Core", lessons:7, done:0, color:"#6AA0FF", desc:"Position sizing, drawdown & the trader's mind." },
     { id:"pro", name:"Pro Execution", level:"Advanced", lessons:9, done:0, color:"#C06AFF", desc:"Scaling, sessions & a repeatable edge." },
   ],
+  // ── written curriculum — one entry per lesson, same order/length as paths[].lessons ──
+  curricula: {
+    found: [
+      { t:"What actually moves gold", mins:4, rule:"Check DXY and real yields before you check the chart.", body:[
+        "Gold has no earnings and pays no dividend, so its price is driven by what it competes with: the US dollar and the interest you could earn holding dollars instead. When the dollar strengthens or real yields rise, holding gold costs you more in missed interest — price tends to fall. When yields drop or the dollar weakens, gold gets attractive fast.",
+        "The second driver is fear. Gold is the market's insurance policy — wars, banking wobbles, inflation scares and central-bank buying all push money into it. That's why gold can rally on days when nothing on the chart explains it.",
+        "Practical habit: before every session, glance at DXY (the dollar index) and the news calendar. If the dollar is flying, fighting it on a gold long is swimming upstream." ] },
+      { t:"Reading a candlestick properly", mins:3, rule:"Wicks are rejection — the story is in what price refused to do.", body:[
+        "Every candle answers four questions: where price opened, the highest it reached, the lowest it touched, and where it closed. The body shows commitment; the wicks show rejection — places price visited and got pushed away from.",
+        "A long lower wick into a support zone means sellers tried to break it and buyers absorbed them. A full-bodied candle closing at its high means one side was in total control. Candles only mean something at a level — the same pattern in the middle of nowhere is noise.",
+        "Stop memorising 40 pattern names. Learn to read one candle as a fight between buyers and sellers, and ask who won and where." ] },
+      { t:"Support & resistance that actually holds", mins:4, rule:"Levels are zones, not lines — mark the area, not the pip.", body:[
+        "A support or resistance level is simply a price where enough decisions were made last time that traders remember it. The market doesn't respect a line to the pip — it respects an area, usually a few dollars wide on gold.",
+        "The strongest zones share three traits: they caused a sharp reaction before, they line up with a session high/low or the daily open, and they haven't been retested to death. Every retest consumes the orders sitting there — the fifth tap of a level is far weaker than the first.",
+        "Mark fewer levels, wider. A chart with four meaningful zones beats a chart with twenty lines you don't believe in." ] },
+      { t:"Trend, range, and when to stay out", mins:4, rule:"No higher-highs and no clean range? That's a no-trade regime.", body:[
+        "Markets do three things: trend, range, and chop. A trend makes higher highs and higher lows (or the reverse). A range respects a ceiling and a floor. Chop does neither — and chop is where accounts die.",
+        "Your first job each session isn't finding an entry, it's naming the regime. Trend days reward pullback entries and holding runners. Range days reward fading the extremes and taking profit early. Chop rewards the trader who closes the laptop.",
+        "If you can't describe what price is doing in one sentence, you don't have a trade — you have a guess." ] },
+      { t:"Timeframes: top-down in three steps", mins:4, rule:"Bias on the daily, story on the hourly, trigger on the small frame.", body:[
+        "Every clean setup reads the same way top-down. The daily chart gives bias: is gold in premium or discount, and which side ran recently? The 1-hour gives structure: the zones, the liquidity, where the session is likely to reach.",
+        "Only then do you drop to the 5-minute for the trigger — the reclaim, the rejection, the break-and-retest. Traders who live on the 1-minute see a hundred signals a day and none of them mean anything, because there's no context above them.",
+        "Rule of thumb: your trigger timeframe should be roughly ten times smaller than your structure timeframe. H1 structure, M5 trigger." ] },
+      { t:"Lots, pips & what a gold move costs", mins:3, rule:"On 1.00 lots, every $1 gold moves is $100 to your account.", body:[
+        "XAUUSD is quoted as dollars per troy ounce, and a standard lot is 100 ounces. So a $1.00 move in the gold price is $100 on a 1.00-lot position, $10 on 0.10, $1 on 0.01. Burn that into memory — it's the maths behind every stop and target you'll ever place.",
+        "A typical day-trade stop on gold might be $8–12 of price. On 1.00 lots that's $800–1,200 of risk. On 0.05 lots it's $40–60. Same trade, same chart — completely different consequence.",
+        "The spread matters too: you enter paying it. On fast news it widens violently, which is one of several reasons news candles are for watching, not entering." ] },
+      { t:"Stop-losses are the subscription fee", mins:3, rule:"Decide the invalidation before the entry — never after.", body:[
+        "A stop-loss isn't an admission you might be wrong — it's the price of finding out. Every trade is a hypothesis: 'buyers should hold this zone.' The stop goes where that sentence stops being true, usually just beyond the zone or the swing that defined it.",
+        "Placing stops by 'how much I'm willing to lose' instead of where the idea is invalid gets you stopped on noise, then watching price go your way without you. Size the position to fit the stop — never move the stop to fit the size.",
+        "And once it's set, it's set. Widening a stop mid-trade is just paying more to stay wrong longer." ] },
+      { t:"Your one-page trading plan", mins:5, rule:"If it's not written down, it's not a plan — it's a mood.", body:[
+        "A trading plan fits on one page: the sessions you trade, the one or two setups you take, your risk per trade, your daily stop (the loss that ends the day), and the routine before and after each session.",
+        "Its power is that it makes discipline checkable. 'Did I follow the plan?' becomes a yes/no question — which is exactly what your daily check-in and Friday Trader Score measure in this app.",
+        "Start embarrassingly simple: one setup, one session, fixed risk. You can add sophistication once boring consistency is proven. Most traders try it the other way round and never get either." ] },
+    ],
+    gold: [
+      { t:"The three sessions of a gold day", mins:5, rule:"Asia builds the range, London breaks it, New York decides if it was real.", body:[
+        "Gold trades around the clock but it doesn't behave the same all day. Asia is usually quiet accumulation — a range forms, and its high and low become the first liquidity of the day.",
+        "London opens with real volume and loves to sweep one side of the Asia range before choosing a direction. New York brings the US data, the dollar flows, and the day's resolution — often continuing London's move, sometimes violently reversing it.",
+        "Knowing the clock changes how you read the same chart: a breakout at 3am means little; the same breakout at the London open is a statement of intent." ] },
+      { t:"Liquidity: where the stops live", mins:5, rule:"Obvious levels attract price BECAUSE everyone's stops are behind them.", body:[
+        "Big players can't fill large orders without someone on the other side. The easiest counterparty is a pool of stop-losses — and stops cluster in predictable places: above equal highs, below equal lows, beyond session extremes and round numbers.",
+        "That's why price so often spikes through an 'obvious' level, fills the resting orders, and reverses. The breakout traders provide the liquidity; the informed money takes the other side.",
+        "Train yourself to see a clean double-top not as resistance but as a target — a pool the market may want to visit before doing what it always intended." ] },
+      { t:"The London sweep, step by step", mins:5, rule:"The sweep isn't the trade — the reclaim after it is.", body:[
+        "The most repeatable pattern in gold: Asia builds a range, London opens and drives through one side of it — triggering breakout entries and resting stops — then reverses hard back inside. The failed break is the information.",
+        "The sequence to watch: (1) the sweep beyond the Asia high or low, (2) the sharp rejection back inside the range, (3) the reclaim — price closing back through the swept level and holding it.",
+        "Entering ON the sweep is gambling on direction. Entering on the confirmed reclaim, with a stop beyond the sweep's extreme, is a defined-risk trade on a pattern the market repeats week after week." ] },
+      { t:"Entry model 1: Reclaim & hold", mins:5, rule:"Broken level, reclaimed and held = the cleanest long in the book.", body:[
+        "Price breaks below a level everyone's watching, stops fire, and then — the tell — it climbs straight back above and holds. Everyone who sold the breakdown is now trapped underwater, and their exits become your fuel.",
+        "The entry: wait for the reclaim candle to close back above the level, then buy the hold — the first quiet retest that stays above. Stop goes under the reclaim low. Target the opposite side of the structure, or the next liquidity pool.",
+        "The discipline is in the 'hold': if price reclaims and immediately sinks back through, there's no trade. A reclaim that needs a second attempt wasn't a reclaim." ] },
+      { t:"Entry model 2: Supply & demand rejection", mins:5, rule:"The strongest zones are fresh, sharp, and aligned with your bias.", body:[
+        "A supply zone is where aggressive selling previously launched from — usually a small consolidation before a sharp drop. When price returns there, the question is whether unfilled sellers remain.",
+        "Grade the zone before trusting it: Was the original departure violent? Is this the first return? Does it sit at a sensible place — a premium of the day's range, a session extreme, a higher-timeframe level? Fresh + sharp + aligned is an A-zone; anything less is a B you size down or skip.",
+        "Entry is the rejection itself: a clear reversal candle inside the zone, stop beyond the zone's far edge, first target the middle of the range you came from." ] },
+      { t:"Entry model 3: Break & retest", mins:4, rule:"Chase nothing — the retest is where risk is small enough to define.", body:[
+        "When gold genuinely breaks a level with conviction — full-bodied close, follow-through — the trade isn't the breakout candle. It's the retest: price pulling back to the broken level and confirming it now acts as the opposite (old resistance behaving as support).",
+        "The retest gives you everything the breakout can't: a tight stop (just beyond the retested level), a defined invalidation, and confirmation that the break wasn't a liquidity grab.",
+        "If price runs without retesting? Let it go. There are five gold setups a week; there is no shortage of trades, only a shortage of patience." ] },
+      { t:"The daily open, premium & discount", mins:4, rule:"Longs are cheap below the daily open, expensive above it.", body:[
+        "The daily open (and the midpoint of the day's developing range) splits the session into premium and discount. Buying deep in discount — near the lows, at support, after a sweep — means your idea can be wrong by a little without costing much.",
+        "Buying in premium — chasing strength near the highs — means paying the worst price of the day for the same idea. The setup can be identical; the location decides the outcome.",
+        "This is why the models in this path all wait for price to come to a level. Location is the edge; the trigger is just the timing." ] },
+      { t:"News days: NFP, CPI & FOMC", mins:4, rule:"No entries in the 15 minutes either side of red-folder news.", body:[
+        "Three events move gold more than anything else: US jobs (NFP, first Friday), inflation (CPI), and the Fed (FOMC). Around them spreads explode, stops slip, and the first spike is routinely reversed within minutes.",
+        "The professional play is boring: flatten or reduce before the release, let the first spike and its retrace print, and only then look for a setup in the direction the dust settles.",
+        "Check the calendar every Monday (it's in this app), mark the red days, and treat them as different animals: half size, wider stops, or — completely acceptable — no trades at all." ] },
+      { t:"Confluence: stacking the reasons", mins:4, rule:"One reason is a guess, three reasons is a setup.", body:[
+        "No single tool is right often enough on its own. Edge comes from stacking independent reasons that all point the same way: a liquidity sweep INTO a fresh demand zone AT a discount of the day WITH the dollar rolling over.",
+        "Build a simple checklist from this path: session timing ✓ liquidity taken ✓ zone quality ✓ location (premium/discount) ✓ trigger candle ✓. Four or five ticks is an A-setup worth full risk. Two ticks is a pass.",
+        "Confluence also kills overtrading — most candidates fail the checklist, which is exactly the point." ] },
+      { t:"Building your daily map", mins:5, rule:"Ten minutes of mapping before London beats three hours of staring after it.", body:[
+        "Before the session, build the map: mark yesterday's high and low, the Asia range, the daily open, and the two or three zones you'd genuinely trade from. Write one sentence of bias — 'above X I look for longs to Y' — and one invalidation.",
+        "During the session you're no longer searching, you're waiting: either price comes to your map and gives a trigger, or it doesn't and you don't trade.",
+        "After the session, thirty seconds: did price respect your levels? Was the bias right? That feedback loop — map, trade, review, journaled in this app — is the entire job, repeated until it compounds." ] },
+    ],
+    risk: [
+      { t:"Position sizing: the only maths that matters", mins:5, rule:"Risk a fixed 1% — the position size falls out of the stop, never the other way.", body:[
+        "Decide risk first: 1% of a £2,000 account is £20. Find the stop distance the chart demands — say $10 of gold price. Size = risk ÷ (stop × value per lot per dollar). $10 × $100/lot = $1,000 per lot, so £20 of risk buys roughly 0.02 lots.",
+        "Notice what this does: every trade now costs the same fraction of your account regardless of how wide the stop is. Tight setup, bigger size; wide setup, smaller size; identical consequence when wrong.",
+        "Traders who size by feel — 'this one looks good, I'll go bigger' — are letting confidence, the least reliable instrument they own, set their risk. Use the calculator in this app until the maths is reflex." ] },
+      { t:"Expectancy: why win rate is half the story", mins:4, rule:"You can win 40% of trades and grow — if winners average 2R+.", body:[
+        "Measure every trade in R — multiples of what you risked. Lose £20 risking £20: −1R. Win £50 risking £20: +2.5R. Expectancy = (win% × average win) − (loss% × average loss).",
+        "A 40% win rate with 2.5R winners makes money: (0.4 × 2.5) − (0.6 × 1) = +0.4R per trade. A 70% win rate with 0.5R winners loses it: (0.7 × 0.5) − (0.3 × 1) = +0.05R — one bad habit from negative.",
+        "This is liberating: you don't need to be right most of the time. You need losers capped at −1R and winners allowed to finish. The journal tab computes this for you — profit factor is expectancy wearing different clothes." ] },
+      { t:"Drawdown maths & the daily stop", mins:4, rule:"Three losses is a finished day — the fourth is rarely a trading decision.", body:[
+        "Losses compound against you asymmetrically: −10% needs +11% to recover, −20% needs +25%, −50% needs +100%. Protecting the downside isn't cowardice, it's arithmetic.",
+        "At 1% risk per trade, a losing streak is survivable — ten straight losses (rare but real) is about −10%. At 5% risk, the same streak is −40% and the maths turns brutal.",
+        "Add a daily circuit breaker: three losses or −3%, whichever comes first, ends the session. The fourth trade of a losing day is almost never analysis — it's recovery-seeking, and the market charges extra for that." ] },
+      { t:"Revenge trading: the circuit breaker", mins:4, rule:"The urge to win it back RIGHT NOW is the signal to stop.", body:[
+        "Revenge trading has a signature: seconds after a loss you're back in, bigger, on a setup you'd never take cold. The loss created a debt in your head, and the market feels like the only place to repay it.",
+        "You can't out-discipline a flooded brain in the moment — so decide the rules before: after any loss, a mandatory 15-minute break away from the screen. After a daily stop, done means done, and log how it felt in the journal.",
+        "The Trader Score in this app asks about exactly this every Friday. A red week with honest answers builds more skill than a green week you can't explain." ] },
+      { t:"FOMO & chasing: paying the worst price", mins:3, rule:"If the move already happened, the trade already happened.", body:[
+        "FOMO entries have the worst location of any trade: you buy strength at the top of the impulse, your stop is either huge or hopeless, and the first natural pullback takes you out — often right before the move resumes.",
+        "The antidote is mechanical, not motivational: you are only allowed to enter at YOUR levels, on YOUR trigger. Missed the reclaim? The retest may come. No retest? That trade belonged to someone else.",
+        "Write missed trades in the journal as 'missed — plan respected'. Rewarding the discipline, not just the profit, is how the habit sticks." ] },
+      { t:"The journal IS the edge", mins:4, rule:"Log every trade the moment it closes — feelings included.", body:[
+        "Every trade you log is a data point about YOUR trading — not trading in general. Twenty trades in, patterns appear that no course can teach: your London win rate versus New York, how FOMO-tagged entries perform, what your real average winner is.",
+        "The edge analytics in this app (your win rate by session, your setup performance) are only as honest as the entries feeding them. Log the losses in full sentences — they're the expensive lessons; skipping them is throwing away what you paid for.",
+        "One line about emotion per entry. 'Calm, followed plan' or 'entered angry after loss' — six months later that column will explain your equity curve better than any indicator." ] },
+      { t:"Process goals beat outcome goals", mins:4, rule:"Judge the week by plan-adherence, not P&L — money follows process.", body:[
+        "'Make £500 this week' is a goal you don't control — the market decides. 'Take only A-setups, risk 1%, journal every trade, review Friday' is a goal you control completely, and it's the one that eventually produces the £500.",
+        "Outcome-focus creates exactly the behaviour that prevents the outcome: forcing trades in dead sessions to hit a number, moving stops because 'I can't take another loss this week'.",
+        "This is why your weekly Trader Score here measures discipline questions, not profit. A 9/10 process week that lost money is a good week — repeat it and the results arrive. A lucky win on a broken process is the most expensive thing the market sells." ] },
+    ],
+    pro: [
+      { t:"Scaling out: paying yourself along the way", mins:4, rule:"Partials at the first target turn good trades into calm ones.", body:[
+        "All-or-nothing exits force a brutal choice: take profit early and cry when it runs, or hold for the home run and watch winners die at breakeven. Scaling out dissolves the dilemma.",
+        "A robust default: close half at the first structural target (locking roughly +1R), leave the rest for the full move with the stop trailed to sensible structure. The banked half buys the patience to hold the runner properly.",
+        "The maths gives up a little on the best trades and gains a lot on the average ones — and it's the average ones that make the year." ] },
+      { t:"Breakeven: protection or self-sabotage?", mins:4, rule:"Move to BE at a structural milestone — never at a feeling.", body:[
+        "Moving the stop to entry feels like free insurance, but done too early it's a donation: gold routinely retests the entry area before the real move, and a premature BE stop converts winners into scratches.",
+        "The professional version is conditional: move to breakeven only when the trade has PROVEN something — the first target paid, a new swing formed in your favour, the level that would justify BE actually printed.",
+        "Ask one question before touching the stop: 'has the chart changed, or have my nerves?' Only one of those is a reason." ] },
+      { t:"Set-and-forget vs active management", mins:4, rule:"Pick ONE management style per setup type and grade yourself on it.", body:[
+        "Set-and-forget places the stop and targets, then walks away — it maximises discipline and minimises interference, and for most developing traders it outperforms their meddling by a wide margin.",
+        "Active management — trailing, adding, cutting early on new information — can beat it, but only with rules written before the trade. 'I trail below each M15 higher-low' is a system; 'it looked weak' is not.",
+        "The tell is in your journal: compare outcomes of interfered trades against untouched ones for a month. Most traders discover their interventions have negative expectancy — data that changes behaviour faster than any lecture." ] },
+      { t:"Let the equity curve steer the size", mins:4, rule:"Trade smaller in drawdown, never bigger — earn your size back.", body:[
+        "Your equity curve is live telemetry on the fit between your system and current conditions. A steady climb says press on. A sharp dip says something changed — the market's regime, or your discipline.",
+        "Professionals cut size in drawdown: after three losing days, halve risk until a green week earns it back. Amateurs do the opposite — doubling down to recover fast — which is how a rough patch becomes a blown account.",
+        "The equity chart in your journal makes this visible. If the last five entries slope down, that's the market telling you to get small and get selective — listen." ] },
+      { t:"Correlation: gold's companion gauges", mins:4, rule:"A gold long agrees with DXY falling — check the companions before size.", body:[
+        "Gold rarely moves alone. The dollar index (DXY) is its mirror; real yields set its cost; silver often leads or confirms the metal complex; risk sentiment decides whether it's trading as insurance or as a commodity.",
+        "Practical use is confirmation, not prediction: your long setup at demand carries more weight when DXY is stalling at resistance and silver already bounced. When gold says long but every companion says dollar-strength, the setup deserves half size or a pass.",
+        "One glance at DXY before every entry. Two markets agreeing beats one chart looking pretty." ] },
+      { t:"Know your session statistics", mins:4, rule:"Trade the session where YOUR numbers say you have an edge.", body:[
+        "The edge panel in your journal splits results by session for a reason: nearly every trader is two different people at different times of day. A 70% London win rate and a 30% New York one isn't noise after enough trades — it's an instruction.",
+        "The reasons are usually mundane: NY means evening fatigue, faster news-driven moves, or a setup type that suits London's sweep behaviour but not New York's trends.",
+        "Twenty trades per session is the minimum before trusting the split. Then act on it: full risk where you have proof, half risk where you're hypothesising, zero where the data says stop." ] },
+      { t:"Prop-style risk rules at home", mins:4, rule:"A daily loss limit and a max-loss line — enforced like a prop firm would.", body:[
+        "Prop firms survive on two rules: a daily loss limit (breach it, you're done for the day) and a maximum drawdown (breach it, you're done, full stop). Adopting them at home is free and changes behaviour immediately.",
+        "Set them realistically — daily stop at 3%, account line at 10% — and treat the daily one as a hardware switch, not a suggestion. The best traders' worst days are small; that is the entire secret of their smooth curves.",
+        "Write both numbers at the top of your one-page plan. When the daily stop hits, the platform closes and the review begins — the review is where the loss gets converted into tuition." ] },
+      { t:"The review cadence that compounds", mins:4, rule:"Friday review every week — skipping it means repeating the week.", body:[
+        "Improvement doesn't come from more screen time; it comes from structured feedback. Daily: thirty seconds — did I follow the plan? (your daily check-in). Weekly: the Friday review — six honest scores, what worked, what to change (your Trader Score).",
+        "Monthly, go deeper: reread every journal entry, pull the three most expensive mistakes, and write ONE rule change — not five — for the next month. One change per month is twelve compounding improvements a year.",
+        "The traders who plateau are almost never short of information. They're short of a loop that forces the information back into behaviour. You're holding that loop in your hand." ] },
+      { t:"From consistency to compounding", mins:5, rule:"Prove the process on small size — scale risk only after 90 green-process days.", body:[
+        "The path from here isn't a secret setup — it's sequence. First, consistency: three months of following the plan at small size, measured by process scores, not profit. Most people never complete this stage because it's boring. That's why it pays.",
+        "Second, scale: once the numbers prove the edge (positive expectancy over 50+ journaled trades), increase risk methodically — 1% to 1.5%, hold for a month of stability, reassess. Never scale during a hot streak; euphoria and leverage is the classic account-killer.",
+        "Third, longevity: the compounding maths only works if you're still here in year three. Every rule in this path — sizing, daily stops, reviews — exists to guarantee survival long enough for skill to matter. Protect the downside; the upside takes care of itself." ] },
+    ],
+  },
   // ── path quizzes (one bank per learning path; `c` = correct index, `why` teaches after answering) ──
   quizzes: {
-    found: { pass:5, qs:[
+    found: { pass:8, qs:[
       { q:"What does a stop-loss actually do?", a:["Closes the trade at a set level to cap the loss","Guarantees you exit in profit","Locks the spread in your favour","Adds to the position if price drops"], c:0, why:"A stop-loss is a pre-set exit so one losing trade can't damage the account." },
       { q:"XAUUSD is the price of…", a:["One ounce of gold in US dollars","Gold in British pounds per gram","A percentage move of the dollar","A basket of precious metals"], c:0, why:"XAUUSD = the US-dollar price of one troy ounce of gold." },
       { q:"Gold usually moves ___ the US dollar (DXY).", a:["Inverse to","In lockstep with","Faster than, same direction","Completely unrelated to"], c:0, why:"A stronger dollar makes gold pricier abroad, so gold and DXY tend to move opposite." },
@@ -307,8 +454,13 @@ window.DATA = {
       { q:"Before risking real money, the smart first step is to…", a:["Practise the plan on demo or tiny size","Use maximum leverage to learn faster","Copy every signal with no thought","Only trade during news spikes"], c:0, why:"Reps on demo or small size build the habit without risking the account." },
       { q:"Risking 1% of a £2,000 account, how much is at risk on the trade?", a:["£20","£200","£2","£100"], c:0, why:"1% of £2,000 is £20. Fixed-percent risk keeps every trade the same size relative to the account." },
       { q:"Why is gold (XAUUSD) a sound market to learn on?", a:["It's deeply liquid and respects clear technical levels","It can only ever go up over time","Brokers pay you just to hold it","It only moves for one hour a day"], c:0, why:"Gold's liquidity and clean reaction to levels suit a patient, rules-based approach." },
+      { q:"On a 1.00-lot gold position, a $1.00 move in price is worth…", a:["$100","$1","$10","$1,000"], c:0, why:"A standard XAUUSD lot is 100 ounces, so every $1 of price = $100 to the position." },
+      { q:"A long lower wick into a support zone most likely means…", a:["Sellers pushed in and buyers absorbed them","The market is closed","Support has definitely broken","Nothing — wicks are random"], c:0, why:"The wick shows price visited lower levels and was rejected — buyers defended the zone." },
+      { q:"Real yields rise sharply. Gold most often…", a:["Falls — holding gold now costs more in missed interest","Rises — yields don't matter","Freezes until the next NFP","Doubles its spread permanently"], c:0, why:"Gold pays no interest, so higher real yields make it comparatively less attractive." },
+      { q:"Price is making no higher-highs and holds no clean range. The disciplined move is…", a:["Stand aside — chop is a no-trade regime","Trade both directions at once","Double the position size","Remove your stop to survive the noise"], c:0, why:"If you can't name the regime in one sentence, you don't have a trade — you have a guess." },
+      { q:"The best reason support/resistance 'works' is that…", a:["Traders remember where decisions were made and act there again","Charts are magic","Brokers repaint the levels","Price is programmed to bounce"], c:0, why:"Levels mark past decision areas — memory and resting orders make them react again." },
     ]},
-    gold: { pass:5, qs:[
+    gold: { pass:8, qs:[
       { q:"What is the core " + BRAND.name + " long trigger?", a:["Price reclaims a level and holds it","Any dip in price","A round number gets hit","An indicator turns green"], c:0, why:"Reclaim-and-hold shows buyers have taken control before you commit — the " + BRAND.short + " long." },
       { q:"Why does the London open matter for gold?", a:["It often expands the range and sets the day's liquidity","Gold only trades during London hours","Spreads drop to zero then","The dollar stops moving at the open"], c:0, why:"London brings the volume and volatility that frequently defines the day's range." },
       { q:"'Liquidity' resting above the highs is best described as…", a:["Clustered stop / limit orders price is drawn toward","A guaranteed wall of resistance","A period of very low volume","A fee your broker charges"], c:0, why:"Liquidity is pooled orders; price is often drawn to it before reversing." },
@@ -316,8 +468,13 @@ window.DATA = {
       { q:"Where does your stop belong?", a:["Beyond the structure that invalidates the idea","As tight as possible, structure aside","At a fixed distance every single trade","Just above entry on a long"], c:0, why:"Stops go beyond the level that proves you wrong — inside it, you get wicked out." },
       { q:"'Premium' in a trading range means price is…", a:["In the expensive upper half — favour selling","In the cheap lower half — favour buying","Exactly on the midpoint","Outside the range entirely"], c:0, why:"Above the range's 50% is premium (look to sell); below it is discount (look to buy)." },
       { q:"A fair value gap (FVG / imbalance) is…", a:["A fast 3-candle gap price often returns to fill","A guaranteed reversal point","A type of broker fee","The day's high minus its low"], c:0, why:"Price moved so fast it left an imbalance; it frequently returns to rebalance before continuing." },
+      { q:"Stops cluster most predictably…", a:["Just beyond equal highs/lows and session extremes","In the exact middle of the range","At random prices","Only at round thousands"], c:0, why:"Obvious levels collect stops behind them — which is exactly why price gets drawn there." },
+      { q:"London sweeps the Asia low then closes back inside the range. The trade is…", a:["The confirmed reclaim — not the sweep itself","Shorting the breakdown immediately","Doubling any position that's losing","Buying the exact low with no stop"], c:0, why:"The failed break is the information; entering on the reclaim gives defined risk on a repeatable pattern." },
+      { q:"In the 15 minutes around NFP or FOMC, the playbook says…", a:["No new entries — spreads widen and first spikes routinely reverse","Enter with double size for the volatility","Remove stops so they can't slip","Only trade the first spike"], c:0, why:"News windows have slippage and fake first moves — let the dust settle, then trade the map." },
+      { q:"Buying 'in discount' means entering…", a:["In the lower part of the day's range, near support","Above the day's high","Whenever the app sends a push","Only after three green candles"], c:0, why:"Location is the edge: cheap-side entries let you be slightly wrong without paying much." },
+      { q:"A supply zone deserves the most trust when it is…", a:["Fresh, formed by a violent departure, and aligned with bias","Retested five times already","Drawn on the 1-second chart","Below the current price"], c:0, why:"First return + sharp origin + sensible location = an A-grade zone; each retest consumes its orders." },
     ]},
-    risk: { pass:5, qs:[
+    risk: { pass:8, qs:[
       { q:"Risking 1% per trade, a 5-trade losing streak costs roughly…", a:["About 5% of the account","Half the account","Exactly 1% in total","Nothing — the stop refunds it"], c:0, why:"1% × 5 ≈ a 5% drawdown — survivable. Fixed-fractional risk keeps you in the game." },
       { q:"A +2R winning trade means you made…", a:["Twice what you risked on it","2% of your whole account","Two standard lots","Two pips of profit"], c:0, why:"R is your risk unit, so +2R = profit equal to twice the amount risked." },
       { q:"'Revenge trading' is…", a:["Forcing trades to win back a loss","Only taking A+ setups","Journaling every entry","Banking partial profits early"], c:0, why:"Chasing a loss off-plan turns a bad day into a bad month. Name it, then stop it." },
@@ -325,8 +482,13 @@ window.DATA = {
       { q:"You've hit your daily loss limit. The right move is to…", a:["Stop trading for the day","Double size to win it back","Pull your stops and wait","Switch to a more volatile pair"], c:0, why:"The daily limit protects you from yourself — when it's hit, you're done for the day." },
       { q:"You moved your stop to breakeven, then price drifts back to entry. The result is…", a:["A breakeven scratch — no loss","A full −1R loss","A +1R win","A margin call"], c:0, why:"At breakeven the worst case is a scratch — the downside is already off the table." },
       { q:"Two trades risk the same %, but one has a wider stop. Its position size is…", a:["Smaller than the tighter-stop trade","Larger than the tighter-stop trade","Exactly the same","Always zero"], c:0, why:"Size = risk ÷ stop distance, so a wider stop means a smaller position for the same risk." },
+      { q:"A 40% win rate with average winners of +2.5R and losers of −1R is…", a:["Profitable — expectancy is +0.4R per trade","Break-even at best","Guaranteed to blow up","Impossible to trade"], c:0, why:"(0.4 × 2.5) − (0.6 × 1) = +0.4R. Winners' size matters as much as how often you win." },
+      { q:"A −20% drawdown needs roughly what gain to recover?", a:["+25%","+20%","+10%","+50%"], c:0, why:"Losses compound against you: 80 × 1.25 = 100. Protecting the downside is arithmetic, not fear." },
+      { q:"The strongest sign you're about to revenge trade is…", a:["An urgent need to win the loss back RIGHT NOW","A written plan and a calm checklist","Waiting patiently for your level","Reducing size after a red day"], c:0, why:"Urgency after a loss is the tell — the mandatory break exists precisely for that moment." },
+      { q:"After your third loss of the day, the professional move is…", a:["Stop trading — the daily circuit breaker has fired","One more trade at double size","Remove the stop on the next entry","Switch to a new strategy mid-session"], c:0, why:"The fourth trade of a red day is usually recovery-seeking, not analysis. Done means done." },
+      { q:"'Take only A-setups and journal every trade' is better than 'make £500 this week' because…", a:["You control the process — the market controls the outcome","Money goals are illegal","Journals replace stops","£500 is too small a target"], c:0, why:"Process goals are actionable every day; outcome-chasing produces forced trades that prevent the outcome." },
     ]},
-    pro: { pass:5, qs:[
+    pro: { pass:8, qs:[
       { q:"'Scaling out' of a position means…", a:["Taking partial profit as price moves your way","Adding size on every tick","Sliding the stop further from price","Only ever closing at the full target"], c:0, why:"Scaling out banks partials and de-risks while leaving runners for the bigger move." },
       { q:"Moving your stop to breakeven does what?", a:["Removes the downside risk on an open winner","Guarantees the full take-profit","Widens your risk on the trade","Increases your position size"], c:0, why:"At breakeven the worst case is a scratch — the loss is off the table, not the target locked." },
       { q:"Why trade the same sessions consistently?", a:["A repeatable edge needs a comparable sample","Other sessions are against the rules","Brokers require a fixed schedule","To dodge volatility entirely"], c:0, why:"Same conditions make results comparable — that's how an edge becomes measurable." },
@@ -334,6 +496,11 @@ window.DATA = {
       { q:"Two valid setups appear at once. The pro move is to…", a:["Take the higher-quality A+ setup","Trade both at full size","Skip trading for a week","Double size on the riskier one"], c:0, why:"Capital and focus are finite — concentrate on the highest-probability setup." },
       { q:"'Trading on tilt' usually shows up as…", a:["Forcing extra, off-plan trades after a big win or loss","Following your checklist exactly","Sitting on your hands during chop","Journalling every trade"], c:0, why:"Tilt is emotional, off-plan trading after a strong result — the journal is how you catch it." },
       { q:"A trading journal is most valuable because it…", a:["Turns your real results into feedback you can act on","Guarantees winning trades","Removes the need for a stop","Predicts the next candle"], c:0, why:"Reviewing real outcomes is how a process actually improves over time." },
+      { q:"Taking partials at the first target mainly buys you…", a:["Banked profit plus the patience to hold the runner","A worse average price on every trade","Freedom from needing a stop","Twice the spread cost for nothing"], c:0, why:"Locking ~1R early removes the fear that makes traders strangle winners at breakeven." },
+      { q:"The right moment to move a stop to breakeven is…", a:["After a structural milestone — a target paid or a new swing formed","The instant the trade goes green","Whenever you feel nervous","Never, under any circumstances"], c:0, why:"BE too early donates winners to the entry retest; BE after proof is protection." },
+      { q:"Your last five journal entries slope downward. Size should…", a:["Halve until a green week earns it back","Double to recover faster","Stay identical no matter what","Go all-in on the next A-setup"], c:0, why:"Drawdown is telemetry — professionals cut size when the curve dips; amateurs press and compound the damage." },
+      { q:"Your gold long fires while DXY breaks out UPWARD. You should…", a:["Halve size or pass — a companion gauge disagrees","Ignore the dollar completely","Triple size for bravery","Flip short with no setup"], c:0, why:"Gold and DXY are mirrors; a setup fighting the dollar deserves less risk, not more." },
+      { q:"Prop firms enforce a daily loss limit because…", a:["Keeping the worst day small is what keeps the equity curve smooth","It annoys traders","Losses don't matter otherwise","It doubles the leverage"], c:0, why:"Survival maths: the best traders' worst days are small — adopt the same switch at home." },
     ]},
   },
   // ── glossary ──

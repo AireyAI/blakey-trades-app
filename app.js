@@ -1212,7 +1212,7 @@
   // Every milestone is derived from the member's REAL state (journal, calls, tier, copier, streak, rank).
   function journeyStages() {
     const js = journalStats(), tier = getSetting("tier", "free"), wk = weeklyHistory();
-    const anyLesson = D.videos.some(v => getVideoProgress(v.id) > 0);
+    const anyLesson = D.videos.some(v => getVideoProgress(v.id) > 0) || D.paths.some(p => pathDone(p.id) > 0); // watching OR reading counts
     return [
       { name: "Get on " + B.floor, pace: "day one", steps: [
         { label: "Joined " + B.floor, done: true },
@@ -3079,7 +3079,6 @@
   }
 
   // ============================ ACADEMY + TRACK RECORD ============================
-  const LESSON_POOL = ["What moves gold", "Reading candles", "Support & resistance", "The London open", "Liquidity & sweeps", "The 3 entry models", "Risk per trade", "Stop placement", "Managing the trade", "Journaling & review", "Trading psychology", "Building your edge"];
   function academySection() {
     return `<div class="section-head"><span class="h2">Your path</span><span class="more" data-act="glossary">Glossary ›</span></div>
       <div class="paths">${D.paths.map(p => {
@@ -3091,12 +3090,43 @@
           ${ic("i-chev", "ic")}</button>`;
       }).join("")}</div>`;
   }
+  function pathLessons(id) { return (D.curricula && D.curricula[id]) || []; }
   function openPath(id) {
     const p = D.paths.find(x => x.id === id) || D.paths[0];
-    const doneN = pathDone(p.id);
-    const rows = Array.from({ length: p.lessons }, (_, i) => { const done = i < doneN, t = LESSON_POOL[i % LESSON_POOL.length]; return `<div class="lesson ${done ? "done" : ""}"><span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span><span class="les-t">${t}</span>${done ? "" : ic("i-play", "ic")}</div>`; }).join("");
-    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${doneN}/${p.lessons} complete</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} ${p.name} quiz</button>`);
+    const doneN = pathDone(p.id), les = pathLessons(p.id);
+    const rows = les.map((l, i) => {
+      const done = i < doneN, next = i === doneN;
+      return `<button class="as-btn lesson ${done ? "done" : ""} ${next ? "next" : ""}" data-lesson="${i}">
+        <span class="les-n">${done ? ic("i-check", "ic") : i + 1}</span>
+        <span class="les-t">${l.t}<small class="les-m num">${l.mins} min read${next ? " · up next" : ""}</small></span>
+        ${done ? "" : ic("i-book", "ic")}</button>`;
+    }).join("");
+    openModal(`<h3 class="sheet-title">${p.name}</h3><p class="sheet-sub">${p.level} · ${doneN}/${p.lessons} complete · tap a lesson to read it</p><div class="lessons">${rows}</div><button class="btn btn-gold btn-block" id="path-quiz" style="margin-top:16px">${ic("i-target")} ${p.name} quiz</button>`);
+    [...document.querySelectorAll("[data-lesson]")].forEach(n => n.onclick = () => openLesson(p.id, +n.dataset.lesson));
     const q = $("#path-quiz"); if (q) q.onclick = () => openQuiz(p.id);
+  }
+  function openLesson(pathId, i) {
+    const p = D.paths.find(x => x.id === pathId); const les = pathLessons(pathId); const l = les[i]; if (!p || !l) return;
+    const doneN = pathDone(pathId), done = i < doneN, isNext = i === doneN;
+    openModal(`
+      <span class="eyebrow">${p.name} · Lesson ${i + 1} of ${les.length} · ${l.mins} min</span>
+      <h3 class="sheet-title" style="margin-top:8px">${l.t}</h3>
+      <div class="lesson-body">${l.body.map(par => `<p>${par}</p>`).join("")}</div>
+      <div class="wr-note">${ic("i-target", "ic")}<div><b>The rule</b><small>${l.rule}</small></div></div>
+      ${done ? `<div class="lesson-done-tag">${ic("i-check", "ic")} Completed</div>`
+        : isNext ? `<button class="btn btn-gold btn-block" id="lesson-complete" style="margin-top:16px">${ic("i-check")} Mark complete · +15 XP</button>`
+        : `<p class="sub" style="font-size:11.5px;text-align:center;margin-top:14px;color:var(--faint)">Read freely — complete the earlier lessons to log this one.</p>`}
+      <button class="btn btn-ghost btn-block" id="lesson-back" style="margin-top:10px">Back to ${p.name}</button>
+      <div class="spacer"></div>`);
+    const mc = $("#lesson-complete"); if (mc) mc.onclick = () => {
+      setPathDone(pathId, Math.min(doneN + 1, les.length));
+      addXp(15);
+      toast(`Lesson complete · +15 XP`, "i-check");
+      const newDone = pathDone(pathId);
+      if (newDone >= les.length) setTimeout(() => toast(`${p.name} complete — take the quiz for +60 XP`, "i-trophy"), 1400);
+      openPath(pathId);
+    };
+    const bk = $("#lesson-back"); if (bk) bk.onclick = () => openPath(pathId);
   }
   function openQuiz(pathId) {
     const path = D.paths.find(p => p.id === pathId);
