@@ -700,18 +700,31 @@ a{color:inherit;text-decoration:none}
 .floor-cta svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8}
 [data-theme="light"] .floor-stack .fs-av .av{border-color:#fff;background:#E7E4DA;color:#55545C}
 
-/* ===== the book card — P&L cast in bullion; deliberately stays dark in light mode (metal object, like .tcard) ===== */
+/* ===== the book card — P&L cast in bullion: dark metal in dark mode, ivory plate in light ===== */
 .book-card{display:block;width:100%;text-align:left;position:relative;overflow:hidden;margin-top:14px;padding:0;border-radius:20px;
   background-image:var(--grain),linear-gradient(160deg,#1c1608,#0c0d12);
   border:1px solid rgba(224,178,60,.30);
   box-shadow:inset 0 1px 0 rgba(255,252,235,.13),0 22px 52px -26px rgba(7,5,2,.85);
   transition:transform .15s var(--ease-spring);cursor:pointer}
 .book-card:active{transform:scale(.985)}
-/* fixed mini-palette: the card is always-dark, so it must not inherit light-theme text/token flips */
 .book-card .eyebrow{color:#E0B23C}
 .book-card .streak-chip{color:#E0B23C;background:rgba(224,178,60,.10);border-color:rgba(224,178,60,.28)}
 .book-card .num.up{color:#3FBF7F}
 .book-card .num.down{color:#F0565B}
+/* light mode: the same object in polished ivory metal */
+[data-theme="light"] .book-card{
+  background-image:var(--grain),linear-gradient(160deg,#f9f3e2,#ffffff 58%,#f4efe3);
+  border-color:rgba(154,123,46,.36);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 22px 48px -26px rgba(122,95,28,.38)}
+[data-theme="light"] .book-card .eyebrow{color:#9A7B2E}
+[data-theme="light"] .book-card .streak-chip{color:#9A7B2E;background:rgba(154,123,46,.09);border-color:rgba(154,123,46,.30)}
+[data-theme="light"] .book-card .num.up{color:#0B7C49}
+[data-theme="light"] .book-card .num.down{color:#D23A3F}
+[data-theme="light"] .book-sub{color:#6d6779}
+[data-theme="light"] .book-foot{color:#8a8494}
+[data-theme="light"] .book-go{color:#9A7B2E}
+[data-theme="light"] .book-sheen{background:linear-gradient(115deg,transparent 32%,rgba(154,123,46,.10) 46%,rgba(154,123,46,.02) 53%,transparent 66%)}
+[data-theme="light"] .book-eq{opacity:.45}
 .book-eq{position:absolute;left:0;right:0;bottom:0;display:block;width:100%;height:58px;opacity:.5;pointer-events:none;
   -webkit-mask-image:linear-gradient(180deg,transparent,#000 55%);mask-image:linear-gradient(180deg,transparent,#000 55%)}
 .book-in{position:relative;z-index:2;padding:16px 16px 13px}
