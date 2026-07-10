@@ -1554,6 +1554,7 @@
     `);
     renderLearnList();
     [...document.querySelectorAll("#chips .chip")].forEach(c => c.onclick = () => { learnCat = c.dataset.cat; [...document.querySelectorAll("#chips .chip")].forEach(x => x.classList.toggle("active", x === c)); renderLearnList(); });
+    const rn = $("[data-readnext]"); if (rn) rn.onclick = () => { const nx = nextLessonTarget(); if (nx) openLesson(nx.p.id, nx.i); };
     wireCommon();
   };
   function openLearnSearch() {
@@ -3079,14 +3080,33 @@
   }
 
   // ============================ ACADEMY + TRACK RECORD ============================
+  function nextLessonTarget() { // the lesson to feature on Learn: the in-progress path first, else the first unfinished one
+    const cand = D.paths.find(p => { const d = pathDone(p.id); return d > 0 && d < p.lessons; }) || D.paths.find(p => pathDone(p.id) < p.lessons);
+    if (!cand) return null;
+    const i = pathDone(cand.id), l = pathLessons(cand.id)[i];
+    return l ? { p: cand, i, l, started: D.paths.some(x => pathDone(x.id) > 0) } : null;
+  }
   function academySection() {
+    const nx = nextLessonTarget();
+    const readNext = nx ? `<button class="as-btn read-next reveal" data-readnext>
+        <div class="rn-ic">${ic("i-book", "ic")}</div>
+        <div class="rn-body">
+          <span class="eyebrow">${nx.started ? "Continue reading" : "Start the curriculum"}</span>
+          <b>${nx.l.t}</b>
+          <small>${nx.p.name} · Lesson ${nx.i + 1} of ${nx.p.lessons} · ${nx.l.mins} min read</small>
+        </div>
+        <span class="rn-go">Read ${ic("i-chev", "ic")}</span>
+      </button>` : "";
     return `<div class="section-head"><span class="h2">Your path</span><span class="more" data-act="glossary">Glossary ›</span></div>
+      ${readNext}
       <div class="paths">${D.paths.map(p => {
         const done = pathDone(p.id), pct = Math.round(done / p.lessons * 100);
+        const nxt = done < p.lessons ? pathLessons(p.id)[done] : null;
         return `<button class="path" data-path="${p.id}">
           <div class="path-ring" style="background:conic-gradient(${p.color} ${pct * 3.6}deg, var(--surface-3) 0)"><span>${pct}%</span></div>
           <div class="path-body"><div class="path-top"><b>${p.name}</b><span class="path-lvl">${p.level}</span></div>
-          <div class="path-desc">${p.desc}</div><div class="path-meta">${done}/${p.lessons} lessons${done === p.lessons ? " · complete ✓" : ""}</div></div>
+          <div class="path-desc">${p.desc}</div><div class="path-meta">${done}/${p.lessons} lessons${done === p.lessons ? " · complete ✓" : ""}</div>
+          ${nxt ? `<div class="path-next">Next: ${nxt.t}</div>` : ""}</div>
           ${ic("i-chev", "ic")}</button>`;
       }).join("")}</div>`;
   }
@@ -3124,6 +3144,7 @@
       toast(`Lesson complete · +15 XP`, "i-check");
       const newDone = pathDone(pathId);
       if (newDone >= les.length) setTimeout(() => toast(`${p.name} complete — take the quiz for +60 XP`, "i-trophy"), 1400);
+      if (activeTab === "learn") SCREENS.learn(); // refresh the rings + continue-reading row behind the sheet
       openPath(pathId);
     };
     const bk = $("#lesson-back"); if (bk) bk.onclick = () => openPath(pathId);

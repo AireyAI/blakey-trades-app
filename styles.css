@@ -616,6 +616,19 @@ a{color:inherit;text-decoration:none}
 .path-lvl{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface-3);padding:2px 7px;border-radius:6px}
 .path-desc{font-size:11.5px;color:var(--muted);margin:3px 0 4px;line-height:1.35}
 .path-meta{font-size:10.5px;color:var(--faint);font-weight:600}
+.path-next{font-size:11px;color:var(--gold);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* continue-reading hero row — surfaces the written curriculum without tapping into a path */
+.read-next{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:14px 15px;margin-bottom:12px;border-radius:var(--r-lg);
+  background:linear-gradient(135deg,rgba(var(--gold-rgb),.13),rgba(var(--gold-rgb),.04));border:1px solid var(--gold-line);
+  cursor:pointer;transition:transform .15s var(--ease-spring)}
+.read-next:active{transform:scale(.985)}
+.rn-ic{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--gold-soft);border:1px solid var(--gold-line);color:var(--gold)}
+.rn-ic .ic{width:19px;height:19px}
+.rn-body{flex:1;min-width:0}
+.rn-body b{display:block;font-family:var(--display);font-size:14.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rn-body small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.rn-go{display:flex;align-items:center;gap:1px;color:var(--gold);font-weight:700;font-size:12.5px;white-space:nowrap}
+.rn-go svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2}
 .path>.ic{width:18px;height:18px;color:var(--faint);flex:none}
 /* lessons */
 .lesson{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13.5px;width:100%;text-align:left;cursor:pointer}
