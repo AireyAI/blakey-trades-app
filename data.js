@@ -58,7 +58,7 @@ window.DATA = {
 
   // each idea belongs to a Telegram channel (channel id) — see `channels` below
   ideas: [
-    // BT VIP — flagship gold day calls (Arron's "Personal Trade Idea" format: entry range, SL→BE, TP ladder)
+    // VIP Trader — flagship gold day calls (Arron's "Personal Trade Idea" format: entry range, SL→BE, TP ladder)
     { id:"i1", channel:"vip", pair:"XAUUSD", dir:"long", session:"London", time:"Today · 08:14",
       entry:"4,026.50", sl:"4,014.00", tp:"4,064.00", rr:"3.0", status:"running",
       entryRange:"4,024–4,028", slBe:"4,031", tps:["4,035","4,042","4,049","4,056","4,064","OPEN 🚀"],
@@ -79,14 +79,14 @@ window.DATA = {
       entryRange:"4,029–4,033", slBe:"4,036", tps:["4,040","4,047","4,054","4,058","4,065","OPEN 🚀"],
       updates:["Buying now @ 4,031","Reclaim failed — NY reversal swept it","Stopped 4,022. Full -1R, no revenge — risk was defined below structure so it costs one unit and no more. This is the job."],
       note:"The reclaim failed and the New York reversal took the stop. A clean -1R loss — posted live, never deleted. Managing losing ideas is the edge, not avoiding them." },
-    // BT Swing — multi-day
+    // Gold Trades — multi-day
     { id:"s1", channel:"swing", pair:"XAUUSD", dir:"long", session:"Daily swing", time:"Tue",
       entry:"3,985.00", sl:"3,952.00", tp:"4,090.00", rr:"3.2", status:"running",
       note:"Weekly demand reaction. Swing target the upper liquidity — hold 3–5 days, trail under daily structure." },
     { id:"s2", channel:"swing", pair:"XAUUSD", dir:"long", session:"Daily swing", time:"Last week",
       entry:"3,920.00", sl:"3,888.00", tp:"4,012.00", rr:"2.9", status:"tp", result:"+92.0",
       note:"Higher-low off the weekly trendline. Banked the full swing into round-number supply." },
-    // BT Zones — supply/demand zones
+    // Institutional Order-Flow — supply/demand zones
     { id:"z1", channel:"zones", pair:"XAUUSD", dir:"long", session:"Demand zone", time:"Active",
       entry:"4,025.00", sl:"4,013.00", tp:"4,052.00", rr:"2.2", status:"running",
       note:"Primary demand zone 4,024–4,026 for the session. Wait for a reaction + confirmation. React, don't predict." },
@@ -100,31 +100,35 @@ window.DATA = {
     { id:"sc1", channel:"scalps", pair:"XAUUSD", dir:"long", session:"NY scalp", time:"12m ago",
       entry:"4,031.00", sl:"4,028.00", tp:"4,038.00", rr:"2.3", status:"tp", result:"+7.0",
       note:"M1 break of structure off the NY open. Quick scalp, partials fast." },
-    { id:"sc2", channel:"scalps", pair:"XAUUSD", dir:"short", session:"London scalp", time:"40m ago",
+    { id:"sc2", channel:"mm", pair:"XAUUSD", dir:"short", session:"London scalp", time:"40m ago",
       entry:"4,043.00", sl:"4,046.00", tp:"4,036.00", rr:"2.3", status:"tp", result:"+7.0",
       note:"Liquidity grab above the session high, scalped the snap-back." },
     { id:"sc3", channel:"scalps", pair:"XAUUSD", dir:"long", session:"NY scalp", time:"1h ago",
       entry:"4,037.50", sl:"4,035.00", tp:"4,043.00", rr:"2.2", status:"sl", result:"-2.5",
       note:"VWAP reclaim rolled over and stopped for -2.5. Scalping is a game of small losses and bigger winners — this is one of the small ones, taken without hesitation." },
-    // Signal IQ — mechanical bot
+    // EMA Trader — systematic EMA entries (+ Market Maker shares this pool)
     { id:"iq0", channel:"iq", pair:"XAUUSD", dir:"long", session:"Auto", time:"09:00",
       entry:"4,041.00", sl:"4,031.00", tp:"4,061.00", rr:"2.0", status:"running", result:"Running",
       note:"Mechanical signal — trend + momentum filter aligned long. No discretion, fixed 2R target." },
     { id:"iq1", channel:"iq", pair:"XAUUSD", dir:"long", session:"Auto", time:"06:00",
       entry:"4,020.00", sl:"4,010.00", tp:"4,040.00", rr:"2.0", status:"tp", result:"+20.0",
       note:"Mechanical signal — trend + momentum filter aligned long. No discretion, fixed 2R target." },
-    { id:"iq2", channel:"iq", pair:"XAUUSD", dir:"short", session:"Auto", time:"03:00",
+    { id:"iq2", channel:"mm", pair:"XAUUSD", dir:"short", session:"Auto", time:"03:00",
       entry:"4,052.00", sl:"4,062.00", tp:"4,032.00", rr:"2.0", status:"sl", result:"-10.0",
       note:"Mechanical short on a momentum flip. Stopped — the system takes every valid signal; the edge plays out over the sample." },
   ],
 
   // Telegram channels the signals are posted to (mirrored into the app)
+  // the six REAL Telegram groups (Kyle, 2026-07-11) — ids unchanged so signal wiring holds:
+  // vip=VIP Trader (flagship, gated) · swing=Gold Trades · zones=Institutional Order-Flow ·
+  // scalps=SN Scalps · iq=EMA Trader · mm=Market Maker
   channels: [
-    { id:"vip", name:"BT VIP", handle:"@bt_vip", mark:"BT", img:"assets/channels/vip.webp", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
-    { id:"swing", name:"BT Swing Trades", handle:"@bt_swing", mark:"BT", img:"assets/channels/swing.webp", tone:"quiet", members:"1,940", today:1, desc:"Multi-day swing setups for the bigger moves." },
-    { id:"zones", name:"BT Zones", handle:"@bt_zones", mark:"BT", img:"assets/channels/zones.webp", tone:"quiet", members:"2,480", today:2, desc:"Key supply & demand zones to watch each session." },
-    { id:"scalps", name:"SN Scalps", handle:"@sn_scalps", mark:"SN", img:"assets/channels/scalps.webp", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
-    { id:"iq", name:"Signal IQ", handle:"@signal_iq", mark:"🤖", tone:"bot", members:"1,120", today:6, bot:true, desc:"Automated mechanical signals, 24/5. No emotion, fixed risk." },
+    { id:"vip", name:"VIP Trader", handle:"@viptrader", mark:"📈", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
+    { id:"zones", name:"Institutional Order-Flow", handle:"@instorderflow", mark:"🔥", tone:"quiet", members:"2,480", today:2, desc:"Where the big money is positioned — order-flow zones for each session." },
+    { id:"swing", name:"Gold Trades", handle:"@goldtrades", mark:"💎", tone:"quiet", members:"1,940", today:1, desc:"Core gold setups and the weekly recap — the bigger moves." },
+    { id:"scalps", name:"SN Scalps", handle:"@snscalps", mark:"🏆", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
+    { id:"mm", name:"Market Maker", handle:"@marketmakertrades", mark:"💹", tone:"quiet", members:"1,320", today:2, desc:"Trading the market-maker model — traps, sweeps and reversals." },
+    { id:"iq", name:"EMA Trader", handle:"@ematrader", mark:"💻", tone:"quiet", members:"1,120", today:3, desc:"Systematic EMA-driven entries — rules first, no emotion." },
   ],
 
   categories: ["For you","Market Analysis","Mindset","Beginner Path","Session Replays","Risk"],
@@ -212,11 +216,11 @@ window.DATA = {
   ],
 
   journal: [
-    { id:"j1", pair:"XAUUSD", dir:"long", r:420, lots:1.0, outcome:"win", session:"London", date:"Today", setup:"Reclaim & hold", channel:"BT VIP", tags:["Followed plan","Patient"], note:"Waited for the London low to be reclaimed and held the 4,025 block before entering. Took partials at 4,045 and trailed the rest. Felt calm — no FOMO, executed the plan exactly." },
-    { id:"j2", pair:"XAUUSD", dir:"short", r:600, lots:1.0, outcome:"win", session:"New York", date:"Yesterday", setup:"Supply rejection", channel:"BT VIP", tags:["Followed plan","A+ setup"], note:"Clean lower-high into weekly supply at 4,050. Risk defined below structure, full target hit at the prior-day open. Textbook." },
-    { id:"j3", pair:"XAUUSD", dir:"long", r:0, lots:0.5, outcome:"be", session:"Asia", date:"Yesterday", setup:"Range reversal", channel:"BT Zones", tags:["Managed well"], note:"Took partials then trailed to breakeven before the NY reversal. No giveback — protected the account first." },
+    { id:"j1", pair:"XAUUSD", dir:"long", r:420, lots:1.0, outcome:"win", session:"London", date:"Today", setup:"Reclaim & hold", channel:"VIP Trader", tags:["Followed plan","Patient"], note:"Waited for the London low to be reclaimed and held the 4,025 block before entering. Took partials at 4,045 and trailed the rest. Felt calm — no FOMO, executed the plan exactly." },
+    { id:"j2", pair:"XAUUSD", dir:"short", r:600, lots:1.0, outcome:"win", session:"New York", date:"Yesterday", setup:"Supply rejection", channel:"VIP Trader", tags:["Followed plan","A+ setup"], note:"Clean lower-high into weekly supply at 4,050. Risk defined below structure, full target hit at the prior-day open. Textbook." },
+    { id:"j3", pair:"XAUUSD", dir:"long", r:0, lots:0.5, outcome:"be", session:"Asia", date:"Yesterday", setup:"Range reversal", channel:"Order-Flow", tags:["Managed well"], note:"Took partials then trailed to breakeven before the NY reversal. No giveback — protected the account first." },
     { id:"j4", pair:"XAUUSD", dir:"long", r:-200, lots:1.0, outcome:"loss", session:"London", date:"Mon", setup:"Breakout", channel:"SN Scalps", tags:["Chased entry","FOMO"], note:"Entered late on the breakout instead of waiting for the retest. Got wicked out. Lesson: wait for the retest, every single time." },
-    { id:"j5", pair:"XAUUSD", dir:"long", r:520, lots:1.0, outcome:"win", session:"London", date:"Mon", setup:"Break & retest", channel:"BT VIP", tags:["Followed plan"], note:"Textbook break-and-retest of the 4,000 level off the daily trend. Patience on the retest paid." },
+    { id:"j5", pair:"XAUUSD", dir:"long", r:520, lots:1.0, outcome:"win", session:"London", date:"Mon", setup:"Break & retest", channel:"VIP Trader", tags:["Followed plan"], note:"Textbook break-and-retest of the 4,000 level off the daily trend. Patience on the retest paid." },
     { id:"j6", pair:"XAUUSD", dir:"short", r:300, lots:0.5, outcome:"win", session:"New York", date:"Fri", setup:"Liquidity grab", channel:"SN Scalps", tags:["Quick scalp"], note:"Faded the liquidity grab above the session high. In and out in 20 minutes, banked it." },
     { id:"j7", pair:"XAUUSD", dir:"long", r:-200, lots:0.5, outcome:"loss", session:"Asia", date:"Thu", setup:"Counter-trend", channel:"Off-plan", tags:["Off-plan","Counter-trend"], note:"Took a trade that wasn't on the plan, against the daily trend. Stopped out. This is exactly what the journal is for — name it, don't repeat it." },
   ],
@@ -509,7 +513,7 @@ window.DATA = {
     { cat:"Market structure", term:"Liquidity", def:"Clusters of resting orders (stops + limits) that price is drawn toward — usually just above swing highs or below swing lows. Smart money pushes price into liquidity to fill size before the real move." },
     { cat:"Market structure", term:"Break of Structure (BOS)", def:"Price closes beyond the previous swing high (uptrend) or low (downtrend), confirming the trend is still intact. Your 'continuation' signal." },
     { cat:"Market structure", term:"Change of Character (CHoCH)", def:"The first structural break against the prevailing trend — an early warning that momentum may be flipping. Often the first clue before a reversal." },
-    { cat:"Market structure", term:"Reclaim & hold", def:"Price breaks back above a level and holds it instead of rejecting — proof buyers have taken control. The core BT VIP long trigger." },
+    { cat:"Market structure", term:"Reclaim & hold", def:"Price breaks back above a level and holds it instead of rejecting — proof buyers have taken control. The core VIP Trader long trigger." },
     { cat:"Market structure", term:"Support & resistance", def:"Levels where buyers (support) or sellers (resistance) have repeatedly stepped in. Decision zones to react at — not magic walls." },
     { cat:"Market structure", term:"Supply / demand zone", def:"An area where price previously reversed sharply, leaving unfilled orders. Demand sits below price, supply above. React on the return, don't predict it." },
     { cat:"Market structure", term:"Range", def:"A sideways market trapped between a high and a low. Most of the session is range; the edges are where the trades live." },
@@ -534,7 +538,7 @@ window.DATA = {
     { cat:"Trading psychology", term:"Confluence", def:"Two or more reasons lining up for the same trade — e.g. demand zone + liquidity sweep + session timing. More confluence, higher probability." },
     { cat:"Trading psychology", term:"Process over profit", def:"Judge yourself on whether you followed the plan, not on whether the trade won. Good process plus enough reps and profit shows up on its own." },
     // ── Macro & news ──
-    { cat:"Macro & news", term:"XAUUSD", def:"The price of one troy ounce of gold in US dollars — the pair BT VIP trades. 'Gold' and 'XAUUSD' are the same thing." },
+    { cat:"Macro & news", term:"XAUUSD", def:"The price of one troy ounce of gold in US dollars — the pair VIP Trader calls. 'Gold' and 'XAUUSD' are the same thing." },
     { cat:"Macro & news", term:"DXY", def:"US Dollar Index. Gold is priced in dollars, so it usually moves inverse to DXY — a stronger dollar pressures gold, a weaker dollar lifts it." },
     { cat:"Macro & news", term:"NFP", def:"Non-Farm Payrolls — high-impact US jobs data on the first Friday of each month. A major gold mover; size down or stand aside around it." },
     { cat:"Macro & news", term:"CPI", def:"Consumer Price Index — the headline inflation read. Hot CPI lifts rate-hike expectations and pressures gold; cool CPI tends to support it." },

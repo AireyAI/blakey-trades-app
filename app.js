@@ -865,7 +865,7 @@
         <span class="idea-top-r">${st}${i.status === "running" ? `<span class="pl-chip" data-openpl="${i.id}"></span>` : ""}</span>
       </div>
       <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas>
-        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "🤖 Signal IQ" : `${B.founder} <span class="vchk">✓</span>`}</span>
+        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "💻 EMA Trader" : `${B.founder} <span class="vchk">✓</span>`}</span>
         <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
         <div class="cell"><small>Entry</small><b class="num">${i.entryRange || i.entry}</b></div>
@@ -2759,7 +2759,7 @@
     const cats = [...new Set(D.glossary.map(g => g.cat || "Terms"))];
     const body = cats.map(c => `<div class="gloss-cat">${c}</div>${D.glossary.filter(g => (g.cat || "Terms") === c).map(g => `<div class="gloss-row"><b>${g.term}</b><span>${g.def}</span></div>`).join("")}`).join("");
     openModal(`<h3 class="sheet-title">Trading glossary</h3>
-      <p class="sheet-sub">${D.glossary.length} terms every gold trader should know — the BT VIP vocabulary, in plain English.</p>
+      <p class="sheet-sub">${D.glossary.length} terms every gold trader should know — the VIP Trader vocabulary, in plain English.</p>
       <input class="finput gloss-search" id="gloss-q" placeholder="Search terms…" aria-label="Search glossary terms" autocomplete="off">
       <div class="gloss" id="gloss-list">${body}</div>
       <div class="gloss-empty" id="gloss-empty" hidden>No terms match — try another word.</div>

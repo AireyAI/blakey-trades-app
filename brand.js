@@ -21,7 +21,7 @@ window.BRAND = {
   // ---- contact / links ----
   handle: "blakeytrades_support",  // Telegram support (t.me/<handle>)
   domain: "blakeytrades.com",      // used for calendar UIDs
-  logo: "assets/logo.png",         // brand wordmark (replace this file)
+  logo: "assets/logo.png?v=81",         // brand wordmark (replace this file)
   broker: "Vantage",               // IB partner broker — VIP is verified against the founder's IB client list
 
   // ---- how VIP is funded: "ib" = free via broker partnership (IB rebates) · "paid" = subscription-only ----
