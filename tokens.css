@@ -7,15 +7,16 @@
    This file is the single source of truth; styles.css consumes these vars.
    ============================================================ */
 :root{
-  /* ---- surfaces: near-black base + graphite elevation (Apple) ---- */
-  --ink:#08080A;
+  /* ---- surfaces: OLED-crisp — flat black base, SOLID graphite cards, sharp hairlines
+         (was milky translucent-white over a warm gradient; Arron read it as hazy) ---- */
+  --ink:#060607;
   --surface:#0E0E11;
-  --surface-2:rgba(255,255,255,0.05);
-  --surface-3:rgba(255,255,255,0.08);
-  --surface-4:rgba(255,255,255,0.12);
-  --line:rgba(255,255,255,0.06);
-  --line-2:rgba(255,255,255,0.11);
-  --hairline:rgba(255,255,255,0.08);
+  --surface-2:#111116;
+  --surface-3:#191920;
+  --surface-4:#22222b;
+  --line:rgba(255,255,255,0.09);
+  --line-2:rgba(255,255,255,0.14);
+  --hairline:rgba(255,255,255,0.11);
 
   /* ---- brand accent — DEFAULTS ONLY. brand.js overrides all of these at runtime
          from BRAND.accent (one hex). These stay as a fallback if brand.js fails. ---- */
