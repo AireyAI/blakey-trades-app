@@ -123,12 +123,12 @@ window.DATA = {
   // vip=VIP Trader (flagship, gated) · swing=Gold Trades · zones=Institutional Order-Flow ·
   // scalps=SN Scalps · iq=EMA Trader · mm=Market Maker
   channels: [
-    { id:"vip", name:"VIP Trader", handle:"@viptrader", mark:"📈", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
-    { id:"zones", name:"Institutional Order-Flow", handle:"@instorderflow", mark:"🔥", tone:"quiet", members:"2,480", today:2, desc:"Where the big money is positioned — order-flow zones for each session." },
-    { id:"swing", name:"Gold Trades", handle:"@goldtrades", mark:"💎", tone:"quiet", members:"1,940", today:1, desc:"Core gold setups and the weekly recap — the bigger moves." },
-    { id:"scalps", name:"SN Scalps", handle:"@snscalps", mark:"🏆", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
-    { id:"mm", name:"Market Maker", handle:"@marketmakertrades", mark:"💹", tone:"quiet", members:"1,320", today:2, desc:"Trading the market-maker model — traps, sweeps and reversals." },
-    { id:"iq", name:"EMA Trader", handle:"@ematrader", mark:"💻", tone:"quiet", members:"1,120", today:3, desc:"Systematic EMA-driven entries — rules first, no emotion." },
+    { id:"vip", name:"VIP Trader", handle:"@viptrader", mark:"📈", img:"assets/channels/vip.webp", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
+    { id:"zones", name:"Institutional Order-Flow", handle:"@instorderflow", mark:"🔥", img:"assets/channels/orderflow.webp", tone:"quiet", members:"2,480", today:2, desc:"Where the big money is positioned — order-flow zones for each session." },
+    { id:"swing", name:"Gold Trades", handle:"@goldtrades", mark:"💎", img:"assets/channels/goldtrades.webp", tone:"quiet", members:"1,940", today:1, desc:"Core gold setups and the weekly recap — the bigger moves." },
+    { id:"scalps", name:"SN Scalps", handle:"@snscalps", mark:"🏆", img:"assets/channels/scalps.webp", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
+    { id:"mm", name:"Market Maker", handle:"@marketmakertrades", mark:"💹", img:"assets/channels/marketmaker.webp", tone:"quiet", members:"1,320", today:2, desc:"Trading the market-maker model — traps, sweeps and reversals." },
+    { id:"iq", name:"EMA Trader", handle:"@ematrader", mark:"💻", img:"assets/channels/ematrader.webp", tone:"quiet", members:"1,120", today:3, desc:"Systematic EMA-driven entries — rules first, no emotion." },
   ],
 
   categories: ["For you","Market Analysis","Mindset","Beginner Path","Session Replays","Risk"],
