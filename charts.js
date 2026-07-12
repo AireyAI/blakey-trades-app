@@ -246,23 +246,44 @@
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke(); ctx.restore();
     }
 
-    // candles
-    const n = candles.length, cw = (w - padL - padR) / n, bw = Math.max(2, cw * 0.58);
-    for (let i = 0; i < n; i++) {
-      const c = candles[i], x = padL + cw * i + cw / 2;
-      const up = c.c >= c.o, col = up ? UP : DOWN;
-      const isLast = i === n - 1;
-      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, Y(c.h)); ctx.lineTo(x, Y(c.l)); ctx.stroke();
-      const yo = Y(c.o), yc = Y(c.c), topC = Math.min(yo, yc), bh = Math.max(1, Math.abs(yc - yo));
-      ctx.globalAlpha = isLast ? 1 : 0.88; ctx.fillRect(x - bw / 2, topC, bw, bh); ctx.globalAlpha = 1;
-    }
+    // the price path — one smooth glowing gold line through the closes (the app's chart language:
+    // same family as the ambient background, the equity curve and the book card; tiny candles at
+    // this size read as confetti, a single line reads as a story)
+    const n = candles.length;
+    if (n < 2) return;
+    const px = i => padL + (w - padL - padR) * (i / (n - 1));
+    const pts = candles.map((c, i) => ({ x: px(i), y: Y(c.c) }));
 
-    // current price tick (subtle — no heavy bloom)
-    const last = candles[n - 1], yLast = Y(last.c);
-    ctx.strokeStyle = "rgba(" + GOLD_RGB + ",0.45)"; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+    const tracePath = () => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < n - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.quadraticCurveTo(pts[n - 1].x, pts[n - 1].y, pts[n - 1].x, pts[n - 1].y);
+    };
+
+    // soft area fill under (over, for shorts) the path
+    tracePath();
+    ctx.lineTo(pts[n - 1].x, h - padB); ctx.lineTo(pts[0].x, h - padB); ctx.closePath();
+    const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+    grad.addColorStop(0, "rgba(" + GOLD_RGB + ",0.16)");
+    grad.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
+    ctx.fillStyle = grad; ctx.fill();
+
+    // the line itself, with the brand's soft glow
+    tracePath();
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.shadowColor = "rgba(" + GOLD_RGB + ",.45)"; ctx.shadowBlur = 7;
+    ctx.stroke(); ctx.shadowBlur = 0;
+
+    // current price: dashed tick + bright endpoint dot
+    const yLast = pts[n - 1].y;
+    ctx.strokeStyle = "rgba(" + GOLD_RGB + ",0.4)"; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(padL, yLast); ctx.lineTo(w - padR, yLast); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(w - padR + 2, yLast, 2.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(" + GOLD_RGB + ",0.28)"; ctx.beginPath(); ctx.arc(pts[n - 1].x, yLast, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(pts[n - 1].x, yLast, 2.8, 0, 7); ctx.fill();
   }
 
   // deterministic candle narrative for a signal — shared by the mini chart and the replay
