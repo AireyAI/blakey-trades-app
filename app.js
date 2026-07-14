@@ -865,7 +865,7 @@
         <span class="idea-top-r">${st}${i.status === "running" ? `<span class="pl-chip" data-openpl="${i.id}"></span>` : ""}</span>
       </div>
       <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas>
-        <span class="sig-src ${i.channel === "iq" ? "bot" : ""}">${i.channel === "iq" ? "💻 EMA Trader" : `${B.founder} <span class="vchk">✓</span>`}</span>
+        ${i.channel === "iq" ? `<span class="sig-src bot">💻 EMA Trader</span>` : ""}
         <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
         <div class="cell"><small>Entry</small><b class="num">${i.entryRange || i.entry}</b></div>
@@ -3408,6 +3408,12 @@
   }
   window.addEventListener("resize", fitDevice);
   function boot() {
+    // Native shell (?native=1): strip the fake iPhone statusbar chrome — the real
+    // device already draws time/wifi/battery. Keep this idempotent for SPA revisits.
+    if (new URLSearchParams(location.search).get("native") === "1") {
+      document.documentElement.dataset.native = "1";
+      document.querySelectorAll(".statusbar,.stage-meta").forEach((el) => el.remove());
+    }
     applyTheme(getSetting("theme", "dark"));
     try { history.replaceState({ t: "home" }, ""); } catch (e) {}
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#modal").classList.contains("open")) closeModal(); });

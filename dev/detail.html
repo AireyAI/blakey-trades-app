@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>DEV · Signal detail — Blakey Trades</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dev.css">
+</head>
+<body>
+  <div class="studio">
+    <div class="studio-bar">
+      <div>
+        <h1>Signal detail</h1>
+        <p>Stake asset pattern — big price, chart, stats, split CTA.</p>
+      </div>
+      <nav class="studio-nav">
+        <a href="index.html">Hub</a>
+        <a href="signals.html">Signals</a>
+        <a class="on" href="detail.html">Detail</a>
+        <a href="membership.html">Membership</a>
+      </nav>
+    </div>
+
+    <div class="phone" aria-label="Signal detail preview">
+      <div class="phone-scroll">
+        <div class="status"><span>9:41</span><span class="right">●●●︎ Wi‑Fi 100%</span></div>
+
+        <div class="detail-head">
+          <a class="back" href="signals.html">‹ Signals</a>
+          <div style="display:flex;gap:8px">
+            <button class="icon-btn" aria-label="Share">↗</button>
+            <button class="icon-btn" aria-label="Watch">＋</button>
+          </div>
+        </div>
+
+        <div class="detail-pair">
+          <h1>XAUUSD · Gold</h1>
+          <span class="session-pill">London · Live</span>
+        </div>
+
+        <div class="price-row">
+          <span class="px num">4,026.50</span>
+          <span class="chg up num">↗ +12.40 (0.31%) Day</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <span class="pill pill-buy">● BUY</span>
+          <span class="pill pill-gold"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> Running</span>
+          <span class="pill">R:R 3.0</span>
+        </div>
+
+        <div class="detail-chart" aria-hidden="true">
+          <svg viewBox="0 0 354 168" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="dFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3FBF7F" stop-opacity=".22"/>
+                <stop offset="100%" stop-color="#3FBF7F" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- SL / Entry / TP guides -->
+            <line x1="0" y1="132" x2="354" y2="132" stroke="rgba(240,86,91,.45)" stroke-width="1" stroke-dasharray="4 4"/>
+            <line x1="0" y1="96" x2="354" y2="96" stroke="rgba(224,178,60,.35)" stroke-width="1" stroke-dasharray="3 5"/>
+            <line x1="0" y1="38" x2="354" y2="38" stroke="rgba(63,191,127,.45)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="8" y="128" fill="#F0565B" font-size="9" font-family="JetBrains Mono, monospace">SL 4,014</text>
+            <text x="8" y="92" fill="#E0B23C" font-size="9" font-family="JetBrains Mono, monospace">Entry</text>
+            <text x="8" y="34" fill="#3FBF7F" font-size="9" font-family="JetBrains Mono, monospace">TP 4,064</text>
+            <path d="M0,110 C28,108 48,112 70,100 C96,84 118,90 148,78 C178,66 200,70 230,58 C260,46 290,42 320,30 C336,24 346,22 354,20 L354,168 L0,168 Z" fill="url(#dFill)"/>
+            <path d="M0,110 C28,108 48,112 70,100 C96,84 118,90 148,78 C178,66 200,70 230,58 C260,46 290,42 320,30 C336,24 346,22 354,20" fill="none" stroke="#3FBF7F" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="354" cy="20" r="4" fill="#3FBF7F"/>
+          </svg>
+        </div>
+
+        <div class="tf-row">
+          <button type="button">D</button>
+          <button class="on" type="button">W</button>
+          <button type="button">M</button>
+          <button type="button">6M</button>
+          <button type="button">Y</button>
+          <button type="button">MAX</button>
+          <button class="candle" type="button" aria-label="Candles">ǀǀ</button>
+        </div>
+
+        <div class="split-cta">
+          <button type="button">Take idea</button>
+          <button type="button">Paper</button>
+        </div>
+
+        <div class="section">
+          <div class="section-h"><h3>Ticket</h3></div>
+          <div class="stats-grid">
+            <div class="stat"><small>Entry range</small><b class="num">4,024 – 4,028</b></div>
+            <div class="stat"><small>Stop loss</small><b class="num sl">4,014.00</b></div>
+            <div class="stat"><small>Target</small><b class="num tp">4,064.00</b></div>
+            <div class="stat"><small>SL → BE</small><b class="num">4,031</b></div>
+            <div class="stat"><small>Session</small><b>London</b></div>
+            <div class="stat"><small>Channel</small><b>VIP Trader</b></div>
+          </div>
+          <div style="margin-top:12px">
+            <small style="color:var(--muted);font-size:11px">Progress to TP1</small>
+            <div class="range-bar"><i style="left:42%"></i></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-h"><h3>About this call</h3></div>
+          <p class="about">Reclaimed the London low and held the 4,025 demand block. Continuation into the New York liquidity above 4,060. Risk defined below structure.</p>
+          <p class="about" style="margin-top:10px;color:var(--faint);font-size:12px">Personal Trade Idea — not financial advice, just what Arron's personally doing.</p>
+        </div>
+
+        <div class="section">
+          <div class="section-h"><h3>Live updates</h3></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="padding:12px 14px;border-radius:14px;background:var(--surface-3);border:1px solid var(--line);font-size:13px">
+              <span class="pill pill-update" style="margin-bottom:8px">TG</span>
+              <div>Buying now @ 4,026</div>
+            </div>
+            <div style="padding:12px 14px;border-radius:14px;background:var(--surface-3);border:1px solid var(--line);font-size:13px">
+              <span class="pill pill-gold" style="margin-bottom:8px">BE</span>
+              <div>+9 pips — SL to BE 🔒</div>
+            </div>
+            <div style="padding:12px 14px;border-radius:14px;background:var(--surface-3);border:1px solid var(--line);font-size:13px">
+              <span class="pill pill-up" style="margin-bottom:8px">TP1</span>
+              <div>TP1 hit ✅ +9 pips</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

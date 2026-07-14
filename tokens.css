@@ -40,21 +40,22 @@
   --down:#F0565B;
   --live:#FF4D4D;
 
-  /* ---- type ---- */
+  /* ---- type — Research Desk recipe (same families, tighter display rhythm) ---- */
   --display:"Sora",system-ui,sans-serif;
   --body:"Outfit",system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,monospace;
-  --fs-display:34px;
-  --fs-h1:26px;
-  --fs-h2:20px;
-  --fs-h3:16.5px;
-  --fs-h4:14px;
-  --fs-body:15px;
+  --fs-display:28px;        /* page titles (was 34 — Research Desk uses 28) */
+  --fs-h1:22px;             /* greet / who name */
+  --fs-h2:17px;             /* card headlines */
+  --fs-h3:15px;
+  --fs-h4:13.5px;
+  --fs-body:14.5px;
   --fs-small:13px;
   --fs-tiny:11px;
-  --tracking:-0.022em;      /* display / headlines */
-  --tracking-mega:-0.034em; /* hero mega */
-  --tracking-body:-0.006em; /* Apple: negative tracking even at body size */
+  --tracking:-0.028em;      /* display / headlines — Research Desk tight */
+  --tracking-mega:-0.034em; /* page titles */
+  --tracking-body:-0.006em;
+  --tracking-num:-0.04em;   /* big mono prices */
 
   /* ---- spacing (8px base, Revolut, generous) ---- */
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px;

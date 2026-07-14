@@ -1,0 +1,256 @@
+/* ============================================================
+   Blakey Trades — DEV visual proposals (Mobbin-informed)
+   Refs: Finimize Research + Stake asset + Finimize Plan
+   Brand locked: near-black + gold. Do NOT ship via index.html
+   until Kyle signs off — these pages are preview-only.
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#060607;--surface:#0E0E11;--surface-2:#111116;--surface-3:#191920;--surface-4:#22222b;
+  --line:rgba(255,255,255,0.09);--line-2:rgba(255,255,255,0.14);
+  --gold:#E0B23C;--gold-hi:#F3D277;--gold-deep:#A87C22;--gold-rgb:224,178,60;
+  --gold-soft:rgba(224,178,60,0.12);--gold-line:rgba(224,178,60,0.22);
+  --text:#F3F3F1;--text-2:#D6D6DA;--muted:#9A9AA6;--faint:#82828E;
+  --up:#3FBF7F;--down:#F0565B;--live:#FF4D4D;--on-accent:#1A1206;
+  --display:"Sora",system-ui,sans-serif;--body:"Outfit",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+html,body{background:#0a0a0c;color:var(--text);font-family:var(--body);-webkit-font-smoothing:antialiased;letter-spacing:-.006em}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ---- studio chrome (outside phone) ---- */
+.studio{min-height:100vh;padding:28px 20px 60px;display:flex;flex-direction:column;align-items:center;gap:22px}
+.studio-bar{width:min(1100px,100%);display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px}
+.studio-bar h1{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.03em}
+.studio-bar p{color:var(--muted);font-size:13.5px;margin-top:4px;max-width:520px;line-height:1.45}
+.studio-nav{display:flex;flex-wrap:wrap;gap:8px}
+.studio-nav a{
+  font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:999px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--text-2);
+  transition:border-color .2s var(--ease),background .2s var(--ease),color .2s var(--ease);
+}
+.studio-nav a:hover,.studio-nav a.on{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold-hi)}
+.studio-note{
+  width:min(1100px,100%);padding:12px 16px;border-radius:14px;
+  border:1px solid var(--gold-line);background:var(--gold-soft);color:var(--gold-hi);
+  font-size:12.5px;line-height:1.45;
+}
+.hub-grid{width:min(1100px,100%);display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.hub-card{
+  display:block;padding:18px;border-radius:20px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+  transition:transform .2s var(--ease),border-color .2s var(--ease);
+}
+.hub-card:hover{transform:translateY(-2px);border-color:var(--gold-line)}
+.hub-card .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:8px}
+.hub-card h2{font-family:var(--display);font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
+.hub-card p{color:var(--muted);font-size:13px;line-height:1.45}
+.hub-card .go{display:inline-flex;margin-top:14px;color:var(--gold-hi);font-size:13px;font-weight:600}
+
+/* ---- phone frame ---- */
+.phone{
+  position:relative;width:390px;height:844px;border-radius:40px;overflow:hidden;
+  background:var(--ink);border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 40px 100px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.phone-scroll{height:100%;overflow-y:auto;overflow-x:hidden;padding:0 18px 110px;scrollbar-width:none}
+.phone-scroll::-webkit-scrollbar{display:none}
+.status{
+  display:flex;align-items:center;justify-content:space-between;height:52px;
+  padding:14px 4px 0;font-family:var(--mono);font-size:13px;font-weight:600;
+}
+.status .right{display:flex;gap:6px;opacity:.9;font-size:11px}
+
+/* ---- shared UI ---- */
+.brand-row{display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px}
+.brand-mark{display:flex;align-items:center;gap:10px}
+.logo{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(145deg,var(--gold-hi),var(--gold-deep));
+  display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:11px;color:var(--on-accent);
+  box-shadow:0 8px 20px -10px rgba(var(--gold-rgb),.55);
+}
+.brand-name{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--gold);text-transform:uppercase}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);
+}
+.page-title{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.034em;line-height:1.05}
+.page-sub{color:var(--muted);font-size:13.5px;margin-top:6px;line-height:1.4}
+.section{margin-top:22px}
+.section-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.section-h h3{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section-h a,.section-h span.more{font-size:12.5px;color:var(--gold);font-weight:600}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;
+  border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text-2);
+}
+.pill-up{background:rgba(63,191,127,.14);border-color:rgba(63,191,127,.28);color:var(--up)}
+.pill-down{background:rgba(240,86,91,.14);border-color:rgba(240,86,91,.28);color:var(--down)}
+.pill-gold{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold-hi)}
+.pill-buy{background:rgba(63,191,127,.16);border-color:rgba(63,191,127,.35);color:var(--up)}
+.pill-sell{background:rgba(240,86,91,.16);border-color:rgba(240,86,91,.35);color:var(--down)}
+.pill-update{background:rgba(var(--gold-rgb),.18);border-color:var(--gold-line);color:var(--gold-hi)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tabbar{
+  position:absolute;left:12px;right:12px;bottom:14px;height:64px;border-radius:22px;
+  display:grid;grid-template-columns:repeat(6,1fr);align-items:center;
+  background:rgba(10,10,12,.82);backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid rgba(255,255,255,.1);padding:0 4px;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.8);
+}
+.tabbar a{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:9.5px;font-weight:600;color:var(--faint);padding:8px 0;
+}
+.tabbar a.on{color:var(--gold)}
+.tabbar svg{width:18px;height:18px}
+
+/* ============================================================
+   SIGNALS — Finimize Research pattern (Blakey gold)
+   ============================================================ */
+.research-hero{
+  margin-top:8px;padding:18px 16px 14px;border-radius:22px;
+  background:linear-gradient(165deg,#16141a 0%,#0e0e12 70%);
+  border:1px solid var(--line);position:relative;overflow:hidden;
+}
+.research-hero::before{
+  content:"";position:absolute;inset:auto -20% -40% -20%;height:70%;
+  background:radial-gradient(50% 60% at 50% 0%,rgba(var(--gold-rgb),.18),transparent 70%);
+  pointer-events:none;
+}
+.research-kpi{position:relative;z-index:1}
+.research-kpi .label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.research-kpi .big{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:-.04em;color:var(--up);margin-top:4px}
+.research-kpi .sub{font-size:13px;color:var(--text-2);margin-top:2px}
+.research-kpi .sub b{color:var(--up);font-weight:600}
+.chart-wrap{position:relative;z-index:1;margin-top:14px;height:118px}
+.chart-wrap svg{width:100%;height:100%;display:block}
+.chart-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)}
+.chart-legend i{display:inline-block;width:16px;height:2px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.chart-legend .gold-line i{background:var(--gold)}
+.chart-legend .bench i{background:rgba(255,255,255,.45)}
+
+.idea-row{
+  display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;
+  width:100%;text-align:left;padding:14px 0;border-bottom:1px solid var(--line);
+  transition:background .15s var(--ease);
+}
+.idea-row:active{background:rgba(255,255,255,.02)}
+.idea-thumb{
+  width:56px;height:56px;border-radius:14px;overflow:hidden;
+  border:1px solid var(--line);background:#12141a;position:relative;
+}
+.idea-thumb svg{position:absolute;inset:0;width:100%;height:100%}
+.idea-body b{display:block;font-size:14.5px;font-weight:650;letter-spacing:-.01em}
+.idea-meta{display:flex;align-items:center;gap:7px;margin-top:6px;flex-wrap:wrap}
+.idea-meta small{color:var(--faint);font-size:11px}
+.idea-side{text-align:right}
+.idea-side .res{font-family:var(--mono);font-size:13px;font-weight:700}
+.idea-side .res.up{color:var(--up)}.idea-side .res.down{color:var(--down)}
+.idea-side .when{display:block;font-size:10.5px;color:var(--faint);margin-top:4px}
+
+.chan-pills{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;margin-top:12px;scrollbar-width:none}
+.chan-pills::-webkit-scrollbar{display:none}
+.chan-pills button{
+  flex:none;height:32px;padding:0 14px;border-radius:999px;font-size:12px;font-weight:600;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);
+}
+.chan-pills button.on{background:var(--gold);color:var(--on-accent);border-color:transparent}
+
+/* ============================================================
+   DETAIL — Stake asset pattern (Blakey gold)
+   ============================================================ */
+.detail-head{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:600}
+.detail-pair{margin-top:16px;display:flex;align-items:center;gap:10px}
+.detail-pair h1{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:-.02em}
+.session-pill{
+  height:24px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:600;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text-2);
+}
+.price-row{margin-top:10px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.price-row .px{font-family:var(--mono);font-size:40px;font-weight:700;letter-spacing:-.04em;line-height:1}
+.price-row .chg{font-family:var(--mono);font-size:14px;font-weight:650}
+.price-row .chg.up{color:var(--up)}.price-row .chg.down{color:var(--down)}
+.detail-chart{margin-top:8px;height:168px;border-radius:18px;overflow:hidden;position:relative}
+.detail-chart svg{width:100%;height:100%;display:block}
+.tf-row{display:flex;gap:4px;margin-top:10px;align-items:center}
+.tf-row button{
+  flex:1;height:30px;border-radius:999px;font-size:11.5px;font-weight:650;color:var(--muted);
+}
+.tf-row button.on{background:var(--gold);color:var(--on-accent)}
+.tf-row .candle{
+  flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;color:var(--muted);
+}
+.split-cta{
+  margin-top:16px;display:grid;grid-template-columns:1fr 1fr;height:52px;
+  border-radius:999px;overflow:hidden;background:var(--gold);
+  box-shadow:0 16px 40px -18px rgba(var(--gold-rgb),.55);
+  position:relative;
+}
+.split-cta::after{
+  content:"";position:absolute;top:-20%;bottom:-20%;left:50%;width:2px;
+  background:rgba(10,8,2,.35);transform:rotate(12deg);transform-origin:center;
+}
+.split-cta button{
+  font-family:var(--display);font-weight:750;font-size:16px;letter-spacing:-.01em;color:var(--on-accent);
+  position:relative;z-index:1;
+}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:8px}
+.stat{padding:10px 0;border-bottom:1px solid var(--line)}
+.stat small{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.stat b{font-family:var(--mono);font-size:14.5px;font-weight:650}
+.stat b.sl{color:var(--down)}.stat b.tp{color:var(--up)}
+.about{margin-top:8px;color:var(--text-2);font-size:13.5px;line-height:1.5}
+.range-bar{margin-top:8px;height:4px;border-radius:999px;background:rgba(255,255,255,.08);position:relative}
+.range-bar i{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.25)}
+
+/* ============================================================
+   MEMBERSHIP — Finimize Plan pattern (Blakey gold)
+   ============================================================ */
+.pay-close{display:flex;justify-content:flex-end;margin-top:2px}
+.pay-close button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);color:var(--muted)}
+.pay-hero{text-align:center;margin-top:8px}
+.pay-hero h1{font-family:var(--display);font-size:28px;font-weight:750;letter-spacing:-.03em}
+.pay-hero p{color:var(--muted);font-size:14px;line-height:1.45;margin-top:8px;max-width:300px;margin-inline:auto}
+.award{
+  margin:18px auto 0;width:fit-content;display:flex;align-items:center;gap:8px;
+  padding:8px 14px;border-radius:999px;border:1px solid var(--gold-line);background:var(--gold-soft);
+  font-size:11.5px;font-weight:650;color:var(--gold-hi);
+}
+.quote-card{
+  margin-top:18px;padding:16px;border-radius:18px;background:var(--surface-3);border:1px solid var(--line);
+}
+.quote-card b{display:block;font-family:var(--display);font-size:16px;margin-bottom:6px}
+.quote-card p{color:var(--text-2);font-size:13px;line-height:1.45}
+.quote-card .stars{color:var(--gold);letter-spacing:2px;font-size:12px;margin-top:10px}
+.plan{
+  margin-top:12px;padding:16px;border-radius:18px;border:1px solid var(--line);
+  background:rgba(255,255,255,.02);position:relative;text-align:left;width:100%;
+  transition:border-color .2s var(--ease),background .2s var(--ease);
+}
+.plan.on{border-color:var(--gold);background:rgba(var(--gold-rgb),.06);box-shadow:0 0 0 1px rgba(var(--gold-rgb),.2)}
+.plan .badge{
+  position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  height:20px;padding:0 10px;border-radius:999px;background:var(--gold);color:var(--on-accent);
+  font-size:10px;font-weight:750;letter-spacing:.06em;display:flex;align-items:center;
+}
+.plan .name{font-family:var(--display);font-size:16px;font-weight:700}
+.plan .price{margin-top:4px;font-size:13.5px;color:var(--text-2)}
+.plan .price b{font-family:var(--mono);color:var(--text);font-weight:650}
+.plan-cta{
+  margin-top:18px;width:100%;height:54px;border-radius:16px;
+  background:linear-gradient(135deg,var(--gold-hi),var(--gold),var(--gold-deep));
+  color:var(--on-accent);font-family:var(--display);font-weight:750;font-size:16px;
+  box-shadow:0 18px 40px -18px rgba(var(--gold-rgb),.55);
+}
+.pay-legal{margin-top:12px;text-align:center;font-size:11px;color:var(--faint);line-height:1.45}
+.feat-pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.feat-pills span{
+  padding:7px 12px;border-radius:999px;border:1px solid var(--line);
+  font-size:11.5px;color:var(--text-2);background:rgba(255,255,255,.03);
+}
