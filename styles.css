@@ -1375,7 +1375,15 @@ a{color:inherit;text-decoration:none}
 .of-name{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:-.02em}
 .of-id .pill{display:inline-flex}
 .of-goalnote{font-size:11.5px;color:var(--faint);margin-top:10px;text-align:center}
-.dm-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;margin-left:9px;border-radius:var(--r-full);background:var(--on-accent,#1A1206);color:var(--gold-hi);font-size:11px;font-weight:700}
+.dm-badge{
+  display:inline;margin-left:8px;padding:0;min-width:0;height:auto;
+  border-radius:0;background:transparent;border:0;
+  color:inherit;font-family:var(--mono);font-size:13px;font-weight:800;
+  letter-spacing:-.02em;vertical-align:baseline;
+}
+.btn-gold .dm-badge{color:var(--on-accent)}
+[data-theme="light"] .btn-gold .dm-badge{color:var(--on-accent)}
+
 .dm-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 2px;border-bottom:1px solid var(--line);text-align:left}
 .dm-row:last-child{border-bottom:none;padding-bottom:2px}
 .dm-body{flex:1;min-width:0}
@@ -1554,3 +1562,8 @@ html[data-native="1"] .screen-scroll{padding-top:0!important}
 .phantom-room .pr-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
 .phantom-room b{font-family:var(--display);font-weight:700;font-size:14.5px}
 .phantom-room p{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0}
+
+.section-head .h2{font-weight:800;letter-spacing:-.02em}
+.book-net .num{font-size:34px;font-weight:700;letter-spacing:-.03em}
+.desk .eyebrow,.sch-head .eyebrow{font-weight:700}
+.btn-gold{font-weight:800}
