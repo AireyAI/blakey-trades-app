@@ -390,6 +390,19 @@
   function pState() { if (_pCache) return _pCache; try { _pCache = JSON.parse(localStorage.getItem(PSTORE) || "null") || {}; } catch (e) { _pCache = {}; } return _pCache; }
   function pSave(s) { try { localStorage.setItem(PSTORE, JSON.stringify(s)); } catch (e) {} _pCache = s; }
   function pSet(patch) { const s = pState(); Object.assign(s, patch); pSave(s); return s; }
+  const WELCOME_VERSION = 2; // bump when Welcome-to-BT tour content changes so members re-see orientation
+  function hasCompletedWelcome() {
+    const s = pState();
+    return !!(s.onboardingDone && (s.welcomeVersion || 0) >= WELCOME_VERSION);
+  }
+  function signalIqCard() {
+    const w = (D.welcome && D.welcome.signalIq) || {};
+    return `<div class="siq-card reveal">
+      <img src="${B.signalIqLogo || "assets/signal-iq-logo.png"}" alt="${w.title || "Signal IQ"}">
+      <div><b>${w.title || "Signal IQ"}</b><span>${w.tagline || ""} · Free with membership</span></div>
+    </div>`;
+  }
+
   const cleanText = s => String(s || "").replace(/[<>]/g, "").trim(); // free-text inputs land in innerHTML templates — strip tag chars at save
   const escAttr = s => String(s || "").replace(/"/g, "&quot;");       // for value="…" attribute interpolation (names like O"Brien)
   function deriveHandle(nm) { const h = (nm || "").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, ""); return "@" + (h || "trader"); }
@@ -742,6 +755,9 @@
       </div>
 
       ${toolsRow()}
+
+      <div class="section-head"><span class="h2">Signal IQ</span><span class="more" data-tab="learn">Learn ›</span></div>
+      ${signalIqCard()}
 
       <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community" data-seg="community">Open ›</span></div>
       ${floorCard()}
@@ -2536,7 +2552,7 @@
     return `<button class="chan" data-chan="${c.id}">
       ${chanMark(c)}
       <div class="chan-body">
-        <div class="chan-top"><b>${c.name}</b><span class="tg-badge">${ic("i-tg")} Telegram</span></div>
+        <div class="chan-top"><b>${c.name}${c.gate === "confident" ? `<span class="chan-gate">Confident only</span>` : ""}</b><span class="tg-badge">${ic("i-tg")} Telegram</span></div>
         <div class="chan-desc">${c.desc}</div>
         <div class="chan-meta"><span class="num">${c.members}</span> ${c.bot ? "followers" : "members"} · <span class="num">${c.today}</span> today${latest ? ` · <span class="idea-dir ${latest.dir}" style="padding:1px 7px;font-size:9px">${latest.pair} ${latest.dir === "long" ? "▲" : "▼"}</span>` : ""}</div>
       </div>
@@ -2554,7 +2570,7 @@
       ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
       <div class="chan-head">
         ${chanMark(c, "big")}
-        <div><div class="chan-title">${c.name}${c.bot ? ` <span class="pill pill-gold" style="height:20px;font-size:10px">🤖 Mechanical</span>` : ""}</div><div class="chan-handle num">${c.handle}</div></div>
+        <div><div class="chan-title">${c.name}${c.gate === "confident" ? ` <span class="chan-gate">Confident only</span>` : ""}${c.bot ? ` <span class="pill pill-gold" style="height:20px;font-size:10px">🤖 Mechanical</span>` : ""}${c.host ? ` <span class="sub" style="font-size:11px"> · ${c.host}</span>` : ""}</div><div class="chan-handle num">${c.handle}</div></div>
       </div>
       <p class="sub" style="margin:11px 2px">${c.desc}</p>
       <div class="chan-stats">
@@ -2807,8 +2823,16 @@
     const j = $("#chal-join"); if (j) j.onclick = () => { saveChallenge({ joined: true }); j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
   }
   function openMembers() {
+    const W = D.welcome || {};
+    const ma = W.membersArea || {};
+    const groups = (W.subgroups || []).map(g => `<div class="ob-group" style="margin:0"><b>${g.name}</b>${g.gate === "confident" ? `<span class="ob-gate">Confident only</span>` : ""}</div>`).join("");
     const rows = liveLeaderboard().map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
-    openModal(`<h3 class="sheet-title">Members</h3><p class="sheet-sub">${(4200).toLocaleString()}+ on the floor — follow traders you rate.</p><div class="mem">${rows}</div>`);
+    openModal(`<h3 class="sheet-title">${ma.title || "Members Area"}</h3>
+      <p class="sheet-sub">${ma.body || ((4200).toLocaleString() + "+ on the floor.")}</p>
+      <div class="ob-groups" style="margin:12px 0 16px">${groups}</div>
+      <p class="ob-disclaimer" style="max-width:none;margin:0 0 12px"><b>Disclaimer.</b> ${W.disclaimer || "Nothing in here is given as financial advice."}</p>
+      <div class="section-head" style="margin-top:4px"><span class="h3">On the floor</span></div>
+      <div class="mem">${rows}</div>`);
     [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
   }
 
@@ -3288,7 +3312,8 @@
       <div class="login-top">
         <img class="login-wordmark" src="${B.logo}" alt="${B.name}">
         <h1 class="h1">${B.tagline}</h1>
-        <p class="sub" style="margin-top:10px;max-width:280px">${B.blurb} Welcome to ${B.name}.</p>
+        <p class="sub" style="margin-top:10px;max-width:280px">${B.blurb}</p>
+        <p class="ob-disclaimer" style="margin-top:10px">Part of ${B.parentGroup || "Phantom Group"} · educational only</p>
       </div>
       <div class="login-bottom">
         <button class="btn btn-gold btn-block" id="enter">Continue with phone</button>
@@ -3306,7 +3331,7 @@
       el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateY(-10px)";
       setTimeout(() => {
         el.remove();
-        if (pState().onboardingDone) { setSignedIn("phone"); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); }
+        if (hasCompletedWelcome()) { setSignedIn("phone"); renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); }
         else showOnboarding();
       }, 420);
     };
@@ -3322,30 +3347,34 @@
         el.style.transition = "opacity .4s, transform .4s"; el.style.opacity = "0"; el.style.transform = "translateY(-10px)";
         setTimeout(() => {
           el.remove();
-          if (pState().onboardingDone) { renderTabbar(); go("home"); setTimeout(() => toast(`Signed in with ${prov}`, "i-check"), 450); }
+          if (hasCompletedWelcome()) { renderTabbar(); go("home"); setTimeout(() => toast(`Signed in with ${prov}`, "i-check"), 450); }
           else showOnboarding();
         }, 420);
       }, 750);
     });
   }
 
-  // ---------- onboarding (first-run after login) ----------
+  // ---------- onboarding (Welcome to BT / Phantom Group) ----------
   function showOnboarding() {
     let step = 0, level = "Developing";
+    const W = D.welcome || {};
+    const stepsN = 6;
     const el = document.createElement("div"); el.className = "onboard"; el.id = "onboard";
     $("#app").appendChild(el);
-    const dots = () => `<div class="ob-dots">${[0, 1, 2, 3].map(i => `<span class="ob-dot ${i === step ? "on" : ""} ${i < step ? "done" : ""}"></span>`).join("")}</div>`;
+    const dots = () => `<div class="ob-dots">${[...Array(stepsN)].map((_, i) => `<span class="ob-dot ${i === step ? "on" : ""} ${i < step ? "done" : ""}"></span>`).join("")}</div>`;
     function render() {
       let body;
       if (step === 0) body = `
-        <div class="ob-center">
+        <div class="ob-center ob-scroll">
           <img class="ob-wordmark" src="${B.logo}" alt="${B.name}">
-          <h1 class="h1" style="margin-top:22px">Welcome to<br>the floor.</h1>
-          <p class="sub" style="margin-top:10px;max-width:285px">You're one of ${(4200).toLocaleString()}+ gold traders now. Let's get you set up — takes 30 seconds.</p>
+          <h1 class="h1" style="margin-top:14px">Welcome to<br>${B.name}</h1>
+          <p class="sub" style="margin-top:10px;max-width:300px">${W.intro || ""}</p>
+          <div class="ob-pillars">${(W.pillars || []).map(p => `<span class="ob-pillar">${p}</span>`).join("")}</div>
+          <p class="ob-disclaimer"><b>Disclaimer.</b> ${W.disclaimer || "Nothing in here is given as financial advice."}</p>
         </div>
-        <button class="btn btn-gold btn-block" data-next>Get started</button>`;
+        <button class="btn btn-gold btn-block" data-next>Continue</button>`;
       else if (step === 1) body = `
-        <div class="ob-top"><span class="eyebrow">Step 2 of 4</span><h2 class="h2" style="margin:8px 0 4px">What should we call you?</h2><p class="sub">So the floor knows who's in the room.</p></div>
+        <div class="ob-top"><span class="eyebrow">Step 2 of ${stepsN}</span><h2 class="h2" style="margin:8px 0 4px">What should we call you?</h2><p class="sub">So the floor knows who's in the room.</p></div>
         <label class="flabel">Display name</label><input class="finput" id="ob-name" value="${escAttr(D.user.first)}">
         <label class="flabel">Where are you based?</label>
         <div class="fselect-wrap">
@@ -3353,20 +3382,43 @@
         </div>
         <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Continue</button>`;
       else if (step === 2) body = `
-        <div class="ob-top"><span class="eyebrow">Step 3 of 4</span><h2 class="h2" style="margin:8px 0 4px">Where are you at?</h2><p class="sub">We'll point you to the right place to start.</p></div>
+        <div class="ob-top"><span class="eyebrow">Step 3 of ${stepsN}</span><h2 class="h2" style="margin:8px 0 4px">Where are you at?</h2><p class="sub">We'll point you to the right rooms. Advanced signal groups are for when you're confident.</p></div>
         <div class="ob-levels" id="ob-lv">
-          ${[["Beginner", "New to gold trading"], ["Developing", "Some screen time, building consistency"], ["Consistent", "Profitable — here to sharpen"]].map(([t, d]) => `<button class="ob-level ${t === level ? "on" : ""}" data-lv="${t}"><b>${t}</b><span>${d}</span></button>`).join("")}
+          ${[["Beginner", "New to trading — start with education & live calls"], ["Developing", "Some screen time, building consistency"], ["Consistent", "Confident — ready for the advanced rooms"]].map(([t, d]) => `<button class="ob-level ${t === level ? "on" : ""}" data-lv="${t}"><b>${t}</b><span>${d}</span></button>`).join("")}
         </div>
         <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Continue</button>`;
-      else { const onc = nextCall() || { session: "Live trading", host: "the team", day: "Mon", at: "" }; body = `
-        <div class="ob-top"><span class="eyebrow">Step 4 of 4</span><h2 class="h2" style="margin:8px 0 4px">Your first live call</h2><p class="sub">This is where it clicks — trade the session live, with the room.</p></div>
-        <div class="card ob-call">
-          <div class="ob-call-row"><span class="pill pill-live"><span class="dot-live"></span> ${callDayLabel(onc)}</span><span class="num" style="color:var(--gold);font-weight:700">${onc.at || ""}</span></div>
-          <h3 style="font-family:var(--display);font-weight:700;font-size:17px;margin:11px 0 3px">${onc.session}</h3>
-          <div class="sub" style="font-size:12.5px">Hosted by ${onc.host} <span class="vchk">✓</span></div>
-          <button class="btn btn-ghost btn-block" data-cal style="margin-top:14px">${ic("i-cal")} Add to calendar</button>
+      else if (step === 3) body = `
+        <div class="ob-top"><span class="eyebrow">Step 4 of ${stepsN} · Phantom Group</span><h2 class="h2" style="margin:8px 0 4px">Your community groups</h2><p class="sub">${W.groupsIntro || ""}</p></div>
+        <div class="ob-scroll">
+          <div class="ob-groups">
+            ${(W.subgroups || []).map(g => `<div class="ob-group"><b>${g.name}</b>${g.gate === "confident" ? `<span class="ob-gate">Confident only</span>` : ""}</div>`).join("")}
+          </div>
+          <p class="ob-disclaimer" style="margin-top:14px;max-width:none"><b>${(W.membersArea && W.membersArea.title) || "Members Area"}.</b> ${(W.membersArea && W.membersArea.body) || ""}</p>
         </div>
-        <button class="btn btn-gold btn-block" data-next style="margin-top:auto">Enter ${B.name}</button>`; }
+        <button class="btn btn-gold btn-block" data-next style="margin-top:12px">Continue</button>`;
+      else if (step === 4) {
+        const sq = W.signalIq || {};
+        body = `
+        <div class="ob-top"><span class="eyebrow">Step 5 of ${stepsN}</span><h2 class="h2" style="margin:8px 0 4px">${sq.title || "Signal IQ"}</h2><p class="sub">${sq.tagline || ""}</p></div>
+        <div class="ob-scroll">
+          <div class="ob-siq">
+            <img src="${B.signalIqLogo || "assets/signal-iq-logo.png"}" alt="Signal IQ">
+            <p class="sub" style="max-width:300px;text-align:center">${sq.body || ""}</p>
+          </div>
+        </div>
+        <button class="btn btn-gold btn-block" data-next style="margin-top:12px">Continue</button>`;
+      } else {
+        const sched = D.schedule || [];
+        body = `
+        <div class="ob-top"><span class="eyebrow">Step ${stepsN} of ${stepsN} · Zoom week</span><h2 class="h2" style="margin:8px 0 4px">Show up live</h2><p class="sub">Hosted by the team every week — UK times.</p></div>
+        <div class="ob-scroll">
+          <div class="ob-zoom">
+            ${sched.map(c => `<div class="ob-zoom-row"><div class="day">${c.day}<br><span class="num" style="color:var(--muted);font-weight:600">${c.at || ""}</span></div><div><b>${c.session}</b><small>${c.host}${c.theme ? " · " + c.theme : ""}</small></div></div>`).join("")}
+          </div>
+          <p class="ob-disclaimer" style="margin-top:14px;max-width:none">${W.finalMessage || ""}</p>
+        </div>
+        <button class="btn btn-gold btn-block" data-next style="margin-top:12px">Enter ${B.floor}</button>`;
+      }
       el.innerHTML = `${dots()}<div class="ob-body">${body}</div>`;
       if (!reduceMotion()) { el.classList.remove("ob-enter"); void el.offsetWidth; el.classList.add("ob-enter"); }
       const next = el.querySelector("[data-next]"); if (next) next.onclick = () => {
@@ -3384,13 +3436,12 @@
           }
           if (countryEl) D.user.country = countryEl.value;
         }
-        step++; if (step > 3) finish(); else render();
+        step++; if (step >= stepsN) finish(); else render();
       };
       [...el.querySelectorAll("[data-lv]")].forEach(b => b.onclick = () => { level = b.dataset.lv; [...el.querySelectorAll("#ob-lv .ob-level")].forEach(x => x.classList.toggle("on", x === b)); });
-      const cal = el.querySelector("[data-cal]"); if (cal) cal.onclick = () => { downloadCallIcs(nextCall()); cal.innerHTML = ic("i-cal") + " Added to calendar ✓"; };
     }
     function finish() {
-      pSet({ name: D.user.name, first: D.user.first, initials: D.user.initials, country: D.user.country, onboardingDone: true, traderLevel: level });
+      pSet({ name: D.user.name, first: D.user.first, initials: D.user.initials, country: D.user.country, onboardingDone: true, welcomeVersion: WELCOME_VERSION, traderLevel: level });
       setSignedIn("phone");
       el.style.transition = "opacity .4s"; el.style.opacity = "0";
       setTimeout(() => el.remove(), 420);
@@ -3441,7 +3492,7 @@
     setTimeout(() => {
       const sp = $("#screen-splash");
       sp.style.transition = "opacity .5s"; sp.style.opacity = "0";
-      setTimeout(() => { sp.remove(); if (isSignedIn() && pState().onboardingDone) { renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); } else showLogin(); }, 520);
+      setTimeout(() => { sp.remove(); if (isSignedIn() && hasCompletedWelcome()) { renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); } else showLogin(); }, 520);
     }, 1700);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();

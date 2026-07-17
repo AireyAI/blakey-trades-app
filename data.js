@@ -27,16 +27,51 @@ window.DATA = {
     { at: 18.5, kind: "flag",  p: 4026.5, x: 0.74, label: "4,026.5 ✓", chip: "Long taken · 4,026.5" },
   ],
 
-  // weekly live-call timetable (client's "Upcoming Zoom Calls" schedule; times = UK)
+  // weekly Zoom timetable — source: Arron's Welcome to BT PDF (2026-07). Times = UK.
   schedule: [
-    { day:"Mon", time:"18:00", at:"6:00 PM", session:"New Starter Call", host:"Nick" },
-    { day:"Mon", time:"19:00", at:"7:00 PM", session:"Swing Trades Education", host:"Georgie" },
-    { day:"Tue", time:"19:00", at:"7:00 PM", session:"Trade Management", host:"Oscar" },
-    { day:"Wed", time:"19:00", at:"7:00 PM", session:"Live Trading on Signal IQ", host:"Blakey & Scott" },
-    { day:"Thu", time:"19:00", at:"7:00 PM", session:"Swing Trades Education", host:"Georgie" },
-    { day:"Thu", time:"20:00", at:"8:00 PM", session:"Tutorial & Live Scalps", host:"SN" },
-    { day:"Sun", time:"19:00", at:"7:00 PM", session:"Mindset", host:"Blakey" },
+    { day:"Mon", time:"18:00", at:"6:00 PM", session:"New Starter Call", host:"Nick", theme:"Beginners · welcome, getting started, community overview" },
+    { day:"Mon", time:"19:00", at:"7:00 PM", session:"New Starter Charts", host:"Sean", theme:"TradingView · build a chart · key points in the market" },
+    { day:"Tue", time:"19:00", at:"7:00 PM", session:"Market Education", host:"The Oracle", theme:"Live analysis · trade execution · education & Q&A" },
+    { day:"Wed", time:"19:00", at:"7:00 PM", session:"Live Trading on Signal IQ", host:"Mike", theme:"Signal IQ demos · platform walkthrough · tips & Q&A" },
+    { day:"Thu", time:"19:00", at:"7:00 PM", session:"EMA Educational Training", host:"Oscar", theme:"EMA strategy · market analysis · trade management · Q&A" },
+    { day:"Sun", time:"19:00", at:"7:00 PM", session:"Mindset", host:"Arron", theme:"Weekly outlook · community updates · trading psychology" },
   ],
+
+  // Welcome to BT / Phantom Group orientation (PDF inventory → app)
+  welcome: {
+    disclaimer: "Nothing in here is given as financial advice.",
+    intro: "Whether you are completely new to trading or already have some experience, the goal here is simple: learn, improve and become more consistent over time.",
+    pillars: [
+      "Live Trade Signals",
+      "Education & Training",
+      "Zoom Calls",
+      "Community Support",
+      "Trading Tools & Systems",
+      "Beginner Guidance",
+    ],
+    groupsIntro: "Now you have started your journey with Phantom Group, you will be added to the main Phantom Group, which is split into the subgroups below.",
+    subgroups: [
+      { name: "Announcements", gate: null },
+      { name: "Members area", gate: null },
+      { name: "Institutional Order-flow", gate: "confident" },
+      { name: "High RR", gate: "confident" },
+      { name: "RR Trader", gate: "confident" },
+      { name: "Market Maker", gate: "confident" },
+      { name: "EMA Trader", gate: null },
+      { name: "Zoom Calls / Live Streams", gate: null },
+      { name: "Education", gate: null },
+    ],
+    membersArea: {
+      title: "Members Area 2.0",
+      body: "Your central hub for everything happening within the community — announcements, company updates, competitions, events and the latest news.",
+    },
+    signalIq: {
+      title: "Signal IQ",
+      tagline: "The FUTURE of trading.",
+      body: "Exclusive software with powerful data and AI technology. It helps identify high-probability opportunities while removing emotion from the decision — so you can trade 24/7 when it suits you. Included FREE with every Blakey Trades membership, with full training and ongoing support.",
+    },
+    finalMessage: "Success in trading doesn't come from chasing every opportunity. It comes from discipline, consistency and trusting the process. Make the most of every resource — attend the live calls, ask questions, and keep learning. Welcome to Blakey Trades × Phantom Group.",
+  },
 
   // Home stats
   homeStats: [
@@ -124,11 +159,14 @@ window.DATA = {
   // scalps=SN Scalps · iq=EMA Trader · mm=Market Maker
   channels: [
     { id:"vip", name:"VIP Trader", handle:"@viptrader", mark:"📈", img:"assets/channels/vip.webp", tone:"gold", members:"3,210", today:3, desc:"Flagship gold day-trade calls — full entry, stop and targets." },
-    { id:"zones", name:"Institutional Order-Flow", handle:"@instorderflow", mark:"🔥", img:"assets/channels/orderflow.webp", tone:"quiet", members:"2,480", today:2, desc:"Where the big money is positioned — order-flow zones for each session." },
+    { id:"zones", name:"Institutional Order-Flow", handle:"@instorderflow", mark:"🔥", img:"assets/channels/orderflow.webp", tone:"quiet", members:"2,480", today:2, gate:"confident",
+      desc:"High-probability setups by following institutional market activity — plus educational videos. Only use this group when you are confident." },
     { id:"swing", name:"Gold Trades", handle:"@goldtrades", mark:"💎", img:"assets/channels/goldtrades.webp", tone:"quiet", members:"1,940", today:1, desc:"Core gold setups and the weekly recap — the bigger moves." },
     { id:"scalps", name:"SN Scalps", handle:"@snscalps", mark:"🏆", img:"assets/channels/scalps.webp", tone:"quiet", members:"1,510", today:4, desc:"Fast intraday scalps — in and out, tight risk." },
-    { id:"mm", name:"Market Maker", handle:"@marketmakertrades", mark:"💹", img:"assets/channels/marketmaker.webp", tone:"quiet", members:"1,320", today:2, desc:"Trading the market-maker model — traps, sweeps and reversals." },
-    { id:"iq", name:"EMA Trader", handle:"@ematrader", mark:"💻", img:"assets/channels/ematrader.webp", tone:"quiet", members:"1,120", today:3, desc:"Systematic EMA-driven entries — rules first, no emotion." },
+    { id:"mm", name:"Market Maker", handle:"@marketmakertrades", mark:"💹", img:"assets/channels/marketmaker.webp", tone:"quiet", members:"1,320", today:2, gate:"confident",
+      desc:"Market structure, liquidity and direction — larger moves with disciplined risk. Only use this group when you are confident." },
+    { id:"iq", name:"EMA Trader", handle:"@ematrader", mark:"💻", img:"assets/channels/ematrader.webp", tone:"quiet", members:"1,120", today:3, host:"Oscar",
+      desc:"Led by Oscar — live setups up to ~4 hours a day. He explains why he's taking each trade, how he manages risk, and manages from entry to exit. EMA = Exponential Moving Average." },
   ],
 
   categories: ["For you","Market Analysis","Mindset","Beginner Path","Session Replays","Risk"],

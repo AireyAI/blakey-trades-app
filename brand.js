@@ -14,14 +14,16 @@ window.BRAND = {
   founderInitials: "AB",           // founder avatar initials
 
   // ---- voice ----
-  tagline: "The floor is open.",   // login hero headline
-  blurb: "Live gold calls, the full education library, and 4,200+ traders on the floor.", // login sub-line
+  tagline: "Welcome to the future of trading.", // login hero headline
+  blurb: "Blakey Trades — part of The Phantom Group. Live signals, education, Zoom calls, and Signal IQ.", // login sub-line
   floor: "the floor",              // the community's word for itself ("the room", "the desk"…)
+  parentGroup: "Phantom Group",    // co-brand parent (Welcome to BT deck, 2026-07)
 
   // ---- contact / links ----
   handle: "blakeytrades_support",  // Telegram support (t.me/<handle>)
   domain: "blakeytrades.com",      // used for calendar UIDs
-  logo: "assets/logo.png?v=81",         // brand wordmark (replace this file)
+  logo: "assets/logo.png?v=90",         // Phantom co-brand crest (Welcome to BT)
+  signalIqLogo: "assets/signal-iq-logo.png?v=90",
   broker: "Vantage",               // IB partner broker — VIP is verified against the founder's IB client list
 
   // ---- how VIP is funded: "ib" = free via broker partnership (IB rebates) · "paid" = subscription-only ----
