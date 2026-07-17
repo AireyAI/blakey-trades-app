@@ -65,6 +65,11 @@ window.DATA = {
       title: "Members Area 2.0",
       body: "Your central hub for everything happening within the community — announcements, company updates, competitions, events and the latest news.",
     },
+    roomCards: [
+      { title: "High RR", gate: "confident", body: "High risk-to-reward opportunities via market structure, supply & demand zones, fair value gaps (FVG), inverse FVGs and SMT divergence." },
+      { title: "RR Trader", gate: "confident", body: "High-quality setups with favourable risk-to-reward — disciplined, high-probability signals throughout the trading day." },
+      { title: "Education", gate: null, body: "Step-by-step training, chart analysis and strategies so you become a confident, independent trader at your own pace." },
+    ],
     signalIq: {
       title: "Signal IQ",
       tagline: "The FUTURE of trading.",

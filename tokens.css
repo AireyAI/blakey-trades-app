@@ -41,9 +41,9 @@
   --live:#FF4D4D;
 
   /* ---- type — Research Desk recipe (same families, tighter display rhythm) ---- */
-  --display:"Sora",system-ui,sans-serif;
+  --display:"Sora",system-ui,sans-serif; /* bold display — weights 700–800 */
   --body:"Outfit",system-ui,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,monospace; /* plain zeros — JetBrains dotted 0 retired */
   --fs-display:28px;        /* page titles (was 34 — Research Desk uses 28) */
   --fs-h1:22px;             /* greet / who name */
   --fs-h2:17px;             /* card headlines */

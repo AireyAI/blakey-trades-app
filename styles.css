@@ -9,7 +9,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  font-family:var(--body);
+  font-family:var(--body);font-weight:500;
   background:var(--ink);
   color:var(--text);
   letter-spacing:var(--tracking-body);
@@ -147,11 +147,11 @@ a{color:inherit;text-decoration:none}
 /* ---------- Type utilities ---------- */
 .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
 .eyebrow.muted{color:var(--muted)}
-.h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.02;letter-spacing:var(--tracking-mega)}
-.h2{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.12;letter-spacing:var(--tracking)}
-.h3{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:-.01em}
+.h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:1.02;letter-spacing:var(--tracking-mega)}
+.h2{font-family:var(--display);font-weight:800;font-size:21px;line-height:1.12;letter-spacing:var(--tracking)}
+.h3{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:-.01em}
 .sub{color:var(--muted);font-size:13.5px;line-height:1.55}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1,"zero" 0;letter-spacing:-.015em;font-weight:600}
 .up{color:var(--up)} .down{color:var(--down)}
 /* base inline icon — context rules (.stat .ic, .pill .ic, .tab svg…) override */
 .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:middle}
@@ -259,7 +259,7 @@ a{color:inherit;text-decoration:none}
 .app-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 2px}
 .app-head .who{display:flex;align-items:center;gap:11px}
 .app-head .who small{display:block;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.01em}
-.app-head .who b{font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.025em;line-height:1.08}
+.app-head .who b{font-family:var(--display);font-size:23px;font-weight:800;letter-spacing:-.025em;line-height:1.08}
 .who-go{margin-left:auto;display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--gold);background:var(--gold-soft,rgba(var(--gold-rgb),.12));border:1px solid var(--gold-line);border-radius:999px;padding:5px 10px 5px 11px;white-space:nowrap}
 .who-go .ic{width:13px;height:13px}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;position:relative}
@@ -275,7 +275,7 @@ a{color:inherit;text-decoration:none}
 .live-banner .market-bg{position:absolute;inset:0;opacity:.16}
 .live-banner .lb-inner{position:relative;z-index:2}
 .live-banner .lb-row{display:flex;align-items:center;justify-content:space-between}
-.live-banner h3{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.02em;line-height:1.1;margin:11px 0 4px}
+.live-banner h3{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;line-height:1.1;margin:11px 0 4px}
 .countdown{display:flex;gap:7px;margin-top:13px}
 .cd-wrap{font-size:12.5px;color:var(--muted);padding:11px 2px 2px;line-height:1.5}
 .lobby-cd .cd-wrap{text-align:center;padding-bottom:14px}
@@ -1528,12 +1528,29 @@ html:not([data-theme="light"]) .lb-row,
 html:not([data-theme="light"]) .notif,
 html:not([data-theme="light"]) .chan{background-image:none}
 
-/* ===== Native shell (?native=1 / [data-native=1]) — no fake statusbar ===== */
+/* ===== Native shell (?native=1) — NEVER show fake iPhone chrome on App Store / TestFlight ===== */
 html[data-native="1"] .statusbar,
-html[data-native="1"] .stage-meta{display:none!important;height:0!important}
-html[data-native="1"] .stage{padding:0!important}
-html[data-native="1"] .device{width:100vw!important;height:100dvh!important;border-radius:0!important;padding:0!important;box-shadow:none!important;transform:none!important}
+html[data-native="1"] .stage-meta{
+  display:none!important;height:0!important;max-height:0!important;min-height:0!important;
+  overflow:hidden!important;visibility:hidden!important;opacity:0!important;
+  pointer-events:none!important;padding:0!important;margin:0!important;border:0!important;
+  position:absolute!important;left:-9999px!important;width:0!important;
+}
+html[data-native="1"] .stage{padding:0!important;min-height:100%!important}
+html[data-native="1"] .device{
+  width:100%!important;height:100%!important;max-width:none!important;
+  border-radius:0!important;padding:0!important;box-shadow:none!important;transform:none!important;background:var(--ink)!important
+}
 html[data-native="1"] .device::before,
-html[data-native="1"] .stage::after{display:none!important}
-html[data-native="1"] .app{width:100vw!important;height:100dvh!important;border-radius:0!important}
-html[data-native="1"] .tabbar{bottom:env(safe-area-inset-bottom)!important}
+html[data-native="1"] .stage::after{display:none!important;content:none!important}
+html[data-native="1"] .app{width:100%!important;height:100%!important;border-radius:0!important;padding-top:0!important}
+html[data-native="1"] .tabbar{bottom:env(safe-area-inset-bottom,0px)!important}
+html[data-native="1"] .screen-scroll{padding-top:0!important}
+
+.book-net .num,.book-net b{font-weight:700;font-feature-settings:"tnum" 1,"lnum" 1,"zero" 0}
+
+.phantom-rooms{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
+.phantom-room{padding:13px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line-2);text-align:left}
+.phantom-room .pr-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.phantom-room b{font-family:var(--display);font-weight:700;font-size:14.5px}
+.phantom-room p{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0}

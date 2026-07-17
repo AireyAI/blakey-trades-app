@@ -150,7 +150,7 @@
     const Y = p => padT + (bnd.hi - p) / (bnd.hi - bnd.lo) * (h - padT - padB);
     const ease = p => 1 - Math.pow(1 - p, 3);
     function pill(x, y, text) {
-      ctx.save(); ctx.font = '600 9.5px "JetBrains Mono",monospace';
+      ctx.save(); ctx.font = '600 9.5px "IBM Plex Mono",monospace';
       const tw = ctx.measureText(text).width, px = 7, ph = 17, r = 8.5;
       let bx = Math.min(Math.max(x, 4), w - tw - px * 2 - 4), by = Math.max(y - ph - 5, 3);
       ctx.beginPath();

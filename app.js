@@ -201,14 +201,13 @@
     let rows = "";
     for (const d of order) {
       const calls = (D.schedule || []).filter(c => c.day === d);
-      if (!calls.length) {
-        rows += `<div class="sch-row off"><div class="sch-day">${DAY_FULL[d]}</div><div class="sch-time">—</div><div class="sch-sess"><b>Off</b></div></div>`;
-      } else calls.forEach((c, i) => {
+      if (!calls.length) continue; // Welcome PDF week — no empty Fri/Sat "Off" rows
+      calls.forEach((c, i) => {
         const isNext = key(c) === nk;
         rows += `<div class="sch-row${isNext ? " next" : ""}">
           <div class="sch-day">${i === 0 ? DAY_FULL[d] : ""}</div>
           <div class="sch-time num">${c.at}</div>
-          <div class="sch-sess"><b>${c.session}</b><small>with ${c.host}</small></div>
+          <div class="sch-sess"><b>${c.session}</b><small>with ${c.host}${c.theme ? ` · ${c.theme}` : ""}</small></div>
           ${isNext ? `<span class="sch-tag">NEXT</span>` : ""}
         </div>`;
       });
@@ -1796,7 +1795,7 @@
   }
   // gold-foil shareable trade card — canvas-rendered 1080×1350 PNG, every colour routed through BRAND
   async function exportTradeCard(j) {
-    try { await Promise.all([document.fonts.load('800 96px "Sora"'), document.fonts.load('700 120px "JetBrains Mono"'), document.fonts.load('500 44px "Outfit"')]); } catch (e) {}
+    try { await Promise.all([document.fonts.load('800 96px "Sora"'), document.fonts.load('700 120px "IBM Plex Mono"'), document.fonts.load('500 44px "Outfit"')]); } catch (e) {}
     const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const x = cv.getContext("2d");
     // near-black base + subtle vignette
@@ -1819,12 +1818,12 @@
     x.fillStyle = "#F3F3F1"; x.font = '800 88px "Sora", sans-serif';
     x.fillText(j.pair, W / 2, 400);
     const long = j.dir === "long";
-    x.fillStyle = long ? "#3ECB86" : "#F0565B"; x.font = '700 44px "JetBrains Mono", monospace';
+    x.fillStyle = long ? "#3ECB86" : "#F0565B"; x.font = '700 44px "IBM Plex Mono", monospace';
     x.fillText(long ? "▲ LONG" : "▼ SHORT", W / 2, 465);
     // giant profit result
     const rTxt = j.outcome === "be" ? "BE" : money(j.r);
     x.fillStyle = j.r > 0 ? "#3FBF7F" : j.outcome === "be" ? "#9A9AA6" : "#F0565B";
-    x.font = '700 ' + (rTxt.length > 6 ? 170 : 210) + 'px "JetBrains Mono", monospace';
+    x.font = '700 ' + (rTxt.length > 6 ? 170 : 210) + 'px "IBM Plex Mono", monospace';
     x.fillText(rTxt, W / 2, 760);
     // meta line
     x.fillStyle = "rgba(255,255,255,.55)"; x.font = '500 36px "Outfit", sans-serif';
@@ -1840,7 +1839,7 @@
     const lastX = sx + sw, lastY = sy + sh2 - (pts[pts.length - 1] - lo) / (hi - lo) * sh2;
     x.beginPath(); x.arc(lastX, lastY, 9, 0, 7); x.fill();
     // handle + footer
-    x.fillStyle = "rgba(255,255,255,.5)"; x.font = '500 34px "JetBrains Mono", monospace';
+    x.fillStyle = "rgba(255,255,255,.5)"; x.font = '500 34px "IBM Plex Mono", monospace';
     x.fillText(D.user.handle + " · " + B.name, W / 2, 1220);
     x.fillStyle = "rgba(255,255,255,.28)"; x.font = '500 24px "Outfit", sans-serif';
     x.fillText("Educational only · not financial advice", W / 2, 1280);
@@ -2521,6 +2520,19 @@
     };
   }
 
+
+  function phantomRoomsHtml() {
+    const rooms = (D.welcome && D.welcome.roomCards) || [
+      { title: "High RR", gate: "confident", body: "High risk-to-reward setups via market structure, supply & demand, FVGs, IFVGs and SMT divergence — larger moves, disciplined risk." },
+      { title: "RR Trader", gate: "confident", body: "High-quality setups with favourable risk-to-reward. Disciplined, high-probability signals throughout the trading day." },
+      { title: "Education", gate: null, body: "Step-by-step training, chart analysis and strategies — build knowledge at your own pace until you're a confident, independent trader." },
+    ];
+    return `<div class="section-head"><span class="h2">Phantom Group rooms</span><span class="more num">${rooms.length}</span></div>
+      <p class="sub" style="margin:0 2px 8px">From the Welcome guide — advanced rooms are for when you're confident.</p>
+      <div class="phantom-rooms">${rooms.map(r => `<div class="phantom-room"><div class="pr-top"><b>${r.title}</b>${r.gate === "confident" ? `<span class="chan-gate">Confident only</span>` : ""}</div><p>${r.body}</p></div>`).join("")}</div>
+      <p class="ob-disclaimer" style="max-width:none;margin:10px 2px 4px"><b>Disclaimer.</b> ${(D.welcome && D.welcome.disclaimer) || "Nothing in here is given as financial advice."}</p>`;
+  }
+
   // ---------- signals: channels hub (a bottom tab) + per-channel feed ----------
   SCREENS.signals = function () { // Signals tab — the Telegram channels, mirrored in-app
     setScreen(`
@@ -2534,6 +2546,8 @@
       ${trackRecordCard()}
       <div class="section-head"><span class="h2">Channels</span></div>
       ${D.channels.map(channelCard).join("")}
+      ${phantomRoomsHtml()}
+      ${signalIqCard()}
       <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Educational content only. Not financial advice.</p>
       <div class="spacer"></div>`);
     [...document.querySelectorAll("[data-chan]")].forEach(n => n.onclick = () => openChannel(n.dataset.chan));
@@ -3463,7 +3477,12 @@
     // device already draws time/wifi/battery. Keep this idempotent for SPA revisits.
     if (new URLSearchParams(location.search).get("native") === "1") {
       document.documentElement.dataset.native = "1";
-      document.querySelectorAll(".statusbar,.stage-meta").forEach((el) => el.remove());
+      const killChrome = () => document.querySelectorAll(".statusbar,.stage-meta").forEach((el) => el.remove());
+      killChrome();
+      if (!window.__btBootNativeObs) {
+        window.__btBootNativeObs = new MutationObserver(killChrome);
+        window.__btBootNativeObs.observe(document.documentElement, { childList: true, subtree: true });
+      }
     }
     applyTheme(getSetting("theme", "dark"));
     try { history.replaceState({ t: "home" }, ""); } catch (e) {}

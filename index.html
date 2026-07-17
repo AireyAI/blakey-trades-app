@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* Kill fake iPhone chrome before first paint when inside the native shell */
+(function(){try{if(/(?:^|[?&])native=1(?:&|$)/.test(location.search)){document.documentElement.setAttribute("data-native","1");}}catch(e){}})();
+</script>
+<style>
+html[data-native="1"] .statusbar,html[data-native="1"] .stage-meta{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;padding:0!important;margin:0!important;border:0!important}
+html[data-native="1"] .stage{padding:0!important}
+html[data-native="1"] .device{width:100%!important;height:100%!important;border-radius:0!important;padding:0!important;box-shadow:none!important;transform:none!important}
+html[data-native="1"] .device::before,html[data-native="1"] .stage::after{display:none!important}
+</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Blakey Trades — Community</title>
@@ -29,9 +39,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="tokens.css?v=84">
-<link rel="stylesheet" href="styles.css?v=85">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Outfit:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css?v=91">
+<link rel="stylesheet" href="styles.css?v=91">
 </head>
 <body>
 
@@ -88,7 +98,7 @@
       <!-- splash (instant paint, dismissed by app.js) -->
       <div id="screen-splash">
         <canvas class="market-bg" data-chart="ambient" data-seed="3" aria-hidden="true"></canvas>
-        <img class="wordmark" src="assets/logo.png?v=90" alt="Blakey Trades — part of The Phantom Group">
+        <img class="wordmark" src="assets/logo.png?v=91" alt="Blakey Trades — part of The Phantom Group">
         <div class="tagline">Part of The Phantom Group</div>
       </div>
 
@@ -107,9 +117,9 @@
   <div class="stage-meta"><b>BLAKEY TRADES</b><span>Part of The Phantom Group — open on your phone for fullscreen</span></div>
 </div>
 
-<script src="brand.js?v=90"></script>
-<script src="data.js?v=90"></script>
+<script src="brand.js?v=91"></script>
+<script src="data.js?v=91"></script>
 <script src="charts.js?v=84"></script>
-<script src="app.js?v=90"></script>
+<script src="app.js?v=91"></script>
 </body>
 </html>
