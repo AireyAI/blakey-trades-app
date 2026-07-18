@@ -68,7 +68,7 @@
       }
     }
     scroller.scrollTop = 0;
-    requestAnimationFrame(() => { Charts.initIn(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b, .book-net b.num").forEach(countUp); paintOpenPl(); });
+    requestAnimationFrame(() => { Charts.initIn(s); animateFills(s); s.querySelectorAll(".stat b.num, .num-cell b.num, .jstat b.num, .track-stats > div b, .book-net b.num").forEach(countUp); paintOpenPl(); });
   }
 
   const SCREENS = {};
@@ -95,14 +95,8 @@
     return `<div class="app-topbar"><img class="brand-word" src="${B.logo}" alt="${B.name}">${right || ""}</div>`;
   }
   function header(title, sub) {
-    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button></div>`) +
-      `<div class="app-head">
-      <button class="as-btn who" data-act="profile" style="cursor:pointer">
-        ${av(D.user.initials, 44)}
-        <div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div>
-        <span class="who-go">Profile ${ic("i-chev","ic")}</span>
-      </button>
-    </div>`;
+    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="tb-avatar" data-act="profile" aria-label="Profile">${av(D.user.initials, 30)}</button></div>`) +
+      `<div class="app-head"><div class="who"><div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div></div></div>`;
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
 
@@ -567,6 +561,36 @@
     return Math.max(s.maxStreak || 0, s.streak != null ? s.streak : D.user.streak);
   }
   function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
+
+  function animateFills(root) {
+    const scope = root || document;
+    const nodes = scope.querySelectorAll(".level-bar i, .sess-bar i, .nu-bar i, .chal-bar i, .player .bar i, [data-fill]");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    nodes.forEach((el) => {
+      const target = el.getAttribute("data-fill") || el.style.width || "0%";
+      if (reduce) { el.style.width = target; return; }
+      el.style.width = "0%";
+      el.style.transition = "none";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.style.transition = "width 1.05s cubic-bezier(.2,.8,.2,1)";
+          el.style.width = target.endsWith("%") ? target : target;
+        });
+      });
+    });
+  }
+  function signalFloorReady() {
+    try {
+      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage("floor-ready");
+    } catch (e) {}
+  }
+  function playSplashExit(then) {
+    const sp = $("#screen-splash");
+    if (!sp) { then && then(); signalFloorReady(); return; }
+    sp.classList.add("splash-out");
+    setTimeout(() => { sp.remove(); then && then(); signalFloorReady(); }, 720);
+  }
+
   // ---- VIP re-verification: a linked account must stay funded + re-confirm periodically, not unlock VIP forever on one link ----
   const VIP_MIN_DEPOSIT = 200; // $ — mirrors the "minimum deposit to unlock" gate; a $0 linked account earns Arron nothing
   const VIP_REVERIFY_DAYS = 30; // periodic re-check that the account is still funded & trading
@@ -946,7 +970,10 @@
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
       ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</span>`, 'data-act="journal"')}
       ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
-      <button class="btn btn-gold btn-block" data-act="office" style="margin-top:13px">${ic("i-home")} Enter your office${dmUn ? `<span class="dm-badge num">${dmUn}</span>` : ""}</button>
+      <button class="btn btn-gold btn-block btn-office" data-act="office" aria-label="${dmUn ? `Enter your office, ${dmUn} waiting` : "Enter your office"}">
+        <span class="btn-office-lead">${ic("i-home")}<span class="btn-office-copy"><b>Enter your office</b><small>${dmUn ? `${dmUn} waiting for you` : "Desk · inbox · daily goals"}</small></span></span>
+        <span class="btn-office-go" aria-hidden="true">${dmUn ? `<span class="btn-office-count num">${dmUn}</span>` : ""}${ic("i-chev")}</span>
+      </button>
     </div>`;
   }
 
@@ -998,7 +1025,7 @@
 
       <div class="card level reveal">
         <div class="kv"><span>Progress to Level ${profLevel() + 1}</span><b class="num">${profXp().toLocaleString()} / ${profXpNext().toLocaleString()} XP</b></div>
-        <div class="level-bar"><i style="width:${Math.round(profXp() / profXpNext() * 100)}%"></i></div>
+        <div class="level-bar"><i data-fill="${Math.round(profXp() / profXpNext() * 100)}%"></i></div>
         <div class="kv" style="margin-top:2px"><span>${(profXpNext() - profXp()).toLocaleString()} XP to go — log a trade for +40, join a call for +50</span></div>
       </div>
 
@@ -2057,7 +2084,7 @@
 
       <div class="card level">
         <div class="kv"><span>Progress to Level ${profLevel()+1}</span><b>${profXp().toLocaleString()} / ${profXpNext().toLocaleString()} XP</b></div>
-        <div class="level-bar"><i style="width:${Math.round(profXp()/profXpNext()*100)}%"></i></div>
+        <div class="level-bar"><i data-fill="${Math.round(profXp()/profXpNext()*100)}%"></i></div>
         <div class="kv"><span>${profXpNext()-profXp()} XP to go — log a trade for +40, pass a path quiz for +60</span></div>
       </div>
 
@@ -2082,13 +2109,13 @@
           <div class="num-cell"><b class="num ${bestTrade()>=0?'up':''}">${money(bestTrade())}</b><small>Best trade</small></div>
         </div>
         <div class="sess-block"><div class="sess-h">Win rate by session</div>
-          ${sessionStats().map(s => `<div class="sess-row"><span class="sess-name">${s.session}</span><div class="sess-bar"><i style="width:${s.wr}%"></i></div><span class="sess-pct num">${s.wr}%</span></div>`).join("")}
+          ${sessionStats().map(s => `<div class="sess-row"><span class="sess-name">${s.session}</span><div class="sess-bar"><i data-fill="${s.wr}%"></i></div><span class="sess-pct num">${s.wr}%</span></div>`).join("")}
         </div>
       </div>
 
       ${nextUp().length ? `<div class="section-head"><span class="h2">Next up</span></div>
       <div class="card card-pad">
-        ${nextUp().map(n => `<div class="nu-row"><div class="nu-top"><span class="nu-label">${n.label}</span><span class="nu-val num">${n.val}</span></div><div class="nu-bar"><i style="width:${Math.min(100,n.pct)}%"></i></div></div>`).join("")}
+        ${nextUp().map(n => `<div class="nu-row"><div class="nu-top"><span class="nu-label">${n.label}</span><span class="nu-val num">${n.val}</span></div><div class="nu-bar"><i data-fill="${Math.min(100,n.pct)}%"></i></div></div>`).join("")}
       </div>` : ""}
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
@@ -2301,7 +2328,7 @@
         <canvas data-chart="player" data-seed="${v.seed}"></canvas>
         <div class="big-play" data-pp style="${prog >= 1 ? "display:none" : ""}"><span>${ic("i-play")}</span></div>
         <div class="controls">
-          <div class="bar"><i id="vbar" style="width:${pctLabel}%"></i></div>
+          <div class="bar"><i id="vbar" data-fill="${pctLabel}%"></i></div>
           <div class="crow"><span id="vtime">${pctLabel}%</span><svg viewBox="0 0 24 24"><use href="#i-play"/></svg><span style="margin-left:auto">${v.dur}</span></div>
         </div>
       </div>
@@ -2831,7 +2858,7 @@
     const c = liveChallenge(), pct = Math.round(c.done / c.total * 100);
     openModal(`<h3 class="sheet-title">Monthly challenge</h3><div class="chal"><div class="chal-ic">${ic("i-flame")}</div>
       <b class="chal-name">${c.name}</b><p class="chal-desc">${c.desc}</p>
-      <div class="chal-bar"><i style="width:${pct}%"></i></div><div class="chal-meta"><span class="num gold-text">${c.done}/${c.total}</span> days · ${pct}%</div>
+      <div class="chal-bar"><i data-fill="${pct}%"></i></div><div class="chal-meta"><span class="num gold-text">${c.done}/${c.total}</span> days · ${pct}%</div>
       <div class="chal-reward">${ic("i-trophy", "ic")} ${c.reward}</div>
       <button class="btn ${c.joined ? "btn-ghost" : "btn-gold"} btn-block" id="chal-join" style="margin-top:16px">${c.joined ? "You're in ✓" : "Join challenge"}</button></div>`);
     const j = $("#chal-join"); if (j) j.onclick = () => { saveChallenge({ joined: true }); j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
@@ -3504,14 +3531,31 @@
     if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
     Charts.initIn(document); // splash ambient
     const jump = new URLSearchParams(location.search).get("screen");
-    if (jump && SCREENS[jump]) { // deep-link straight into the app (demo + QA)
-      const sp = $("#screen-splash"); if (sp) sp.remove();
-      renderTabbar(); go(jump); return;
+    const isNative = /(?:^|[?&])native=1(?:&|$)/.test(location.search);
+    if (jump && SCREENS[jump]) {
+      // Native shell owns the brand splash — skip web splash to avoid a double flash.
+      // Paint the floor under the native overlay, then signal ready.
+      const enter = () => { renderTabbar(); go(jump); };
+      if (isNative) {
+        const sp = $("#screen-splash");
+        if (sp) sp.remove();
+        enter();
+        // Brief beat so native crest finishes its entrance before revealing the floor
+        setTimeout(signalFloorReady, 1600);
+      } else if ($("#screen-splash")) {
+        setTimeout(() => playSplashExit(enter), 400);
+      } else {
+        enter(); signalFloorReady();
+      }
+      return;
     }
     setTimeout(() => {
-      const sp = $("#screen-splash");
-      sp.style.transition = "opacity .5s"; sp.style.opacity = "0";
-      setTimeout(() => { sp.remove(); if (isSignedIn() && hasCompletedWelcome()) { renderTabbar(); go("home"); setTimeout(() => toast(`Welcome back, ${D.user.first} 👋`, "i-check"), 450); } else showLogin(); }, 520);
+      playSplashExit(() => {
+        if (isSignedIn() && hasCompletedWelcome()) {
+          renderTabbar(); go("home");
+          setTimeout(() => toast(`Welcome back, ${D.user.first}`, "i-check"), 450);
+        } else showLogin();
+      });
     }, 1700);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();

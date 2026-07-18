@@ -373,25 +373,44 @@
     });
   }
 
-  // equity curve — cumulative R, drawn on demand (journal view)
-  function drawEquity(cv, rs) {
+  // equity curve — cumulative R; animates draw-in when the canvas enters view
+  function drawEquity(cv, rs, opts) {
+    const animate = !(opts && opts.animate === false);
     const { ctx, w, h } = fit(cv);
-    ctx.clearRect(0, 0, w, h);
     let cum = 0; const pts = [0]; for (const r of rs) { cum += r; pts.push(cum); }
     const lo = Math.min(...pts, 0), hi = Math.max(...pts, 0.5), rng = (hi - lo) || 1;
     const span = pts.length - 1;
     const X = i => span === 0 ? w / 2 : 3 + i / span * (w - 6);
     const Y = v => h - 6 - (v - lo) / rng * (h - 16);
-    ctx.strokeStyle = "rgba(237,237,232,0.09)"; ctx.lineWidth = 1;
-    const zy = Y(0); ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
-    ctx.beginPath(); pts.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
-    ctx.lineTo(X(pts.length - 1), h); ctx.lineTo(X(0), h); ctx.closePath();
-    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(" + GOLD_RGB + ",0.3)"); g.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
-    ctx.fillStyle = g; ctx.fill();
-    ctx.beginPath(); pts.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
-    ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.shadowColor = "rgba(" + GOLD_RGB + ",.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
-    const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
-    ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, 7); ctx.fill();
+    const paint = (upto) => {
+      const n = Math.max(1, Math.min(pts.length, Math.ceil(upto)));
+      const slice = pts.slice(0, n);
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(237,237,232,0.09)"; ctx.lineWidth = 1;
+      const zy = Y(0); ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
+      ctx.beginPath(); slice.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+      ctx.lineTo(X(slice.length - 1), h); ctx.lineTo(X(0), h); ctx.closePath();
+      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(" + GOLD_RGB + ",0.3)"); g.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
+      ctx.fillStyle = g; ctx.fill();
+      ctx.beginPath(); slice.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.shadowColor = "rgba(" + GOLD_RGB + ",.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+      if (n >= pts.length) {
+        const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
+        ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, 7); ctx.fill();
+      }
+    };
+    if (!animate || pts.length < 3 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      paint(pts.length); return;
+    }
+    const start = performance.now(), dur = 1100;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / dur);
+      const ease = 1 - Math.pow(1 - t, 3);
+      paint(1 + ease * (pts.length - 1));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    paint(1);
+    requestAnimationFrame(tick);
   }
 
   window.Charts = { initIn, drawEquity, initReplay };

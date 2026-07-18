@@ -22,7 +22,7 @@ window.BRAND = {
   // ---- contact / links ----
   handle: "blakeytrades_support",  // Telegram support (t.me/<handle>)
   domain: "blakeytrades.com",      // used for calendar UIDs
-  logo: "assets/logo.png?v=92",         // Phantom co-brand crest (Welcome to BT)
+  logo: "assets/logo.png?v=96",         // Phantom co-brand crest (Higgsfield 4K upscale → 1024)
   signalIqLogo: "assets/signal-iq-logo.png?v=92",
   broker: "Vantage",               // IB partner broker — VIP is verified against the founder's IB client list
 
