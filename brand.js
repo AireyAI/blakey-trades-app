@@ -22,7 +22,7 @@ window.BRAND = {
   // ---- contact / links ----
   handle: "blakeytrades_support",  // Telegram support (t.me/<handle>)
   domain: "blakeytrades.com",      // used for calendar UIDs
-  logo: "assets/logo.png?v=96",         // Phantom co-brand crest (Higgsfield 4K upscale → 1024)
+  logo: "assets/logo-phantom.png?v=98",   // trimmed alpha crest (760×853 master)
   signalIqLogo: "assets/signal-iq-logo.png?v=92",
   broker: "Vantage",               // IB partner broker — VIP is verified against the founder's IB client list
 
@@ -78,7 +78,14 @@ window.BRAND = {
       "--gold:" + l_gold + ";--gold-rgb:" + l_rgb + ";--gold-hi:" + l_hi + ";--gold-deep:" + l_deep + ";" +
       "--gold-soft:rgba(" + l_rgb + ",0.14);--gold-line:rgba(" + l_rgb + ",0.30);--gold-foil:" + l_foil + ";" +
       "--glow-gold:0 0 0 1px rgba(" + l_rgb + ",0.20),0 18px 50px -22px rgba(" + l_rgb + ",0.20);" +
-      "--on-accent:" + onInk(l_gold) + ";}";
+      "--on-accent:" + onInk(l_gold) + ";}" +
+    /* the live lobby stays a dark room in light mode too — keep the DARK gold inside it */
+    "[data-theme=\"light\"] #live-lobby," +
+    "[data-theme=\"light\"] #live-stage{" +
+      "--gold:" + B.accent + ";--gold-rgb:" + d_rgb + ";--gold-hi:" + d_hi + ";--gold-deep:" + d_deep + ";" +
+      "--gold-soft:rgba(" + d_rgb + ",0.14);--gold-line:rgba(" + d_rgb + ",0.30);--gold-foil:" + d_foil + ";" +
+      "--glow-gold:0 0 0 1px rgba(" + d_rgb + ",0.22),0 20px 60px -20px rgba(" + d_rgb + ",0.28);" +
+      "--on-accent:" + onInk(B.accent) + ";}";
   var st = document.createElement("style");
   st.id = "brand-accent";
   st.textContent = css;

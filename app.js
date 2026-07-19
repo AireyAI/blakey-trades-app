@@ -21,6 +21,39 @@
     toastT = setTimeout(() => t.classList.remove("show"), 2200);
   }
 
+  // ---------- states: empty / loading / error / celebration (see styles.css "STATES") ----------
+  // emptyState({icon, tone, title, body, ctaLabel, ctaAttr}) — one designed pattern everywhere
+  function emptyState(o) {
+    return `<div class="empty-state">
+      <span class="state-icon ${o.tone || ""}">${ic(o.icon || "i-chart")}</span>
+      <b>${o.title}</b>
+      ${o.body ? `<p>${o.body}</p>` : ""}
+      ${o.ctaLabel ? `<button class="btn ${o.ctaGold === false ? "btn-ghost" : "btn-gold"}" ${o.ctaAttr || ""}>${o.ctaLabel}</button>` : ""}
+    </div>`;
+  }
+  // stateNote(msg, tone) — inline fail-loud strip ("warn" default, "info" alt)
+  function stateNote(msg, tone) { return `<div class="state-note ${tone || ""}">${ic(tone === "info" ? "i-bell" : "i-shield")}<span>${msg}</span></div>`; }
+  // skelRows(n) — shimmering placeholder list while async data lands
+  function skelRows(n) {
+    let h = "";
+    for (let i = 0; i < (n || 3); i++) h += `<div class="skel-row"><span class="skel skel-av"></span><span class="skel skel-text"></span></div>`;
+    return h;
+  }
+  // celebrateSheet({icon, big, title, sub, unlock, ctaLabel, onCta}) — level-up / streak moments.
+  // Gold ring sweep + haptic; deliberately no confetti (hard rule).
+  function celebrateSheet(o) {
+    openModal(`<div class="celebrate">
+      <div class="celeb-ring"><div class="celeb-core">${o.big || ic(o.icon || "i-trophy")}</div></div>
+      <h3>${o.title}</h3>
+      ${o.sub ? `<p class="celeb-sub">${o.sub}</p>` : ""}
+      ${o.unlock ? `<div class="celeb-unlock">${ic("i-check")}<span>${o.unlock}</span></div>` : ""}
+      <button class="btn btn-gold btn-block" id="celeb-cta">${o.ctaLabel || "Keep going"}</button>
+    </div>`);
+    haptic(28);
+    const cta = $("#celeb-cta");
+    if (cta) cta.onclick = () => { closeModal(); if (o.onCta) o.onCta(); };
+  }
+
   // ---------- premium feel: haptics + count-up ----------
   function reduceMotion() { try { return window.matchMedia("(prefers-reduced-motion:reduce)").matches; } catch (e) { return false; } }
   let _interacted = false;
@@ -95,7 +128,7 @@
     return `<div class="app-topbar"><img class="brand-word" src="${B.logo}" alt="${B.name}">${right || ""}</div>`;
   }
   function header(title, sub) {
-    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="tb-avatar" data-act="profile" aria-label="Profile">${av(D.user.initials, 30)}</button></div>`) +
+    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="account" aria-label="Account">${ic("i-settings")}</button><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="tb-avatar" data-act="profile" aria-label="Profile">${av(D.user.initials, 30)}</button></div>`) +
       `<div class="app-head"><div class="who"><div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div></div></div>`;
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
@@ -485,9 +518,13 @@
   function savePosts() { pSet({ posts: D.posts.slice(0, 60) }); } // newest-first feed — cap the persisted tail
   function getSetting(key, def) { const v = (pState().settings || {})[key]; return v != null ? v : def; }
   function setSetting(key, val) { pSet({ settings: { ...(pState().settings || {}), [key]: val } }); }
-  // ---- theme (dark default / light) ----
-  function currentTheme() { return getSetting("theme", "dark") === "light" ? "light" : "dark"; }
-  function applyTheme(t) { document.documentElement.dataset.theme = (t === "light" ? "light" : "dark"); }
+  // ---- theme (light default until the member picks dark) ----
+  function currentTheme() { return getSetting("theme", "light") === "dark" ? "dark" : "light"; }
+  function applyTheme(t) {
+    const resolved = t === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = resolved;
+    if (window.ReactNativeWebView) { try { window.ReactNativeWebView.postMessage("theme:" + resolved); } catch (e) {} }
+  }
   function toggleTheme() { const next = currentTheme() === "light" ? "dark" : "light"; setSetting("theme", next); applyTheme(next); return next; }
   // 300ms opacity dip so the theme swap doesn't hard-snap every surface at once
   function themeFade(after) {
@@ -587,8 +624,9 @@
   function playSplashExit(then) {
     const sp = $("#screen-splash");
     if (!sp) { then && then(); signalFloorReady(); return; }
-    sp.classList.add("splash-out");
-    setTimeout(() => { sp.remove(); then && then(); signalFloorReady(); }, 720);
+    then && then(); // paint the floor beneath FIRST — the splash dissolves into live content, never a black gap
+    requestAnimationFrame(() => requestAnimationFrame(() => sp.classList.add("splash-out")));
+    setTimeout(() => { sp.remove(); signalFloorReady(); }, 860);
   }
 
   // ---- VIP re-verification: a linked account must stay funded + re-confirm periodically, not unlock VIP forever on one link ----
@@ -648,9 +686,23 @@
     let leveled = false;
     while (xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.round(xpNext * 1.2 / 50) * 50; leveled = true; }
     s.xp = xp; s.level = level; s.xpNext = xpNext; pSave(s);
-    if (leveled) setTimeout(() => toast(`Level up! You're Level ${level} · ${tierName(level)}`, "i-trophy"), 650);
+    if (leveled) setTimeout(() => celebrateSheet({
+      big: String(level),
+      title: `Level ${level} · ${tierName(level)}`,
+      sub: TIER_LINES[tierName(level)] || "Every session, every logged trade — it's compounding.",
+      ctaLabel: "Keep climbing",
+    }), 650);
     return leveled;
   }
+  const TIER_LINES = {
+    Rookie: "You're in. Every logged trade builds the foundation.",
+    Developing: "Consistency is forming — keep showing up.",
+    Consistent: "You do the boring work daily. That's the whole secret.",
+    Disciplined: "Risk first, profit second — you trade the plan.",
+    Sharp: "Your edge is measurable now. Protect it.",
+    Elite: "Top of the floor — the room learns from your journal.",
+    Master: "The standard. Few get here.",
+  };
   // ── believable demo sign-in (persisted session) ──
   function isSignedIn() { const s = pState(); return !!(s.session && s.session.signedIn); }
   function setSignedIn(provider) { pSet({ session: { provider: provider || "phone", signedIn: true, at: Date.now() } }); }
@@ -864,7 +916,7 @@
         down.classList.toggle("on", next === "down");
         const n = up.querySelector(".num"); if (n) n.textContent = tookBase(id) + (next === "up" ? 1 : 0);
       }
-      if (next === "up") openLogTrade(signalPrefill(D.ideas.find(x => x.id === id)));
+      if (next === "up") { haptic(18); openLogTrade(signalPrefill(D.ideas.find(x => x.id === id))); }
       else toast(next === "down" ? "Marked as not taken" : "Cleared", null);
     });
   }
@@ -903,7 +955,7 @@
           <span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         <span class="idea-top-r">${st}${i.status === "running" ? `<span class="pl-chip" data-openpl="${i.id}"></span>` : ""}</span>
       </div>
-      <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas>
+      <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}" role="img" aria-label="${i.pair} ${i.dir} setup chart — entry ${i.entry}, stop ${i.sl}, target ${i.tp}"></canvas>
         ${i.channel === "iq" ? `<span class="sig-src bot">💻 EMA Trader</span>` : ""}
         <span class="sig-live">${ic("i-chart", "ic")} Live chart ›</span></div>
       <div class="ticket">
@@ -1004,7 +1056,16 @@
     return true;
   }
   function checkStreakEarned() { // call after any action that can complete the last daily goal
-    if (maybeExtendStreak()) setTimeout(() => toast(`Streak extended — ${profStreak()} days 🔥`, "i-flame"), 800);
+    if (!maybeExtendStreak()) return;
+    const n = profStreak();
+    if ([7, 14, 30, 50, 100, 200, 365].includes(n)) {
+      setTimeout(() => celebrateSheet({
+        icon: "i-flame",
+        title: `${n}-day streak`,
+        sub: n === 7 ? "A full week of showing up. Most traders never do this." : `${n} straight days on ${B.floor}. Come back tomorrow — the streak is yours to lose.`,
+        ctaLabel: "See you tomorrow",
+      }), 800);
+    } else setTimeout(() => toast(`Streak extended — ${n} days 🔥`, "i-flame"), 800);
   }
 
   SCREENS.office = function () {
@@ -1440,7 +1501,7 @@
   function liveStageHtml(v, preview) {
     const ci = liveCallInfo() || { host: v.host, initials: v.hostInitials, session: v.session };
     return `<div id="live-stage"${preview ? ' class="is-preview"' : ''}>
-        <canvas id="live-canvas" data-chart="live"></canvas>
+        <canvas id="live-canvas" data-chart="live" role="img" aria-label="Live gold chart — entry, stop and target levels shown below"></canvas>
         <div class="live-grad"></div>
         <div class="live-hud">
           ${preview
@@ -1468,7 +1529,7 @@
   }
   function liveLobbyHtml(nc) {
     return `<div id="live-lobby">
-        <canvas class="market-bg" data-chart="ambient" data-seed="9"></canvas>
+        <canvas class="market-bg" data-chart="ambient" data-seed="9" aria-hidden="true"></canvas>
         <div class="lobby-inner">
           <span class="pill pill-gold">${ic("i-live","ic")} ${nc && nc.passed ? "Today's session" : "Next live call"}</span>
           <h2 class="lobby-title">${nc ? nc.session : "Live trading room"}</h2>
@@ -1667,6 +1728,19 @@
   // money formatter — result values are profit/loss in the community's currency
   function money(v, signed = true) { const n = Math.round(v || 0), c = B.ccy || "£"; const sign = n > 0 ? (signed ? "+" : "") : n < 0 ? "-" : ""; return sign + c + Math.abs(n).toLocaleString(); }
   function resStr(j) { return j.outcome === "be" ? "BE" : money(j.r); }
+  // plain-English risk framing for a signal: "Risking 12.5 pts to target 37.5 — 1 : 3.0"
+  function riskLine(i) {
+    const num = s => parseFloat(String(s == null ? "" : s).replace(/,/g, ""));
+    const e = num(i.entry), sl = num(i.sl);
+    if (!isFinite(e) || !isFinite(sl)) return "";
+    const risk = Math.abs(e - sl); if (!risk) return "";
+    const tps = ((i.tps && i.tps.length) ? i.tps : [i.tp]).map(num).filter(isFinite);
+    if (!tps.length) return "";
+    const fmt = v => (v >= 100 ? v.toFixed(0) : v.toFixed(1));
+    const rewards = tps.map(t => Math.abs(t - e));
+    const best = Math.max(...rewards) / risk;
+    return `<div class="risk-line">${ic("i-shield", "ic")}<span>Risking <b class="num">${fmt(risk)}</b> pts to make <b class="num">${fmt(rewards[0])}${rewards.length > 1 ? "–" + fmt(rewards[rewards.length - 1]) : ""}</b> — <b class="num">1 : ${best.toFixed(1)}</b> at full target</span></div>`;
+  }
   function badTag(t) { return /FOMO|Chased|Off-plan|Counter|Review/i.test(t); }
   function journalStats() {
     const J = D.journal;
@@ -1678,10 +1752,10 @@
     const avgRR = winR.length ? winR.reduce((a, b) => a + b, 0) / winR.length : 0;
     return { wins, losses, wr, winRate: wr, netR, pf: gL ? gW / gL : gW, count: J.length, avgRR };
   }
-  function journalCard(j) {
+  function journalCard(j, idx) {
     const pill = j.outcome === "win" ? `<span class="pill pill-up">${resStr(j)}</span>` : j.outcome === "loss" ? `<span class="pill pill-down">${resStr(j)}</span>` : `<span class="pill">BE</span>`;
     const from = j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · ${j.channel}` : "";
-    return `<button class="as-btn card jcard" data-jentry="${j.id}">
+    return `<button class="as-btn card jcard reveal" style="animation-delay:${Math.min((idx || 0) * 45, 270)}ms" data-jentry="${j.id}">
       <div class="jc-top">
         <div class="jc-pair">${ic("i-chart","ic")}<b>${j.pair}</b><span class="idea-dir ${j.dir}">${j.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         ${pill}
@@ -1729,7 +1803,7 @@
         <div class="edge-set"><span>${ic("i-check","ic")} Best setup</span><b>${setups[0].k}</b><small class="num up">${money(setups[0].avg)} avg · ${setups[0].n}</small></div>
         ${setups.length > 1 ? `<div class="edge-set"><span>${ic("i-thumbdown","ic")} Weakest</span><b>${setups[setups.length - 1].k}</b><small class="num ${setups[setups.length - 1].avg < 0 ? "down" : ""}">${money(setups[setups.length - 1].avg)} avg · ${setups[setups.length - 1].n}</small></div>` : ""}
       </div>` : ""}
-      <div class="edge-histo" role="img" aria-label="Distribution of trade results in ${B.ccy || "£"}">${buckets.map((b, n) => `<div class="eh-col"><i style="transform:scaleY(${b / maxB})" class="${n < 2 ? "neg" : n === 2 ? "" : "pos"}"></i><small>${labels[n]}</small></div>`).join("")}</div>
+      <div class="edge-histo" role="img" aria-label="Distribution of trade results in ${B.ccy || "£"}">${buckets.map((b, n) => `<div class="eh-col"><b class="eh-n num">${b || ""}</b><i style="transform:scaleY(${b / maxB})" class="${n < 2 ? "neg" : n === 2 ? "" : "pos"}"></i><small>${labels[n]}</small></div>`).join("")}</div>
       ${insight ? `<p class="edge-insight">${insight}</p>` : ""}
     </div>`;
   }
@@ -1743,18 +1817,25 @@
         <div class="jstat"><b class="num">${s.count}</b><small>Trades</small></div>
         <div class="jstat"><b class="num">${s.pf.toFixed(1)}</b><small>Profit factor</small></div>
       </div>
-      <div class="card card-pad equity-card">
+      <div class="card card-pad equity-card reveal">
         <div class="eq-head"><span class="eyebrow">Equity curve · ${B.ccy || "£"}</span><span class="num ${s.netR >= 0 ? "up" : "down"}" style="font-size:13px">${money(s.netR)}</span></div>
-        <canvas id="equity-cv"></canvas>
+        <canvas id="equity-cv" role="img" aria-label="Equity curve — net ${money(s.netR)} across ${s.count} logged trades"></canvas>
       </div>
       ${edgeCard()}
       <button class="btn btn-gold btn-block" data-log style="margin:14px 0 2px">${ic("i-plus")} Log a trade</button>
       <div class="chips" id="jfilters">${["All", "Wins", "Losses"].map(f => `<button class="chip ${f === journalFilter ? "active" : ""}" data-jf="${f}" aria-pressed="${f === journalFilter}">${f}</button>`).join("")}</div>
-      <div id="journal-list">${items.length ? items.map(journalCard).join("") : `<p class="sub" style="text-align:center;padding:30px 0">No trades here yet — tap “Log a trade”.</p>`}</div>
+      <div id="journal-list">${items.length ? items.map(journalCard).join("") : emptyState({
+        icon: "i-book",
+        title: journalFilter === "All" ? "No trades logged yet" : `No ${journalFilter.toLowerCase()} here yet`,
+        body: journalFilter === "All" ? "Log your first trade — 30 seconds, and your equity curve starts today." : "Try a different filter, or log your next trade.",
+        ctaLabel: journalFilter === "All" ? "Log a trade" : null,
+        ctaAttr: "data-log-empty",
+      })}</div>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Your private journal. Educational only — not financial advice.</p>
       <div class="spacer"></div>`;
     const cv = $("#equity-cv"); if (cv && Charts.drawEquity) { const rs = D.journal.map(j => j.r).slice().reverse(); requestAnimationFrame(() => Charts.drawEquity(cv, rs)); }
     $("[data-log]").onclick = openLogTrade;
+    const le = $("[data-log-empty]"); if (le) le.onclick = openLogTrade;
     [...document.querySelectorAll("#jfilters .chip")].forEach(c => c.onclick = () => { journalFilter = c.dataset.jf; renderCircle(); });
     [...document.querySelectorAll("[data-jentry]")].forEach(n => n.onclick = () => openJournalEntry(n.dataset.jentry));
   }
@@ -2284,6 +2365,14 @@
     m.onclick = (e) => { if (e.target === m) closeModal(); };       // tap dimmed area
     const grab = m.querySelector(".sheet-grab"); if (grab) grab.onclick = closeModal; // tap handle
     wireSheetDrag(m.querySelector(".sheet"));                       // swipe-down to dismiss
+    m.onkeydown = (e) => {                                          // focus trap — Tab cycles inside the sheet
+      if (e.key !== "Tab") return;
+      const f = [...m.querySelectorAll('button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === first || !m.contains(at))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (at === last || !m.contains(at))) { e.preventDefault(); first.focus(); }
+    };
     return m;
   }
   // native-feel drag-to-dismiss: pull the sheet down (from the top zone, or anywhere when scrolled to top)
@@ -2421,6 +2510,8 @@
       <div class="rp-bar" id="rp-bar" hidden><input type="range" class="fd-slider" id="rp-scrub" min="0" max="1000" value="0" aria-label="Scrub through the trade replay"></div>
       ${canReplay ? `<button class="btn btn-ghost btn-block" id="rp-btn" style="margin-top:12px">${ic("i-play")} Replay this call</button>` : ""}
       ${post}
+      ${riskLine(i)}
+      <button class="btn btn-ghost btn-block" id="size-btn" style="margin-top:12px">${ic("i-calc")} Size this trade</button>
       ${canPaper ? `<button class="btn btn-ghost btn-block" id="pp-btn" style="margin-top:14px">${ic("i-shield")} Paper trade this idea</button>` : ""}
       <span class="eyebrow" style="display:block;margin:16px 0 6px">The reasoning</span>
       <p class="sub">${linkTerms(i.note)}</p>
@@ -2429,6 +2520,8 @@
     `);
     wireTook();
     mountTV("tv-" + i.id);
+    const sb = $("#size-btn");
+    if (sb) sb.onclick = () => openCalc({ entry: String(i.entry).replace(/,/g, ""), sl: String(i.sl).replace(/,/g, "") });
     // ---- replay: scrub through the trade's life, updates firing in sync ----
     const rb = $("#rp-btn");
     if (rb) rb.onclick = () => {
@@ -2652,12 +2745,13 @@
     ];
     return `<div class="tools-row">${tools.map(t => `<button class="tool-tile" data-act="${t.act}">${ic(t.ic)}<span>${t.label}</span></button>`).join("")}</div>`;
   }
-  function openCalc() {
+  function openCalc(pre) {
+    pre = pre || {};
     openModal(`
       <h3 class="sheet-title">Risk calculator</h3><p class="sheet-sub">Position size from your risk — XAUUSD.</p>
       <label class="flabel">Account balance ($)</label><input class="finput num" id="c-bal" inputmode="decimal" value="10000">
       <label class="flabel">Risk per trade (%)</label><input class="finput num" id="c-risk" inputmode="decimal" value="1">
-      <div class="calc-2"><div><label class="flabel">Entry</label><input class="finput num" id="c-entry" inputmode="decimal" value="4026.5"></div><div><label class="flabel">Stop loss</label><input class="finput num" id="c-sl" inputmode="decimal" value="4014.0"></div></div>
+      <div class="calc-2"><div><label class="flabel">Entry</label><input class="finput num" id="c-entry" inputmode="decimal" value="${pre.entry || "4026.5"}"></div><div><label class="flabel">Stop loss</label><input class="finput num" id="c-sl" inputmode="decimal" value="${pre.sl || "4014.0"}"></div></div>
       <div id="calc-out"></div>`);
     const numVal = el => parseFloat(String(el.value).replace(/,/g, "")) || 0; // prices get typed with commas — "4,026.5" must not parse as 4
     const calc = () => {
@@ -2986,7 +3080,7 @@
     return `<div class="card idea sig-locked" data-lockvip>
       <div class="sl-blur" aria-hidden="true">
         <div class="idea-top"><div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${i.pair}</span><span class="idea-dir ${i.dir}">${i.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div><span class="pill pill-gold"><span class="dot-live"></span> LIVE</span></div>
-        <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}"></canvas></div>
+        <div class="sig-chart"><canvas data-chart="signal" data-seed="${(i.id.charCodeAt(0) + (i.id.charCodeAt(1) || 0)) * 3}" data-e="${i.entry.replace(/,/g, "")}" data-sl="${i.sl.replace(/,/g, "")}" data-tp="${i.tp.replace(/,/g, "")}" data-dir="${i.dir}" role="img" aria-label="${i.pair} ${i.dir} setup chart — entry ${i.entry}, stop ${i.sl}, target ${i.tp}"></canvas></div>
         <div class="ticket"><div class="cell"><small>Entry</small><b class="num">4,0••–4,0••</b></div><div class="cell sl"><small>Stop</small><b class="num">4,0••</b></div><div class="cell tp"><small>Target</small><b class="num">4,0••</b></div></div>
       </div>
       <div class="sl-lock"><div class="sl-lock-ic">${ic("i-shield", "ic")}</div><b>Live signal · members only</b><small>Live entries are for verified members — ${IB ? `link your ${B.broker} account` : "unlock VIP"} to see the entry, stop &amp; targets.</small><div class="sl-meta"><span class="dot-live"></span>Posted 4m ago · <span data-vipviewers>87</span> watching now</div><span class="btn btn-gold btn-sm sl-cta">Unlock VIP</span></div>
@@ -3305,6 +3399,11 @@
     [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
+    // account: native shell owns sign-out → bridge to its settings screen; plain web gets the in-app sheet
+    [...document.querySelectorAll("[data-act=account]")].forEach(n => n.onclick = () => {
+      if (window.ReactNativeWebView) { try { window.ReactNativeWebView.postMessage("open-settings"); } catch (e) {} }
+      else openSettings();
+    });
     [...document.querySelectorAll("[data-act=search]")].forEach(n => n.onclick = openLearnSearch);
     [...document.querySelectorAll("[data-act=calc]")].forEach(n => n.onclick = openCalc);
     [...document.querySelectorAll("[data-act=calendar]")].forEach(n => n.onclick = openCalendar);
@@ -3337,10 +3436,17 @@
     { id: "community", label: "Journal", icon: "i-book" },
     { id: "hubs", label: "Hubs", icon: "i-hub" },
   ];
+  // live-tab cue: dot only when a call is on NOW or starts within 15 min — a permanent dot trains members to ignore it
+  function liveTabCue() {
+    if (isLiveNow()) return true;
+    const nc = nextCall();
+    return !!(nc && !nc.passed && nc.startsIn > 0 && nc.startsIn <= 900);
+  }
   function renderTabbar() {
+    const cue = liveTabCue();
     $("#tabbar").innerHTML = TABS.map(t =>
-      `<button class="tab ${t.live ? "live-tab" : ""} ${t.id===activeTab?"active":""}" data-tab="${t.id}" aria-current="${t.id===activeTab?"page":"false"}">
-        <span class="tab-cluster">${ic(t.icon)}${t.live ? '<span class="dot"></span>' : ""}</span>${t.label}</button>`).join("");
+      `<button class="tab ${t.live ? "live-tab" : ""} ${t.id===activeTab?"active":""}" data-tab="${t.id}" aria-current="${t.id===activeTab?"page":"false"}"${t.live && cue ? ' aria-label="Live — a call is on or starting soon"' : ""}>
+        <span class="tab-cluster">${ic(t.icon)}${t.live && cue ? '<span class="dot"></span>' : ""}</span>${t.label}</button>`).join("");
     [...document.querySelectorAll("#tabbar .tab")].forEach(b => b.onclick = () => go(b.dataset.tab));
   }
 
@@ -3349,7 +3455,7 @@
     const el = document.createElement("div");
     el.className = "login"; el.id = "login";
     el.innerHTML = `
-      <canvas class="market-bg" data-chart="ambient" data-seed="12"></canvas>
+      <canvas class="market-bg" data-chart="ambient" data-seed="12" aria-hidden="true"></canvas>
       <div class="login-top">
         <img class="login-wordmark" src="${B.logo}" alt="${B.name}">
         <h1 class="h1">${B.tagline}</h1>
@@ -3511,7 +3617,7 @@
         window.__btBootNativeObs.observe(document.documentElement, { childList: true, subtree: true });
       }
     }
-    applyTheme(getSetting("theme", "dark"));
+    applyTheme(getSetting("theme", "light"));
     try { history.replaceState({ t: "home" }, ""); } catch (e) {}
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#modal").classList.contains("open")) closeModal(); });
     document.addEventListener("click", (e) => { const t = e.target.closest && e.target.closest(".gterm"); if (t) { e.stopPropagation(); showGloss(t.dataset.gterm); } }, true);
@@ -3530,6 +3636,7 @@
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
     Charts.initIn(document); // splash ambient
+    setInterval(() => { if ($("#tabbar").children.length) renderTabbar(); }, 60000); // live-tab cue follows the schedule
     const jump = new URLSearchParams(location.search).get("screen");
     const isNative = /(?:^|[?&])native=1(?:&|$)/.test(location.search);
     if (jump && SCREENS[jump]) {
@@ -3540,8 +3647,8 @@
         const sp = $("#screen-splash");
         if (sp) sp.remove();
         enter();
-        // Brief beat so native crest finishes its entrance before revealing the floor
-        setTimeout(signalFloorReady, 1600);
+        // Brief beat so the native loader finishes its entrance before revealing the floor
+        setTimeout(signalFloorReady, 900);
       } else if ($("#screen-splash")) {
         setTimeout(() => playSplashExit(enter), 400);
       } else {
@@ -3553,10 +3660,10 @@
       playSplashExit(() => {
         if (isSignedIn() && hasCompletedWelcome()) {
           renderTabbar(); go("home");
-          setTimeout(() => toast(`Welcome back, ${D.user.first}`, "i-check"), 450);
+          setTimeout(() => toast(`Welcome back, ${D.user.first}`, "i-check"), 1000);
         } else showLogin();
       });
-    }, 1700);
+    }, 1400);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 

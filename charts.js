@@ -382,19 +382,35 @@
     const span = pts.length - 1;
     const X = i => span === 0 ? w / 2 : 3 + i / span * (w - 6);
     const Y = v => h - 6 - (v - lo) / rng * (h - 16);
+    // smooth path through every real point — quadratic through segment midpoints (same family
+    // as the signal charts): passes through each logged value, no invented dips or peaks
+    const trace = (n) => {
+      ctx.beginPath();
+      ctx.moveTo(X(0), Y(pts[0]));
+      for (let i = 1; i < n - 1; i++) {
+        const mx = (X(i) + X(i + 1)) / 2, my = (Y(pts[i]) + Y(pts[i + 1])) / 2;
+        ctx.quadraticCurveTo(X(i), Y(pts[i]), mx, my);
+      }
+      if (n > 1) ctx.lineTo(X(n - 1), Y(pts[n - 1]));
+    };
     const paint = (upto) => {
       const n = Math.max(1, Math.min(pts.length, Math.ceil(upto)));
-      const slice = pts.slice(0, n);
+      const frac = Math.max(0, Math.min(1, (upto - 1) / Math.max(1, pts.length - 1)));
       ctx.clearRect(0, 0, w, h);
       ctx.strokeStyle = "rgba(237,237,232,0.09)"; ctx.lineWidth = 1;
       const zy = Y(0); ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
-      ctx.beginPath(); slice.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
-      ctx.lineTo(X(slice.length - 1), h); ctx.lineTo(X(0), h); ctx.closePath();
+      // clip the smoothed path to the animated frontier so the draw-in is continuous, not point-by-point
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, X(0) + frac * (X(pts.length - 1) - X(0)) + 2, h); ctx.clip();
+      trace(n);
+      ctx.lineTo(X(n - 1), h); ctx.lineTo(X(0), h); ctx.closePath();
       const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "rgba(" + GOLD_RGB + ",0.3)"); g.addColorStop(1, "rgba(" + GOLD_RGB + ",0)");
       ctx.fillStyle = g; ctx.fill();
-      ctx.beginPath(); slice.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)));
-      ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.shadowColor = "rgba(" + GOLD_RGB + ",.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
-      if (n >= pts.length) {
+      trace(n);
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(" + GOLD_RGB + ",.5)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.restore();
+      if (upto >= pts.length) {
         const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
         ctx.fillStyle = GOLD_HI; ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, 7); ctx.fill();
       }

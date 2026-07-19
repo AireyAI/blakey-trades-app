@@ -40,6 +40,17 @@
   --down:#F0565B;
   --live:#FF4D4D;
 
+  /* ---- states: semantic feedback (empty / loading / success / warning / info) ---- */
+  --ok:var(--up);
+  --ok-soft:rgba(63,191,127,0.12);
+  --warn:#E8A33D;
+  --warn-rgb:232,163,61;
+  --warn-soft:rgba(232,163,61,0.12);
+  --info:#5EA8E8;
+  --info-rgb:94,168,232;
+  --info-soft:rgba(94,168,232,0.12);
+  --skel-sweep:rgba(255,255,255,0.07);
+
   /* ---- type — Research Desk recipe (same families, tighter display rhythm) ---- */
   --display:"Sora",system-ui,sans-serif; /* bold display — weights 700–800 */
   --body:"Outfit",system-ui,sans-serif;
@@ -115,6 +126,15 @@
   --up:#0B7C49;
   --down:#D23A3F;
 
+  --ok-soft:rgba(11,124,73,0.10);
+  --warn:#9A6A14;
+  --warn-rgb:154,106,20;
+  --warn-soft:rgba(154,106,20,0.10);
+  --info:#2B6CB8;
+  --info-rgb:43,108,184;
+  --info-soft:rgba(43,108,184,0.10);
+  --skel-sweep:rgba(22,20,14,0.06);
+
   --sh-1:0 6px 22px -12px rgba(22,20,14,0.18);
   --sh-2:0 18px 50px -22px rgba(22,20,14,0.22);
   --elev-1:inset 0 1px 0 rgba(255,255,255,.55);
@@ -122,4 +142,21 @@
   --elev-3:inset 0 1px 0 rgba(255,255,255,.85),0 22px 50px -22px rgba(22,20,14,.26);
   --glow-gold:0 0 0 1px rgba(154,123,46,0.20),0 18px 50px -22px rgba(154,123,46,0.20);
   --glass-bg:rgba(255,255,255,0.78);
+}
+
+/* The live lobby is a cinematic dark room in BOTH themes — re-darken the neutral
+   tokens inside it so light-mode text never lands on the dark stage unreadably.
+   Gold tokens are re-darkened by brand.js (kept reskinnable from BRAND.accent). */
+[data-theme="light"] #live-lobby,
+[data-theme="light"] #live-stage{
+  --text:#F3F3F1;
+  --text-2:#D6D6DA;
+  --muted:#9A9AA6;
+  --faint:#82828E;
+  --surface-2:#111116;
+  --surface-3:#191920;
+  --surface-4:#22222b;
+  --line:rgba(255,255,255,0.09);
+  --line-2:rgba(255,255,255,0.14);
+  --hairline:rgba(255,255,255,0.11);
 }
