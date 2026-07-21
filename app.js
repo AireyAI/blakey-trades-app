@@ -7,7 +7,14 @@
   const ic = (id, cls) => `<svg class="${cls || ""}"><use href="#${id}"/></svg>`;
 
   function tgSupportUrl() { return `https://t.me/${B.handle}`; }
-  function openTgSupport() { window.open(tgSupportUrl(), "_blank", "noopener"); }
+  /** Native WebView: postMessage → RN Linking.openURL (window.open breaks the floor). */
+  function openExternalUrl(url) {
+    if (window.ReactNativeWebView) {
+      try { window.ReactNativeWebView.postMessage("open-url:" + url); return; } catch (e) {}
+    }
+    window.open(url, "_blank", "noopener");
+  }
+  function openTgSupport() { openExternalUrl(tgSupportUrl()); }
   function telegramOnboardCard(opts) {
     opts = opts || {};
     const compact = opts.compact;
@@ -2682,7 +2689,7 @@
     });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
-    const sup = $('[data-act="support"]'); if (sup) sup.onclick = () => window.open(`https://t.me/${B.handle}`, "_blank", "noopener");
+    const sup = $('[data-act="support"]'); if (sup) sup.onclick = openTgSupport;
     const themeBtn = $('[data-act="theme"]'); if (themeBtn) themeBtn.onclick = () => themeFade(t => { toast(t === "light" ? "Light mode on" : "Dark mode on", "i-moon"); SCREENS.profile(); });
     const acctBtn = $('[data-act="account"]'); if (acctBtn) acctBtn.onclick = openAccountSecurity;
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
