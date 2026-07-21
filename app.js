@@ -6,6 +6,19 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const ic = (id, cls) => `<svg class="${cls || ""}"><use href="#${id}"/></svg>`;
 
+  function tgSupportUrl() { return `https://t.me/${B.handle}`; }
+  function openTgSupport() { window.open(tgSupportUrl(), "_blank", "noopener"); }
+  function telegramOnboardCard(opts) {
+    opts = opts || {};
+    const compact = opts.compact;
+    const title = opts.title || "All signals live on Telegram";
+    const body = opts.body || `Trade calls are posted in our Telegram channels — not in this app. Message ${B.name} Support to get onboarded and added to your groups.`;
+    return `<div class="tg-onboard${compact ? " tg-onboard-compact" : ""}">
+      <div class="tg-onboard-top">${ic("i-tg", "tg-onboard-ic")}<div class="tg-onboard-tx"><b>${title}</b><small>${body}</small></div></div>
+      <button type="button" class="btn btn-gold btn-block tg-onboard-cta" data-act="tg-support">${ic("i-tg")} Contact @${B.handle}</button>
+    </div>`;
+  }
+
   function av(initials, size, opt) {
     size = size || 36; const cls = ["av", "av-" + size]; let style = "";
     if (opt === "quiet") cls.push("av-quiet");
@@ -110,7 +123,7 @@
     haptic(8);
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
-    if (tab === "signals") { setSetting("sigDay", ymd()); checkStreakEarned(); } // daily-goal signal
+    if (tab === "signals") { setSetting("sigDay", ymd()); checkStreakEarned(); }
     if (!_navSilent) { try { history.pushState({ t: tab }, ""); } catch (e) {} }
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => { t.classList.toggle("active", t.dataset.tab === tab); t.setAttribute("aria-current", t.dataset.tab === tab ? "page" : "false"); });
@@ -128,8 +141,10 @@
     return `<div class="app-topbar"><img class="brand-word" src="${B.logo}" alt="${B.name}">${right || ""}</div>`;
   }
   function header(title, sub) {
-    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="account" aria-label="Account">${ic("i-settings")}</button><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="tb-avatar" data-act="profile" aria-label="Profile">${av(D.user.initials, 30)}</button></div>`) +
-      `<div class="app-head"><div class="who"><div><small>${sub || greeting()}</small><b>${title || D.user.name}</b></div></div></div>`;
+    const displayName = title || D.user.name;
+    const greet = sub || greeting();
+    return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="icon-btn" data-act="account" aria-label="Account">${ic("i-settings")}</button><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button>${storyTopBtn()}</div>`) +
+      `<div class="app-head"><button type="button" class="who who-profile" data-act="profile" aria-label="Open profile"><span class="who-copy"><small>${greet}</small><span class="who-name-row"><b>${displayName}</b>${ic("i-chev", "who-chev")}</span></span></button></div>`;
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
 
@@ -710,6 +725,10 @@
 
   // ============================ "TODAY ON THE FLOOR" STORIES ============================
   const ymd = () => new Date().toLocaleDateString("en-CA");
+  function storyTopBtn() {
+    const seen = getSetting("storySeen", "") === ymd();
+    return `<button type="button" class="icon-btn story-top-btn" data-act="story" aria-label="Today on ${B.floor}${seen ? ", replay recap" : ", daily recap"}"><span class="story-ring story-ring-sm ${seen ? "seen" : ""}"><span class="story-dot">${ic("i-flame")}</span></span></button>`;
+  }
   function storyStrip() {
     const seen = getSetting("storySeen", "") === ymd();
     return `<button class="story-strip reveal" data-act="story">
@@ -721,12 +740,11 @@
   function storyCards() {
     const bd = briefData ? briefData() : null;
     const nc = nextCall();
-    const todays = D.ideas.filter(i => /Today|ago|Active|Auto/.test(i.time || ""));
     const w = D.traderOfWeek, ch = liveChallenge();
     const cards = [];
     const pts = (bd && bd.points) || [];
     cards.push({ eyebrow: "Morning brief", h: (bd && bd.headline) || "Mapping today's session", body: `${bd && bd.bias ? `<span class="pill pill-gold" style="margin-bottom:14px">${bd.bias}</span>` : ""}${pts.slice(0, 2).map(p => `<p><b style="color:var(--gold)">${p.label}</b> — ${p.text}</p>`).join("")}` });
-    cards.push({ eyebrow: "Signals today", h: `${todays.length} calls on the floor`, body: `<div class="st-sigs">${todays.slice(0, 4).map(i => `<div class="st-sig"><span>${i.pair} ${i.dir === "long" ? "▲" : "▼"}</span><b class="num ${i.status === "tp" ? "up" : i.status === "sl" ? "down" : ""}">${i.status === "tp" ? "Hit TP " + i.result : i.status === "sl" ? "Stopped " + i.result : i.status === "be" ? "BE" : "Running"}</b></div>`).join("")}</div>` });
+    cards.push({ eyebrow: "Trade signals", h: "Live on Telegram", body: `<p>Every call is posted in our Telegram channels. Tap <b>Signals</b> in the app, then message <b>@${B.handle}</b> to get onboarded.</p>`, cta: { label: "Open Signals tab", go: "signals" } });
     if (nc) cards.push({ eyebrow: nc.passed ? "Today's session" : "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${callDayLabel(nc)} ${nc.at}</div>`, cta: { label: nc.passed ? "Watch the replay" : "Set a reminder", go: nc.passed ? "learn" : "live" } });
     cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><div class="st-big num up">${w.ret}</div><p>${w.winRate} win rate · ${w.trades} trades</p>` });
     cards.push({ eyebrow: "Monthly challenge", h: "Journal every trade", body: `<div class="st-big num gold-text">${ch.done}<small style="font-size:22px">/${ch.total}</small></div><p>days logged — keep the streak alive</p>`, cta: { label: "Log a trade", go: "community" } });
@@ -779,6 +797,7 @@
       checkStreakEarned();
       el.classList.remove("show"); setTimeout(() => el.remove(), 380);
       const strip = document.querySelector(".story-strip .story-ring"); if (strip) strip.classList.add("seen");
+      document.querySelectorAll(".story-top-btn .story-ring").forEach(el => el.classList.add("seen"));
       document.removeEventListener("keydown", onKey);
     }
     const onKey = (e) => { if (e.key === "Escape") close(); else if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1); };
@@ -797,13 +816,10 @@
   SCREENS.home = function () {
     const v = D.live;
     const nc = nextCall() || { ...(D.schedule[0] || { session: "Live trading", host: "the team", day: "Mon", at: "" }), startsIn: 0 };
-    const ideas = D.ideas[0];
     const watching = D.videos.filter(x => getVideoProgress(x.id) > 0);
     setScreen(`
       ${header()}
-      ${bookCard()}
       ${marketBar()}
-      ${storyStrip()}
       ${deskCard()}
       ${morningBriefCard()}
       <div class="live-banner reveal">
@@ -837,8 +853,8 @@
       <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community" data-seg="community">Open ›</span></div>
       ${floorCard()}
 
-      <div class="section-head"><span class="h2">Today's idea</span><span class="more" data-act="ideas">All signals ›</span></div>
-      ${(effectiveTier() === "free" && ideas.status === "running") ? lockedSignalCard(ideas) : ideaCard(ideas)}
+      <div class="section-head"><span class="h2">Trade signals</span><span class="more" data-tab="signals">Channels ›</span></div>
+      ${telegramOnboardCard({ compact: true })}
 
       <div class="section-head"><span class="h2">Trader of the week</span><span class="more" data-tab="community">View ›</span></div>
       ${totwMini()}
@@ -885,7 +901,6 @@
     const jl = $("[data-act=joinlive]"); if (jl) jl.onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
     const rm2 = $("[data-act=remind]"); if (rm2) rm2.onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
     const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
-    const hlk = $("[data-lockvip]"); if (hlk) hlk.onclick = IB ? openVerifyBroker : openMembership;
     const beq = $("#book-eq"); if (beq && Charts.drawEquity) requestAnimationFrame(() => Charts.drawEquity(beq, D.journal.map(j => j.r).slice().reverse()));
     mountMarketBar();
   };
@@ -983,12 +998,6 @@
   }
 
   // ---- "Your desk" — the member's personalised daily briefing ----
-  function copierState() {
-    const tier = effectiveTier();
-    if (tier === "free") return { code: "verify", label: vipLapsed() ? "Re-verify to unlock ›" : "Verify to unlock ›", cls: "gold-tx" };
-    const today = (D.copierTrades || []).filter(t => /Today/.test(t.time)).length;
-    return { code: "on", label: today ? `${today} trade${today > 1 ? "s" : ""} today ›` : "Live ✓", cls: "up" };
-  }
   function unreadAnnouncements() { return Math.max(0, D.announcements.length - getSetting("annSeen", 0)); }
   // ---- the book card — the member's P&L cast in bullion: the one physical object on Home ----
   function bookCard() {
@@ -1008,17 +1017,15 @@
     </button>`;
   }
   function deskCard() {
-    const js = journalStats(), cp = copierState(), nc = nextCall();
-    const sigsToday = D.channels.reduce((s, c) => s + (c.today || 0), 0);
+    const js = journalStats(), nc = nextCall();
     const healthy = js.pf >= 1 && js.netR >= 0;
     const when = nc ? (nc.passed ? "Replay soon" : `${callDayLabel(nc)} ${nc.at}`) : ""; // callDayLabel checks the real weekday — "Tonight" only when it IS today
     const unread = unreadAnnouncements(), dmUn = dmUnread() + (thisWeeksReview() ? 0 : 1); // DMs + the pending weekly review pull people in
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
       <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your office</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
-      ${row("i-chart", "Auto-copier + analysis", cp.label, 'data-act="copier"', cp.cls)}
       ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
-      ${row("i-chart", "New signals today", `<span class="num">${sigsToday}</span>`, 'data-tab="signals"')}
+      ${row("i-tg", "Trade signals", "On Telegram", 'data-tab="signals"')}
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
       ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</span>`, 'data-act="journal"')}
       ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
@@ -1036,7 +1043,7 @@
   function dailyGoals() {
     const g = [
       { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
-      { label: "Check today's signals", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
+      { label: "Open Signals (Telegram)", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
       { label: "Quick check-in", done: getSetting("checkinDay", "") === ymd(), act: 'data-act="checkin"' },
       { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
     ];
@@ -1120,7 +1127,6 @@
       <div class="card card-pad">
         ${hubRow("i-share", "Share your trader card", "Flex the streak — post your stats", "tradercard")}
         ${hubRow("i-flame", "Monthly challenge", "Journal every trade · 30 days", "challenge")}
-        ${hubRow("i-chart", "Auto-copier + analysis", "Every trade the system takes, explained", "copier", true)}
       </div>
       <div class="spacer"></div>
     `);
@@ -1312,15 +1318,15 @@
   }
 
   // ---- "Your journey" — the staged road to a consistently profitable trader.
-  // Every milestone is derived from the member's REAL state (journal, calls, tier, copier, streak, rank).
+  // Every milestone is derived from the member's REAL state (journal, calls, tier, streak, rank).
   function journeyStages() {
-    const js = journalStats(), tier = getSetting("tier", "free"), wk = weeklyHistory();
+    const js = journalStats(), wk = weeklyHistory();
     const anyLesson = D.videos.some(v => getVideoProgress(v.id) > 0) || D.paths.some(p => pathDone(p.id) > 0); // watching OR reading counts
     return [
       { name: "Get on " + B.floor, pace: "day one", steps: [
         { label: "Joined " + B.floor, done: true },
-        { label: `Verified with ${B.broker}`, done: tier !== "free", xp: 100, act: 'data-act="verifyib"' },
-        { label: "Read a trade analysis", done: !!getSetting("copierSeen", false), xp: 150, act: 'data-act="copier"' },
+        { label: "Read the daily recap", done: !!getSetting("storySeen", ""), xp: 100, act: 'data-act="story"' },
+        { label: "Completed your first check-in", done: Object.keys(checkinsHistory()).length > 0, xp: 150, act: 'data-act="checkin"' },
       ] },
       { name: "Learn the playbook", pace: "week one", steps: [
         { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
@@ -1335,12 +1341,12 @@
       ] },
       { name: "Prove the edge", pace: "months 1–2", steps: [
         { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
-        { label: `${money(1000, false)} banked on your book`, done: js.netR >= 1000, xp: 200, act: 'data-act="journal"' },
+        { label: "Logged 20 trades in the journal", done: js.count >= 20, xp: 200, act: 'data-act="journal"' },
         { label: "Two Trader Scores of 65+", done: wk.filter(w => w.score >= 65).length >= 2, xp: 150, act: 'data-act="weeklyreview"' },
         { label: "Held a 14-day streak", done: bestStreak() >= 14, xp: 100 },
       ] },
       { name: "Trade it like a pro", pace: "the long game", steps: [
-        { label: `${money(5000, false)} banked on your book`, done: js.netR >= 5000, xp: 250, act: 'data-act="journal"' },
+        { label: "Profit factor above 2.0 over 30 trades", done: js.pf >= 2 && js.count >= 30, xp: 250, act: 'data-act="journal"' },
         { label: "Held a 30-day streak", done: bestStreak() >= 30, xp: 250 },
         { label: "Four weekly reviews banked", done: wk.length >= 4, xp: 200, act: 'data-act="weeklyreview"' },
         { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 300, act: 'data-act="members"' },
@@ -1384,57 +1390,6 @@
         <div><b>Consistently profitable</b><small>${summit ? "You made it — this is what the numbers say." : "Where the road leads. Every step above moves you closer."}</small></div>
       </div>
     </div>`;
-  }
-
-  // ---- auto-copier feed — the system's trades, each with the reasoning + an AI review ----
-  function copierTradeCard(t) {
-    const pill = t.status === "tp" ? `<span class="pill pill-up">${t.result}</span>`
-      : t.status === "sl" ? `<span class="pill pill-down">${t.result}</span>`
-      : `<span class="pill pill-gold"><span class="dot-live"></span> Live</span>`;
-    return `<div class="card ct-card">
-      <div class="ct-top">
-        <div class="idea-pair">${ic("i-chart", "ic")}<span class="sym">${t.pair}</span><span class="idea-dir ${t.dir}">${t.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
-        ${pill}
-      </div>
-      <div class="ct-levels">${t.time} · entry <b>${t.entry}</b> · SL <b>${t.sl}</b> · TP <b>${t.tp}</b></div>
-      <div class="ct-why"><span class="ct-lbl">Why it took it</span><p>${t.why}</p></div>
-      <div class="ai-review">
-        <div class="ai-head">${ic("i-chart", "ic")}Technical analysis</div>
-        <p>${t.review}</p>
-      </div>
-    </div>`;
-  }
-  function openCopier() {
-    const tier = effectiveTier();
-    if (tier === "free") {
-      openModal(`
-        <h3 class="sheet-title">Auto-copier + analysis</h3>
-        <p class="sheet-sub">The auto-copier takes every ${B.short} VIP setup automatically — and the app shows you the trade, <b>why</b> it took it, and a full <b>technical analysis</b> of each one. Learn the logic behind every call.</p>
-        <div class="vb-how">
-          <div class="vb-step"><span class="vb-n num">1</span><span>Every trade the system takes appears here in real time.</span></div>
-          <div class="vb-step"><span class="vb-n num">2</span><span>See the exact reasoning — the setup, the entry model, the risk.</span></div>
-          <div class="vb-step"><span class="vb-n num">3</span><span>A full technical analysis breaks down what was good, what to watch, and the repeatable lesson.</span></div>
-        </div>
-        <button class="btn btn-gold btn-block" data-act="verifyib" style="margin-top:14px">${ic("i-shield")} Verify with ${B.broker} to unlock</button>
-        <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Educational only — the trades are the system's, shown to help you learn. Not financial advice.</p>`);
-      wireCommon();
-      return;
-    }
-    setSetting("copierSeen", true);
-    const trades = D.copierTrades || [];
-    const running = trades.filter(t => t.status === "running").length;
-    openModal(`
-      <h3 class="sheet-title">Auto-copier + analysis</h3>
-      <p class="sheet-sub">Every trade the system takes — with the reasoning and a full technical analysis, so you learn from each one.</p>
-      <div class="ct-summary">
-        <div class="ct-sum"><b class="num">${trades.length}</b><small>Trades shown</small></div>
-        <div class="ct-sum"><b class="num up">${running}</b><small>Live now</small></div>
-        <div class="ct-sum"><b class="num gold-text">100%</b><small>Analysed</small></div>
-      </div>
-      <div class="ct-feed">${trades.map(copierTradeCard).join("")}</div>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Educational only — the trades are the system's. Not financial advice.</p>
-      <div class="spacer"></div>`);
-    wireCommon();
   }
 
   // home "on the floor" card — one-tap into the community chat
@@ -1483,7 +1438,7 @@
         ${getVideoProgress(v.id) ? `<div class="prog"><i style="width:${Math.round(getVideoProgress(v.id)*100)}%"></i></div>` : ""}
       </div>
       <h4>${v.title}</h4>
-      <div class="vmeta"><span>${v.cat}</span>·<span>${v.views} views</span></div>
+      <div class="vmeta"><span>${v.cat}</span></div>
     </button>`;
   }
 
@@ -1538,7 +1493,6 @@
           <div class="lobby-actions">
             <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} ${remindBtnLabel(nc)}</button>
             <button class="btn btn-ghost" data-act="add-cal">${ic("i-cal")} Add to calendar</button>
-            <button class="btn btn-ghost" id="live-preview">${ic("i-play")} Preview the room</button>
           </div>
         </div>
       </div>`;
@@ -1577,7 +1531,6 @@
         }, 1000);
         cleanups.push(() => clearInterval(lt));
       }
-      const pv = $("#live-preview"); if (pv) pv.onclick = () => { livePreview = true; SCREENS.live(); };
       const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) { toast("We'll alert you 10 minutes before the call", "i-bell"); previewCallAlerts(nc); } else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
       const ac = $("[data-act=add-cal]"); if (ac) ac.onclick = () => downloadCallIcs(nc);
       wireCommon();
@@ -1645,7 +1598,7 @@
         <div class="play">${ic("i-play")}</div>
         <div class="body"><span class="eyebrow">Featured · ${f.cat}</span>
           <h3 class="h2" style="margin:7px 0 5px">${f.title}</h3>
-          <div class="vmeta sub" style="font-size:12px">${f.dur} · ${f.views} views · ${f.date}</div></div>
+          <div class="vmeta sub" style="font-size:12px">${f.dur} · ${f.date}</div></div>
       </button>
       ${academySection()}
       <div class="section-head"><span class="h2">Library</span></div>
@@ -1693,7 +1646,7 @@
       <div class="thumb"><img class="thumb-img" src="${v.img}" alt="" loading="lazy" decoding="async"><div class="thumb-grad"></div>
         ${getVideoProgress(v.id)?`<div class="prog" style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(255,255,255,.15);z-index:2"><i style="display:block;height:100%;width:${Math.round(getVideoProgress(v.id)*100)}%;background:var(--gold)"></i></div>`:""}</div>
       <div class="info"><h4>${v.title}</h4>
-        <div class="vmeta">${v.cat} · ${v.dur} · ${v.views} views</div></div>
+        <div class="vmeta">${v.cat} · ${v.dur}</div></div>
       ${ic("i-play","ic")}</button>`;
   }
 
@@ -1752,16 +1705,115 @@
     const avgRR = winR.length ? winR.reduce((a, b) => a + b, 0) / winR.length : 0;
     return { wins, losses, wr, winRate: wr, netR, pf: gL ? gW / gL : gW, count: J.length, avgRR };
   }
+  function journalNotePreview(j) {
+    if (j.tradeFeel) return j.tradeFeel;
+    if (j.sessionNote) return j.sessionNote;
+    const n = String(j.note || "");
+    return n.split("\n\n")[0] || n;
+  }
+  function pendingReflectCount(batchId) {
+    return D.journal.filter(j => j.reflectPending && (!batchId || j.importBatch === batchId)).length;
+  }
+  function rebuildJournalNote(j) {
+    const parts = [];
+    if (j.sessionNote) parts.push(j.sessionNote);
+    if (j.tradeFeel) parts.push(j.tradeFeel);
+    if (j.mt5OpenAt || j.mt5CloseAt) {
+      parts.push(`MT5 · ${j.mt5OpenAt || "?"} → ${j.mt5CloseAt || "?"} · ${normNum(j.mt5Open)} → ${normNum(j.mt5Close)}`);
+    }
+    j.note = parts.filter(Boolean).join("\n\n") || j.note || "No notes added.";
+  }
+  function saveTradeFeel(id, feel, mood) {
+    const j = D.journal.find(x => x.id === id);
+    if (!j) return false;
+    j.tradeFeel = cleanText(feel) || cleanText(mood) || "";
+    if (mood && !j.tags.includes(mood)) j.tags = [...(j.tags || []).filter(t => !/^(Patient|Calm|FOMO|Anxious|Revenge|Confident|Disciplined)$/i.test(t)), mood];
+    j.reflectPending = !j.tradeFeel;
+    rebuildJournalNote(j);
+    pSet({ journal: D.journal });
+    if (j.tradeFeel) addXp(15);
+    return !!j.tradeFeel;
+  }
+  function pushReflectNudge(count, batchId) {
+    const title = count === 1 ? "1 trade needs your reflection" : `${count} trades need your reflection`;
+    const body = "How did each one feel? Tap while the session is still fresh.";
+    D.notifications.unshift({ icon: "i-book", text: `${count} imported — add how each trade felt`, time: "now", unread: true, group: "Today", go: "reflect", batchId });
+    pSet({ reflectBatch: batchId, reflectNudgeAt: Date.now() });
+    showPush(`📓 ${count} trade${count > 1 ? "s" : ""} logged`, body, { go: "community", holdMs: 6500 });
+    setTimeout(() => {
+      if (pendingReflectCount(batchId) > 0) showPush(title, body, { go: "community", holdMs: 6500 });
+    }, 45 * 60 * 1000);
+  }
+  function reflectBannerHtml(batchId) {
+    const n = pendingReflectCount(batchId);
+    if (!n) return "";
+    return `<div class="reflect-banner reveal">
+      ${ic("i-book")}
+      <div style="flex:1;min-width:0">
+        <b>${n} trade${n > 1 ? "s" : ""} waiting for your reflection</b>
+        <small>Import logged the numbers — add how each trade felt while you still remember.</small>
+        <button type="button" class="btn btn-gold" data-reflect-start>Reflect now</button>
+      </div>
+    </div>`;
+  }
+  function openReflectQueue(batchId) {
+    const pending = D.journal.filter(j => j.reflectPending && (!batchId || j.importBatch === batchId));
+    if (!pending.length) { toast("All trades reflected", "i-check"); pSet({ reflectBatch: null }); return; }
+    const moods = ["Patient", "Calm", "Disciplined", "Confident", "Anxious", "FOMO", "Revenge"];
+    let idx = 0;
+    function showStep() {
+      const j = pending[idx];
+      const stepLbl = `Trade ${idx + 1} of ${pending.length}`;
+      openModal(`
+        <span class="eyebrow">${ic("i-book")} ${stepLbl}</span>
+        <h3 class="sheet-title">${j.pair} · ${j.dir === "long" ? "Long" : "Short"}</h3>
+        <p class="sheet-sub">${j.setup} · ${j.session} · <span class="num ${j.r >= 0 ? "up" : "down"}">${money(j.r)}</span></p>
+        <div class="reflect-feel">
+          <label class="flabel">How did this trade feel?</label>
+          <div class="fchips" id="rf-moods">${moods.map(m => `<button type="button" class="fchip" data-mood="${m}">${m}</button>`).join("")}</div>
+          <textarea class="finput ftext" id="rf-feel" rows="3" placeholder="What was going through your head? Would you take it again?"></textarea>
+        </div>
+        <button class="btn btn-gold btn-block" id="rf-save">${ic("i-check")} Save &amp; ${idx < pending.length - 1 ? "next" : "finish"}</button>
+        <button class="btn btn-ghost btn-block" id="rf-skip" style="margin-top:8px">${idx < pending.length - 1 ? "Skip for now" : "Finish later"}</button>
+        <div class="spacer"></div>
+      `);
+      let mood = "";
+      [...document.querySelectorAll("[data-mood]")].forEach(b => b.onclick = () => {
+        mood = b.dataset.mood;
+        setOn("#rf-moods", b);
+        const ta = $("#rf-feel");
+        if (ta && !ta.value.trim()) ta.value = mood + " — ";
+        ta && ta.focus();
+      });
+      $("#rf-save").onclick = () => {
+        const txt = ($("#rf-feel") && $("#rf-feel").value) || mood;
+        if (!cleanText(txt)) { toast("Add a word or two — even “patient” counts", null); return; }
+        saveTradeFeel(j.id, txt, mood);
+        idx++;
+        if (idx < pending.length) showStep();
+        else { closeModal(); pSet({ reflectBatch: null }); journalFilter = "All"; if (activeTab === "community") renderCircle(); toast("Reflections saved · +15 XP each", "i-check"); }
+      };
+      $("#rf-skip").onclick = () => {
+        idx++;
+        if (idx < pending.length) showStep();
+        else { closeModal(); if (activeTab === "community") renderCircle(); toast("You can finish reflections anytime in your journal", null); }
+      };
+    }
+    showStep();
+  }
+
   function journalCard(j, idx) {
     const pill = j.outcome === "win" ? `<span class="pill pill-up">${resStr(j)}</span>` : j.outcome === "loss" ? `<span class="pill pill-down">${resStr(j)}</span>` : `<span class="pill">BE</span>`;
     const from = j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · ${j.channel}` : "";
-    return `<button class="as-btn card jcard reveal" style="animation-delay:${Math.min((idx || 0) * 45, 270)}ms" data-jentry="${j.id}">
+    const pending = j.reflectPending ? `<span class="jc-pending">Add how it felt</span>` : "";
+    return `<button class="as-btn card jcard reveal ${j.reflectPending ? "is-pending" : ""}" style="animation-delay:${Math.min((idx || 0) * 45, 270)}ms" data-jentry="${j.id}">
       <div class="jc-top">
         <div class="jc-pair">${ic("i-chart","ic")}<b>${j.pair}</b><span class="idea-dir ${j.dir}">${j.dir === "long" ? "▲ LONG" : "▼ SHORT"}</span></div>
         ${pill}
       </div>
       <div class="jc-meta">${j.setup} · ${j.session} · ${jDate(j)}${from}</div>
-      <div class="jc-note">${j.note}</div>
+      <div class="jc-note">${journalNotePreview(j)}</div>
+      ${pending}
       <div class="jc-tags">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
     </button>`;
   }
@@ -1822,7 +1874,11 @@
         <canvas id="equity-cv" role="img" aria-label="Equity curve — net ${money(s.netR)} across ${s.count} logged trades"></canvas>
       </div>
       ${edgeCard()}
-      <button class="btn btn-gold btn-block" data-log style="margin:14px 0 2px">${ic("i-plus")} Log a trade</button>
+      ${reflectBannerHtml(pState().reflectBatch)}
+      <div class="journal-actions reveal">
+        <button class="btn btn-gold btn-block" data-log>${ic("i-plus")} Log a trade</button>
+        <button class="btn btn-ghost btn-block" data-mt5-import>${ic("i-share")} Import from MT5 screenshot</button>
+      </div>
       <div class="chips" id="jfilters">${["All", "Wins", "Losses"].map(f => `<button class="chip ${f === journalFilter ? "active" : ""}" data-jf="${f}" aria-pressed="${f === journalFilter}">${f}</button>`).join("")}</div>
       <div id="journal-list">${items.length ? items.map(journalCard).join("") : emptyState({
         icon: "i-book",
@@ -1835,6 +1891,8 @@
       <div class="spacer"></div>`;
     const cv = $("#equity-cv"); if (cv && Charts.drawEquity) { const rs = D.journal.map(j => j.r).slice().reverse(); requestAnimationFrame(() => Charts.drawEquity(cv, rs)); }
     $("[data-log]").onclick = openLogTrade;
+    const mi = $("[data-mt5-import]"); if (mi) mi.onclick = openMt5Import;
+    const rs = $("[data-reflect-start]"); if (rs) rs.onclick = () => openReflectQueue(pState().reflectBatch);
     const le = $("[data-log-empty]"); if (le) le.onclick = openLogTrade;
     [...document.querySelectorAll("#jfilters .chip")].forEach(c => c.onclick = () => { journalFilter = c.dataset.jf; renderCircle(); });
     [...document.querySelectorAll("[data-jentry]")].forEach(n => n.onclick = () => openJournalEntry(n.dataset.jentry));
@@ -1885,14 +1943,26 @@
         <span class="pill ${j.outcome === "win" ? "pill-up" : j.outcome === "loss" ? "pill-down" : ""}">${resStr(j)}</span>
       </div>
       <div class="jc-meta" style="margin:10px 2px">${j.setup} · ${j.session} session · ${jDate(j)}${j.channel && !["—", "Off-plan"].includes(j.channel) ? ` · from ${j.channel}` : ""}</div>
-      <span class="eyebrow" style="display:block;margin:8px 0 6px">Reflection</span>
-      <p class="sub">${j.note}</p>
+      ${j.reflectPending ? `<div class="reflect-feel" style="margin-top:12px">
+        <span class="eyebrow" style="display:block;margin:0 0 8px">How did this trade feel?</span>
+        <textarea class="finput ftext" id="j-reflect-edit" rows="3" placeholder="Patient, FOMO, revenge — name it while it's fresh.">${j.tradeFeel || ""}</textarea>
+        <button class="btn btn-gold btn-block" id="j-reflect-save" style="margin-top:10px">${ic("i-check")} Save reflection</button>
+      </div>` : `<span class="eyebrow" style="display:block;margin:8px 0 6px">Reflection</span>
+      <p class="sub">${j.note}</p>`}
       <div class="jc-tags" style="margin-top:13px">${(j.tags || []).map(t => `<span class="jtag ${badTag(t) ? "bad" : "good"}">${t}</span>`).join("")}</div>
       <button class="btn ${shared ? "btn-ghost" : "btn-gold"} btn-block" data-share style="margin-top:18px">${shared ? "✓ Shared to community" : ic("i-share") + " Share to community"}</button>
       <button class="btn btn-ghost btn-block" data-sharecard style="margin-top:10px">${ic("i-share")} Share as card ↗</button>
       <p class="sub" style="font-size:11px;text-align:center;margin-top:10px;color:var(--faint)">${shared ? "This trade is on the community feed." : "Post this trade to the community feed for others to see."}</p>
     `);
     const sh = $("[data-share]");
+    const jrs = $("#j-reflect-save");
+    if (jrs) jrs.onclick = () => {
+      const txt = ($("#j-reflect-edit") && $("#j-reflect-edit").value) || "";
+      if (!saveTradeFeel(id, txt)) { toast("Add a word or two first", null); return; }
+      closeModal();
+      if (activeTab === "community") renderCircle();
+      toast("Reflection saved · +15 XP", "i-check");
+    };
     if (sh && !shared) sh.onclick = () => {
       D.posts.unshift({ author: D.user.name, initials: D.user.initials, time: "now", me: true, body: j.note, tag: { pair: j.pair, dir: j.dir, rr: resStr(j) }, likes: 0, comments: 0, liked: false });
       savePosts(); markShared(id);
@@ -2018,6 +2088,381 @@
       setTimeout(() => { if (activeTab === "community") renderCircle(); toast("Trade logged · +50 pts", "i-check"); }, 320);
     };
   }
+
+  // ---- MT5 screenshot import: upload History → parse → dedupe → reflect → bulk save ----
+  const MT5_MAX_IMAGES = 3;
+  const MT5_MAX_IMPORT = 25;
+
+  function mt5ApiUrl() {
+    const a = B.api || {};
+    return a.parseMt5Url || (a.supabaseUrl ? `${a.supabaseUrl.replace(/\/$/, "")}/functions/v1/parse-mt5-screenshot` : "");
+  }
+
+  async function sha256Blob(blob) {
+    const buf = await blob.arrayBuffer();
+    const hash = await crypto.subtle.digest("SHA-256", buf);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function normNum(n, dec) {
+    if (n == null || !isFinite(n)) return "";
+    return (+n).toFixed(dec == null ? 2 : dec);
+  }
+
+  function tradeFingerprint(parts) {
+    return [
+      String(parts.pair || "").toUpperCase(),
+      normNum(parts.lots, 2),
+      normNum(parts.openPrice, 2),
+      normNum(parts.closePrice, 2),
+      String(parts.closeTime || parts.date || "").trim(),
+      normNum(parts.r, 2),
+    ].join("|");
+  }
+
+  function fpFromJournal(j) {
+    return tradeFingerprint({
+      pair: j.pair,
+      lots: j.lots,
+      openPrice: j.mt5Open,
+      closePrice: j.mt5Close,
+      closeTime: j.mt5CloseAt,
+      r: j.r,
+      date: j.day || j.date,
+    });
+  }
+
+  function inferSessionFromTime(timeStr) {
+    const s = String(timeStr || "");
+    const m = s.match(/(\d{1,2}):(\d{2})/);
+    if (!m) return "London";
+    const h = parseInt(m[1], 10);
+    if (h >= 0 && h < 8) return "Asia";
+    if (h >= 13) return "New York";
+    return "London";
+  }
+
+  function formatTradeDate(closeTime) {
+    const t = String(closeTime || "").trim();
+    if (!t) return { date: "Imported", day: ymd() };
+    if (/today/i.test(t)) return { date: "Today", day: ymd() };
+    if (/yesterday/i.test(t)) { const d = new Date(); d.setDate(d.getDate() - 1); return { date: "Yesterday", day: d.toISOString().slice(0, 10) }; }
+    const dm = t.match(/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/);
+    if (dm) return { date: `${dm[3]}/${dm[2]}`, day: `${dm[1]}-${dm[2]}-${dm[3]}` };
+    return { date: t.slice(0, 16), day: ymd() };
+  }
+
+  function mapParsedTrade(raw, sessionNote) {
+    const profit = Math.round((+raw.profit || 0) * 100) / 100;
+    const outcome = profit > 0 ? "win" : profit < 0 ? "loss" : "be";
+    const dir = String(raw.type || "buy").toLowerCase() === "sell" ? "short" : "long";
+    const lots = Math.round((+raw.volume || 0) * 100) / 100;
+    const { date, day } = formatTradeDate(raw.closeTime);
+    const session = inferSessionFromTime(raw.closeTime || raw.openTime);
+    const noteParts = [];
+    if (sessionNote) noteParts.push(sessionNote);
+    noteParts.push(`MT5 · ${raw.openTime || "?"} → ${raw.closeTime || "?"} · ${normNum(raw.openPrice)} → ${normNum(raw.closePrice)}`);
+    const row = {
+      pair: String(raw.symbol || "XAUUSD").toUpperCase(),
+      dir,
+      r: profit,
+      lots,
+      outcome,
+      session,
+      date,
+      day,
+      setup: "MT5 import",
+      channel: "—",
+      tags: outcome === "win" ? ["Followed plan"] : outcome === "loss" ? ["Review"] : ["Managed well"],
+      note: noteParts.join("\n\n"),
+      mt5Open: +raw.openPrice,
+      mt5Close: +raw.closePrice,
+      mt5OpenAt: raw.openTime,
+      mt5CloseAt: raw.closeTime,
+    };
+    row.fp = tradeFingerprint({ pair: row.pair, lots: row.lots, openPrice: row.mt5Open, closePrice: row.mt5Close, closeTime: row.mt5CloseAt, r: row.r });
+    return row;
+  }
+
+  function fuzzyFpMatch(a, b) {
+    if (a === b) return true;
+    const pa = a.split("|"), pb = b.split("|");
+    if (pa.length !== pb.length || pa[0] !== pb[0]) return false;
+    for (let i = 1; i < pa.length; i++) {
+      const na = parseFloat(pa[i]), nb = parseFloat(pb[i]);
+      if (isFinite(na) && isFinite(nb)) { if (Math.abs(na - nb) > 0.05) return false; }
+      else if (pa[i] !== pb[i]) return false;
+    }
+    return true;
+  }
+
+  function dedupeStagingRows(rows, existingFps) {
+    const seen = new Set(existingFps);
+    const batchSeen = new Set();
+    return rows.map(r => {
+      if (batchSeen.has(r.fp)) return { ...r, status: "dup", include: false, reason: "Duplicate in this import" };
+      batchSeen.add(r.fp);
+      if (seen.has(r.fp)) return { ...r, status: "dup", include: false, reason: "Already in your journal" };
+      for (const ef of seen) {
+        if (fuzzyFpMatch(ef, r.fp)) return { ...r, status: "maybe", include: true, reason: "Possible duplicate — check before saving" };
+      }
+      return { ...r, status: "new", include: true, reason: "" };
+    });
+  }
+
+  async function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const res = String(r.result || "");
+        const i = res.indexOf(",");
+        resolve({ data: i >= 0 ? res.slice(i + 1) : res, mimeType: file.type || "image/jpeg" });
+      };
+      r.onerror = () => reject(new Error("Could not read image"));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function parseMt5Screenshots(files) {
+    const url = mt5ApiUrl();
+    const key = (B.api || {}).supabaseAnonKey;
+    if (!url || !key) throw new Error("Import API not configured — check brand.js api settings.");
+
+    const images = [];
+    for (const f of files.slice(0, MT5_MAX_IMAGES)) {
+      images.push(await fileToBase64(f));
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ images }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || `Parse failed (${res.status})`);
+    return payload;
+  }
+
+  function openMt5Import() {
+    let step = 1;
+    let pendingFiles = [];
+    let staging = [];
+    let parseWarnings = [];
+
+    function mt5Track(n) {
+      const dot = (i) => `<span class="mt5-dot ${i < n ? "done" : i === n ? "on" : ""}"></span>`;
+      const line = (i) => i < 3 ? `<span class="mt5-line ${i < n ? "done" : ""}"></span>` : "";
+      return `<div class="mt5-track" aria-hidden="true">${dot(1)}${line(1)}${dot(2)}${line(2)}${dot(3)}</div>`;
+    }
+    function mt5Head(n, title, sub) {
+      const steps = ["Upload", "Review", "Reflect"];
+      return `${mt5Track(n)}<div class="mt5-head"><span class="eyebrow">${ic("i-book")} Step ${n} of 3 · ${steps[n - 1]}</span><h3 class="sheet-title">${title}</h3>${sub ? `<p class="sheet-sub">${sub}</p>` : ""}</div>`;
+    }
+
+    function existingFingerprints() {
+      const hashes = new Set(pState().importHashes || []);
+      const fps = D.journal.map(fpFromJournal);
+      return { hashes, fps: new Set(fps) };
+    }
+
+    function renderUpload() {
+      openModal(`
+        ${mt5Head(1, "Import from MT5", "Screenshot your closed trades from MT5 History — we read the table and log them for you.")}
+        <label class="mt5-upload" id="mt5-drop" tabindex="0">
+          <span class="mt5-upload-ic">${ic("i-share")}</span>
+          <b>Choose screenshots</b>
+          <small>PNG or JPG · up to ${MT5_MAX_IMAGES} images if your list is long</small>
+          <input type="file" id="mt5-files" accept="image/*" multiple hidden>
+        </label>
+        <div class="mt5-gallery" id="mt5-gallery" hidden>
+          <div class="mt5-gallery-head"><span>Selected</span><b class="num" id="mt5-count">0 / ${MT5_MAX_IMAGES}</b></div>
+          <div class="mt5-thumbs" id="mt5-thumbs"></div>
+        </div>
+        <p class="mt5-tip">${ic("i-shield")}<span>Crop to the trade rows only — no need to show account number or balance.</span></p>
+        <button class="btn btn-gold btn-block" id="mt5-parse" style="margin-top:16px" disabled>${ic("i-chart")} Read trades</button>
+        <div class="spacer"></div>
+      `);
+
+      const input = $("#mt5-files");
+      const drop = $("#mt5-drop");
+      const gallery = $("#mt5-gallery");
+      const countEl = $("#mt5-count");
+      const thumbs = $("#mt5-thumbs");
+      const parseBtn = $("#mt5-parse");
+
+      function paintThumbs() {
+        const n = pendingFiles.length;
+        if (gallery) gallery.hidden = !n;
+        if (countEl) countEl.textContent = `${n} / ${MT5_MAX_IMAGES}`;
+        thumbs.innerHTML = pendingFiles.map((f, i) => `<div class="mt5-thumb"><img src="${URL.createObjectURL(f)}" alt="Screenshot ${i + 1}"><button type="button" data-rm="${i}" aria-label="Remove screenshot">×</button></div>`).join("");
+        parseBtn.disabled = !n;
+        parseBtn.innerHTML = n ? `${ic("i-chart")} Read ${n} screenshot${n > 1 ? "s" : ""}` : `${ic("i-chart")} Read trades`;
+        [...thumbs.querySelectorAll("[data-rm]")].forEach(b => b.onclick = (e) => {
+          e.preventDefault();
+          pendingFiles.splice(+b.dataset.rm, 1);
+          paintThumbs();
+        });
+      }
+
+      function addFiles(list) {
+        for (const f of list) {
+          if (!f.type.startsWith("image/")) continue;
+          if (pendingFiles.length >= MT5_MAX_IMAGES) { toast(`Max ${MT5_MAX_IMAGES} screenshots`, null); break; }
+          pendingFiles.push(f);
+        }
+        paintThumbs();
+      }
+
+      drop.onclick = () => input.click();
+      drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+      input.onchange = () => { addFiles([...input.files]); input.value = ""; };
+
+      parseBtn.onclick = async () => {
+        if (!pendingFiles.length) return;
+        parseBtn.disabled = true;
+        parseBtn.textContent = "Reading…";
+        try {
+          const { hashes } = existingFingerprints();
+          for (const f of pendingFiles) {
+            const h = await sha256Blob(f);
+            if (hashes.has(h)) { toast("One screenshot was already imported — skipped duplicate file", null); }
+          }
+          const payload = await parseMt5Screenshots(pendingFiles);
+          const trades = payload.trades || [];
+          parseWarnings = payload.warnings || [];
+          if (!trades.length) { toast("No closed trades found — try a clearer crop", null); parseBtn.disabled = false; parseBtn.innerHTML = `${ic("i-chart")} Read trades`; return; }
+          staging = trades.map(t => mapParsedTrade(t, ""));
+          const { fps } = existingFingerprints();
+          staging = dedupeStagingRows(staging, fps);
+          step = 2;
+          renderReview();
+        } catch (e) {
+          toast(e.message || "Could not read screenshot", null);
+          parseBtn.disabled = false;
+          parseBtn.innerHTML = `${ic("i-chart")} Read trades`;
+        }
+      };
+      paintThumbs();
+    }
+
+    function renderReview() {
+      const newN = staging.filter(s => s.status === "new" && s.include).length;
+      const dupN = staging.filter(s => s.status === "dup").length;
+      const maybeN = staging.filter(s => s.status === "maybe").length;
+      openModal(`
+        ${mt5Head(2, "Review trades", "Uncheck anything you do not want — duplicates are already skipped.")}
+        <div class="mt5-stats">
+          <div class="mt5-stat"><b class="num gold-text">${newN}</b><small>New</small></div>
+          <div class="mt5-stat"><b class="num">${staging.length}</b><small>Found</small></div>
+          <div class="mt5-stat"><b class="num">${dupN + maybeN}</b><small>Skipped</small></div>
+        </div>
+        ${parseWarnings.length ? stateNote(parseWarnings.join(" · "), "info") : ""}
+        <div class="mt5-list">${staging.map((s, i) => {
+          const dirLbl = s.dir === "long" ? "▲ LONG" : "▼ SHORT";
+          const tag = s.status === "new" ? "New" : s.status === "dup" ? "Skip" : "Check";
+          return `<label class="mt5-row ${s.include ? "" : "is-skip"} ${s.status === "dup" ? "is-dup" : ""}">
+            <span class="mt5-check"><input type="checkbox" data-inc="${i}" ${s.include ? "checked" : ""} ${s.status === "dup" ? "disabled" : ""}></span>
+            <span class="mt5-main">
+              <span class="mt5-top"><b>${s.pair}</b><span class="idea-dir ${s.dir}">${dirLbl}</span></span>
+              <small>${s.lots} lots · ${s.mt5CloseAt || s.date}</small>
+            </span>
+            <span class="mt5-pl num ${s.r >= 0 ? "up" : "down"}">${money(s.r)}</span>
+            <span class="mt5-tag ${s.status}">${tag}</span>
+          </label>`;
+        }).join("")}</div>
+        <div class="mt5-foot">
+          <button class="btn btn-ghost" id="mt5-back">Back</button>
+          <button class="btn btn-gold" id="mt5-next">Continue ${ic("i-chev")}</button>
+        </div>
+        <div class="spacer"></div>
+      `);
+
+      [...document.querySelectorAll("[data-inc]")].forEach(cb => {
+        cb.onchange = () => { staging[+cb.dataset.inc].include = cb.checked; };
+      });
+      $("#mt5-back").onclick = () => { step = 1; renderUpload(); };
+      $("#mt5-next").onclick = () => {
+        if (!staging.some(s => s.include)) { toast("Select at least one trade", null); return; }
+        step = 3;
+        renderReflect();
+      };
+    }
+
+    function renderReflect() {
+      const n = staging.filter(s => s.include).length;
+      openModal(`
+        ${mt5Head(3, "Session reflection", `Adding <b>${n}</b> trade${n > 1 ? "s" : ""} to your journal.`)}
+        <label class="flabel">What went well? What would you do differently?</label>
+        <textarea class="finput ftext" id="mt5-session" placeholder="e.g. Waited for London reclaim — no forced NY entries." rows="4"></textarea>
+        <label class="flabel" style="margin-top:14px">Setup label <span style="color:var(--faint);font-weight:500">(optional)</span></label>
+        <input class="finput" id="mt5-setup" placeholder="Break & retest" value="MT5 import">
+        <button class="btn btn-gold btn-block" id="mt5-save" style="margin-top:16px">${ic("i-check")} Save ${n} trade${n > 1 ? "s" : ""}</button>
+        <button class="btn btn-ghost btn-block" id="mt5-back2" style="margin-top:8px">Back to review</button>
+        <div class="spacer"></div>
+      `);
+
+      $("#mt5-back2").onclick = () => { step = 2; renderReview(); };
+      $("#mt5-save").onclick = async () => {
+        const sessionNote = cleanText($("#mt5-session").value);
+        if (!sessionNote) { toast("Add a short session reflection first", null); $("#mt5-session").focus(); return; }
+        const setup = cleanText($("#mt5-setup").value) || "MT5 import";
+        const batchId = "b" + Date.now();
+        let saved = 0;
+        const toSave = staging.filter(s => s.include).slice(0, MT5_MAX_IMPORT);
+        for (const row of toSave) {
+          const mt5Line = `MT5 · ${row.mt5OpenAt || "?"} → ${row.mt5CloseAt || "?"} · ${normNum(row.mt5Open)} → ${normNum(row.mt5Close)}`;
+          const entry = {
+            id: "j" + Date.now() + saved,
+            pair: row.pair,
+            dir: row.dir,
+            r: row.r,
+            lots: row.lots,
+            outcome: row.outcome,
+            session: row.session,
+            date: row.date,
+            day: row.day,
+            setup: setup,
+            channel: row.channel,
+            tags: row.tags,
+            sessionNote,
+            tradeFeel: "",
+            reflectPending: true,
+            importBatch: batchId,
+            note: sessionNote + "\n\n" + mt5Line,
+            mt5Open: row.mt5Open,
+            mt5Close: row.mt5Close,
+            mt5OpenAt: row.mt5OpenAt,
+            mt5CloseAt: row.mt5CloseAt,
+          };
+          D.journal.unshift(entry);
+          saved++;
+        }
+        recordLog();
+        addXp(Math.min(saved * 40, 200));
+        setSetting("logDay", ymd());
+        checkStreakEarned();
+        const hashes = [...(pState().importHashes || [])];
+        for (const f of pendingFiles) hashes.push(await sha256Blob(f));
+        pSet({ importHashes: [...new Set(hashes)].slice(-40) });
+        closeModal();
+        journalFilter = "All";
+        setTimeout(() => {
+          if (activeTab === "community") renderCircle();
+          toast(`${saved} trade${saved > 1 ? "s" : ""} imported · +${Math.min(saved * 40, 200)} XP`, "i-check");
+          pushReflectNudge(saved, batchId);
+          setTimeout(() => openReflectQueue(batchId), 900);
+        }, 320);
+      };
+    }
+
+    renderUpload();
+  }
+
   function lbRow(r) {
     const medalCls = r.rank === 1 ? "m1" : r.rank === 2 ? "m2" : r.rank === 3 ? "m3" : "";
     const dn = r.delta.startsWith("+") ? "up" : r.delta.startsWith("-") ? "down" : "";
@@ -2172,8 +2617,8 @@
       ${vipLapsed()
         ? `<button class="up-card reveal" data-act="verifyib"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Re-verify to keep VIP</b><small>Your ${VIP_REVERIFY_DAYS}-day ${B.broker} check is due</small></div><span class="up-cta">Re-verify ${ic("i-chev","ic")}</span></button>`
         : getSetting("tier", "free") === "vip"
-        ? `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-trophy","ic")}</div><div class="up-body"><b>${B.short} VIP · Active</b><small>Full signals, the live room &amp; all education</small></div><span class="pill pill-gold">VIP</span></button>`
-        : `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Unlock ${B.short} VIP</b><small>Full signals, the live room &amp; all education</small></div><span class="up-cta">See plans ${ic("i-chev","ic")}</span></button>`}
+        ? `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-trophy","ic")}</div><div class="up-body"><b>${B.short} VIP · Active</b><small>Telegram groups, live room &amp; full education</small></div><span class="pill pill-gold">VIP</span></button>`
+        : `<button class="up-card reveal" data-act="membership"><div class="up-ic">${ic("i-shield","ic")}</div><div class="up-body"><b>Unlock ${B.short} VIP</b><small>Telegram groups, live room &amp; full education</small></div><span class="up-cta">See plans ${ic("i-chev","ic")}</span></button>`}
 
       <div class="stat-row" style="margin-top:13px">
         <div class="stat">${ic("i-flame","ic")}<b class="num">${profStreak()}</b><small>Day streak</small></div>
@@ -2201,7 +2646,6 @@
 
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">
-        ${hubRow("i-shield",`${B.founderLast}'s Desk`,"Founder view · run your community","foundersdesk")}
         ${hubRow("i-flame","Monthly challenge","Journal every trade · 30 days","challenge")}
         ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
         ${hubRow("i-share","Invite a trader","Grow the community","invite")}
@@ -2423,7 +2867,7 @@
       </div>
       <span class="eyebrow" style="margin-top:14px;display:block">${v.cat}</span>
       <h2 class="h2" style="margin:7px 0 5px">${v.title}</h2>
-      <div class="sub" style="font-size:12.5px">${v.host} · ${v.views} views · ${v.date}</div>
+      <div class="sub" style="font-size:12.5px">${v.host} · ${v.date}</div>
       <div style="display:flex;gap:10px;margin:15px 0 4px">
         <button class="btn btn-gold" style="flex:1" data-pp>${ic("i-play")} ${prog >= 1 ? "Replay" : prog > 0 ? "Resume" : "Play"}</button>
         <button class="btn btn-ghost btn-sm" style="height:52px" data-act="save">${isSaved(v.id) ? "Saved ✓" : "+ List"}</button>
@@ -2629,7 +3073,19 @@
       ${sec("Today")}${sec("Earlier")}
       <div class="spacer"></div>
     `);
-    [...document.querySelectorAll(".notif")].forEach(b => b.onclick = () => { const g = b.dataset.go; closeModal(); setTimeout(() => { if (SCREENS[g]) go(g); }, 300); });
+    [...document.querySelectorAll(".notif")].forEach(b => b.onclick = () => {
+      const g = b.dataset.go;
+      closeModal();
+      setTimeout(() => {
+        if (g === "reflect") {
+          circleTab = "journal";
+          go("community");
+          setTimeout(() => openReflectQueue(pState().reflectBatch), 400);
+          return;
+        }
+        if (SCREENS[g]) go(g);
+      }, 300);
+    });
     const mk = $("[data-mark]"); if (mk) mk.onclick = () => {
       D.notifications.forEach(n => n.unread = false);
       const seen = { ...(pState().notifSeen || {}) }; liveNotifs().forEach(n => { seen[n.k] = 1; });
@@ -2653,27 +3109,25 @@
       <p class="ob-disclaimer" style="max-width:none;margin:10px 2px 4px"><b>Disclaimer.</b> ${(D.welcome && D.welcome.disclaimer) || "Nothing in here is given as financial advice."}</p>`;
   }
 
-  // ---------- signals: channels hub (a bottom tab) + per-channel feed ----------
-  SCREENS.signals = function () { // Signals tab — the Telegram channels, mirrored in-app
+  // ---------- signals: Telegram directory (calls live in Telegram — not in-app) ----------
+  SCREENS.signals = function () {
     setScreen(`
       ${topbar()}
-      <div class="app-head"><div class="who"><div><small>${ic("i-tg","ic")} Synced from Telegram</small><b>Trade Signals</b></div></div></div>
-      <p class="sub" style="margin:0 2px 8px">Every call from the ${B.name} channels, in one place.</p>
-      <div class="tg-sync"><span class="tg-syncdot"></span><div class="tg-sync-tx"><b>Live-synced from Telegram</b><small>Members keep their calls in Telegram — the app just gives them a better home.</small></div></div>
-      <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
-      ${marketBar()}
-      <div style="height:14px"></div>
-      ${trackRecordCard()}
-      <div class="section-head"><span class="h2">Channels</span></div>
+      <div class="app-head"><div class="who"><div><small>${ic("i-tg","ic")} Telegram channels</small><b>Trade Signals</b></div></div></div>
+      <p class="sub" style="margin:0 2px 8px">Every live call is posted in Telegram. This tab is your channel directory — use Support to get onboarded.</p>
+      ${telegramOnboardCard()}
+      <div class="nfa nfa-snug">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
+      <div class="section-head section-head-snug"><span class="h2">Channels</span><span class="more num">${D.channels.length}</span></div>
+      <p class="sub" style="margin:0 2px 8px">Once you're onboarded, you'll receive calls in the matching Telegram group for each desk.</p>
       ${D.channels.map(channelCard).join("")}
       ${phantomRoomsHtml()}
       ${signalIqCard()}
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Educational content only. Not financial advice.</p>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Not in the groups yet? Message <b>@${B.handle}</b> on Telegram.</p>
       <div class="spacer"></div>`);
     [...document.querySelectorAll("[data-chan]")].forEach(n => n.onclick = () => openChannel(n.dataset.chan));
-    mountMarketBar();
+    [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
   };
-  function openIdeas() { go("signals"); } // alias for the Home link / notifications
+  function openIdeas() { setSetting("ideasSeen", true); go("signals"); } // alias for the Home link / notifications
   function chanMark(c, extra) {
     const cls = `chan-mark ${c.tone || ""}${extra ? " " + extra : ""}${c.img ? " has-img" : ""}`;
     return c.img
@@ -2681,14 +3135,12 @@
       : `<div class="${cls}">${c.mark}</div>`;
   }
   function channelCard(c) {
-    const items = D.ideas.filter(i => i.channel === c.id);
-    const latest = items[0];
     return `<button class="chan" data-chan="${c.id}">
       ${chanMark(c)}
       <div class="chan-body">
         <div class="chan-top"><b>${c.name}${c.gate === "confident" ? `<span class="chan-gate">Confident only</span>` : ""}</b><span class="tg-badge">${ic("i-tg")} Telegram</span></div>
         <div class="chan-desc">${c.desc}</div>
-        <div class="chan-meta"><span class="num">${c.members}</span> ${c.bot ? "followers" : "members"} · <span class="num">${c.today}</span> today${latest ? ` · <span class="idea-dir ${latest.dir}" style="padding:1px 7px;font-size:9px">${latest.pair} ${latest.dir === "long" ? "▲" : "▼"}</span>` : ""}</div>
+        <div class="chan-meta">Live calls in ${c.handle}</div>
       </div>
       ${ic("i-chev", "ic")}
     </button>`;
@@ -2696,10 +3148,6 @@
   let lastChanId = null;
   function openChannel(id) {
     const c = D.channels.find(x => x.id === id) || D.channels[0];
-    const items = D.ideas.filter(i => i.channel === id);
-    const closed = items.filter(i => i.status === "tp" || i.status === "sl");
-    const wins = items.filter(i => i.status === "tp").length;
-    const wr = closed.length ? Math.round(wins / closed.length * 100) : 100;
     setScreen(`
       ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
       <div class="chan-head">
@@ -2707,31 +3155,14 @@
         <div><div class="chan-title">${c.name}${c.gate === "confident" ? ` <span class="chan-gate">Confident only</span>` : ""}${c.bot ? ` <span class="pill pill-gold" style="height:20px;font-size:10px">🤖 Mechanical</span>` : ""}${c.host ? ` <span class="sub" style="font-size:11px"> · ${c.host}</span>` : ""}</div><div class="chan-handle num">${c.handle}</div></div>
       </div>
       <p class="sub" style="margin:11px 2px">${c.desc}</p>
-      <div class="chan-stats">
-        <div><b class="num">${c.members}</b><small>${c.bot ? "Followers" : "Members"}</small></div>
-        <div><b class="num">${items.length}</b><small>Signals</small></div>
-        <div><b class="num up">${wr}%</b><small>Win rate</small></div>
-      </div>
       <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
-      <div class="section-head"><span class="h3">Recent signals</span><span class="more num">${items.length}</span></div>
-      <div id="chan-list"></div>
-      <button class="tg-link" data-tg>${ic("i-tg")} Open ${c.handle} in Telegram ↗</button>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:8px;color:var(--faint)">Educational content only. Not financial advice.</p>
+      ${telegramOnboardCard({ title: `Join ${c.name}`, body: `This desk posts live calls in Telegram. Message ${B.name} Support — @${B.handle} — to get onboarded and added to the right groups.` })}
       <div class="spacer"></div>`);
     [...document.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.tab === "signals"));
     activeTab = "signals";
-    $("[data-back]").onclick = openIdeas;
-    $("[data-tg]").onclick = () => toast(`Opens ${c.name} on Telegram`, "i-tg");
-    const list = $("#chan-list");
     lastChanId = id;
-    const tier = effectiveTier();
-    list.innerHTML = items.map(x => (tier === "free" && x.status === "running") ? lockedSignalCard(x) : ideaCard(x)).join("");
-    requestAnimationFrame(() => Charts.initIn(list));
-    [...list.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
-    [...list.querySelectorAll("[data-lockvip]")].forEach(lk => lk.onclick = IB ? openVerifyBroker : openMembership); // a channel can have several running (locked) ideas
-    const vv = list.querySelector("[data-vipviewers]");
-    if (vv && !reduceMotion()) { const iv = setInterval(() => { if (document.hidden) return; let n = +vv.textContent + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)); n = Math.max(72, Math.min(103, n)); vv.textContent = n; }, 4000); cleanups.push(() => clearInterval(iv)); }
-    wireTook();
+    $("[data-back]").onclick = openIdeas;
+    [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
   }
 
   // ---------- shared wiring ----------
@@ -2935,7 +3366,7 @@
     const s = $("#inv-share"); if (s) s.onclick = () => toast("Share to anyone", "i-share");
   }
   function openSettings() {
-    const opts = ["New signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
+    const opts = ["Telegram signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
     const prefs = getNotifPrefs();
     openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${prefs[i] ? "on" : ""}" data-set="${i}" role="switch" aria-checked="${!!prefs[i]}" aria-label="${o}"><span></span></button></div>`).join("")}</div>`);
     [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("on"); b.setAttribute("aria-checked", on); setNotifPref(+b.dataset.set, on); });
@@ -2974,11 +3405,11 @@
   // ============================ MONETISATION + FOUNDER (the money story) ============================
   const IB = B.vipModel !== "paid"; // partner-funded VIP: verified via the founder's broker IB list
   const PLANS = [
-    { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Live gold calls in Telegram", "Community chat & the floor", "Education previews", "Economic calendar & tools"] },
-    { id: "vip", name: `${B.short} VIP`, tag: "Full signals + live room", gold: true, ib: IB, cta: IB ? `Unlock with ${B.broker}` : "Upgrade to VIP", feats: [`Every VIP signal — full entry, stop & all targets`, "The live trading room, every session", "Complete education library (176+ lessons)", "Verified track record & instant alerts"] },
+    { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Trade signals in Telegram (via Support)", "Community chat & the floor", "Education previews", "Economic calendar & tools"] },
+    { id: "vip", name: `${B.short} VIP`, tag: "Full app + live room", gold: true, ib: IB, cta: IB ? `Unlock with ${B.broker}` : "Upgrade to VIP", feats: ["All Telegram signal groups (via Support)", "The live trading room, every session", "Complete education library (176+ lessons)", "Priority onboarding & member perks"] },
     { id: "inner", name: "Inner Circle", tag: "Everything + mentorship", cta: "Upgrade", feats: ["Everything in VIP", "1-to-1 trade reviews with the team", "Priority in the live room", "In-person Training Hub access"] },
   ];
-  function rerenderAfterTier() { if (lastChanId && $("#chan-list")) openChannel(lastChanId); else if (SCREENS[activeTab]) SCREENS[activeTab](); }
+  function rerenderAfterTier() { if (lastChanId) openChannel(lastChanId); else if (SCREENS[activeTab]) SCREENS[activeTab](); }
   function openMembership() {
     const tierNow = effectiveTier(), lapsed = vipLapsed();
     const cards = PLANS.map(t => {
@@ -2998,7 +3429,7 @@
       <p class="sheet-sub">${IB ? `${B.short} VIP is partner-funded — free when you trade with ${B.broker} under ${B.name}. Inner Circle pricing is yours to set.` : "Your community, your pricing — you set the price when you launch."}</p>
       ${lapsed ? `<div class="tg-sync" style="margin-bottom:12px"><span class="tg-syncdot" style="background:var(--gold)"></span><div class="tg-sync-tx"><b>Your VIP re-check is due</b><small>Confirm your ${B.broker} account is still funded to restore VIP.</small></div></div>` : ""}
       <div class="tiers">${cards}</div>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Free members keep getting calls in Telegram. VIP unlocks the full app.</p>
+      <p class="sub" style="font-size:11px;text-align:center;margin-top:6px;color:var(--faint)">Signals stay on Telegram for everyone. VIP unlocks the full app experience — message @${B.handle} to get into your groups.</p>
       ${getSetting("tier", "free") !== "free" ? `<button class="btn btn-ghost btn-sm btn-block" id="demo-reset" style="margin-top:10px">Demo: reset to Free</button>` : ""}`);
     const rs = $("#demo-reset"); if (rs) rs.onclick = () => { setSetting("tier", "free"); closeModal(); toast("Demo reset — back to Free", "i-check"); setTimeout(rerenderAfterTier, 360); };
     [...document.querySelectorAll("[data-tier]")].forEach(b => b.onclick = () => {
@@ -3019,7 +3450,7 @@
         setSetting("tier", plan.id === "inner" ? "inner" : "vip");
         closeModal();
         setTimeout(() => {
-          showPush(`Welcome to ${plan.name} 🔓`, "Full signals, the live room & the library are unlocked");
+          showPush(`Welcome to ${plan.name} 🔓`, "Full app access, live room & library unlocked");
           toast(`${plan.name} unlocked`, "i-check");
           rerenderAfterTier();
         }, 380);
@@ -3035,7 +3466,7 @@
       <h3 class="sheet-title">${reverify ? `Confirm your ${B.broker} account` : `Unlock ${B.short} VIP`}</h3>
       <p class="sheet-sub">${reverify
         ? `${B.short} VIP re-checks every ${VIP_REVERIFY_DAYS} days that your ${B.broker} account is still funded and trading — confirm your balance to keep it active.`
-        : `${B.short} VIP is free — funded by the ${B.name} × ${B.broker} partnership. Link a ${B.broker} account opened under ${B.name}, funded with at least $${VIP_MIN_DEPOSIT}, and every signal unlocks.`}</p>
+        : `${B.short} VIP is free — funded by the ${B.name} × ${B.broker} partnership. Link a ${B.broker} account opened under ${B.name}, funded with at least $${VIP_MIN_DEPOSIT}, and unlock the full app plus Telegram group onboarding.`}</p>
       <div class="vb-how">
         ${reverify ? `
         <div class="vb-step"><span class="vb-n num">1</span><span>Linked account: <b class="num">${already}</b></span></div>
@@ -3149,58 +3580,39 @@
     }), 900);
   }
 
-  // founder-facing view — "does this make me money & is it less work?"
-  function openFoundersDesk() {
-    openModal(`
-      <div class="fd-head"><span class="pill pill-gold">${ic("i-shield", "ic")} Founder view</span></div>
-      <h3 class="sheet-title" style="margin:10px 0 2px">${B.founderLast}'s Desk</h3>
-      <p class="sheet-sub">Your community, your revenue — ${IB ? `${B.broker} rebates and Inner Circle` : "run it"} in one place.</p>
-      <div class="fd-stats">
-        <div class="fd-stat"><b class="num">4,213</b><small>Members</small></div>
-        <div class="fd-stat"><b class="num gold-text">312</b><small>${IB ? `VIP · ${B.broker}-verified` : "VIP members"}</small></div>
-        <div class="fd-stat"><b class="num up">+87</b><small>New this week</small></div>
-        <div class="fd-stat"><b class="num gold-text" id="fd-mrr-stat">£—</b><small>MRR · ${IB ? "Inner Circle" : "your price"}</small></div>
-      </div>
-      ${IB ? `<div class="fd-ib">${ic("i-shield", "ic")}<div><b>${B.broker} partner rebates</b><small>Every VIP member links a ${B.broker} account funded with at least $${VIP_MIN_DEPOSIT}, and re-confirms it every ${VIP_REVERIFY_DAYS} days — a linked-then-abandoned account loses VIP automatically. Unverified accounts never see a live entry.</small></div></div>` : ""}
-      <div class="fd-price">
-        <div class="fd-price-top"><span class="eyebrow" id="fd-price-label">${IB ? "Inner Circle price" : "VIP price"}</span><b class="fd-mrr" id="fd-mrr">£—</b></div>
-        <input type="range" class="fd-slider" id="fd-slider" min="${IB ? 29 : 9}" max="${IB ? 299 : 99}" step="${IB ? 5 : 1}" aria-label="Set your ${IB ? "Inner Circle" : "VIP"} monthly price">
-        <div class="fd-proj" id="fd-proj"></div>
-      </div>
-      <div class="fd-funnel">
-        <div class="fd-fn"><span>Free</span><div class="fd-fbar"><i style="width:100%"></i></div><b class="num">3,853</b></div>
-        <div class="fd-fn"><span>VIP</span><div class="fd-fbar"><i style="width:34%"></i></div><b class="num">312</b></div>
-        <div class="fd-fn"><span>Inner Circle</span><div class="fd-fbar"><i style="width:12%"></i></div><b class="num">48</b></div>
-      </div>
-      <button class="btn btn-gold btn-block" id="fd-post">${ic("i-send")} Post a signal → notify 312 VIP</button>
-      <button class="btn btn-ghost btn-block" id="fd-live" style="margin-top:10px">${ic("i-live")} Go live now</button>
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:12px;color:var(--faint)">Signals still start in your Telegram — the app mirrors them and pushes automatically. You change nothing about how you work.</p>`);
-    const VIPN = 312, INNERN = 48, slider = $("#fd-slider");
-    const sMin = +slider.min, sMax = +slider.max;
-    const setP = (p) => {
-      const mrr = Math.round(IB ? INNERN * p : VIPN * p + INNERN * p * 2.5), mrrStr = "£" + mrr.toLocaleString();
-      $("#fd-mrr").textContent = mrrStr;
-      const stat = $("#fd-mrr-stat"); if (stat) stat.textContent = mrrStr;
-      $("#fd-price-label").textContent = "£" + p + "/mo · " + (IB ? "Inner Circle" : "VIP");
-      $("#fd-proj").innerHTML = IB
-        ? `At <b>£${p}</b>/mo · ${INNERN} Inner Circle → <b>${mrrStr}</b>/mo · <b>£${(mrr * 12).toLocaleString()}</b>/yr — plus ${B.broker} rebates on ${VIPN} VIP`
-        : `At <b>£${p}</b>/mo · ${VIPN} VIP + ${INNERN} Inner Circle → <b>${mrrStr}</b>/mo · <b>£${(mrr * 12).toLocaleString()}</b>/yr`;
-      slider.style.background = `linear-gradient(90deg, var(--gold) ${(p - sMin) / (sMax - sMin) * 100}%, var(--surface-4) 0)`;
-    };
-    const p0 = Math.min(sMax, Math.max(sMin, +getSetting("vipPrice", IB ? 149 : 39))); slider.value = p0; setP(p0);
-    slider.oninput = () => { const p = +slider.value; setP(p); setSetting("vipPrice", p); };
-    const post = $("#fd-post"); if (post) post.onclick = () => { closeModal(); setTimeout(() => { showPush(`🟢 ${B.short} VIP · New ${B.market} idea`, "Entry 4,024–4,028 · SL 4,014 · targets inside"); toast("Pushed to VIP · 312 members notified", "i-check"); }, 400); };
-    const live = $("#fd-live"); if (live) live.onclick = () => { closeModal(); go("live"); };
-  }
-  // iOS-style lock-screen push preview — a signals business IS push
-  function showPush(title, body) {
+  // iOS-style notification banner (matches Lock Screen / Dynamic Island drop-down)
+  function showPush(title, body, opts) {
     const host = document.querySelector(".app") || document.body;
+    document.querySelectorAll(".push-banner").forEach((n) => n.remove());
     const el = document.createElement("div");
     el.className = "push-banner";
-    el.innerHTML = `<div class="pb-ic">${ic("i-tg")}</div><div class="pb-body"><div class="pb-top"><b>${B.name}</b><span>now</span></div><div class="pb-title">${title}</div><div class="pb-text">${body}</div></div>`;
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    const logo = (B && B.logo) ? B.logo : "assets/logo.png";
+    const appName = (B && B.name) ? B.name : "Blakey Trades";
+    const when = (opts && opts.when) || "now";
+    const goTo = opts && opts.go;
+    el.innerHTML =
+      `<div class="pb-ic"><img src="${logo}" alt="" width="42" height="42"></div>` +
+      `<div class="pb-body">` +
+        `<div class="pb-top"><span class="pb-app">${appName}</span><span class="pb-when">${when}</span></div>` +
+        `<div class="pb-title">${title}</div>` +
+        `<div class="pb-text">${body}</div>` +
+      `</div>`;
+    const dismiss = () => {
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 420);
+    };
+    el.onclick = () => {
+      dismiss();
+      if (goTo && typeof go === "function") {
+        if (goTo === "community" && pState().reflectBatch) circleTab = "journal";
+        if (SCREENS[goTo]) go(goTo);
+      }
+    };
     host.appendChild(el);
     requestAnimationFrame(() => el.classList.add("show"));
-    setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 420); }, 3600);
+    setTimeout(dismiss, (opts && opts.holdMs) || 5200);
   }
 
   function openChat() {
@@ -3416,13 +3828,12 @@
     [...document.querySelectorAll("[data-act=challenge]")].forEach(n => n.onclick = openChallenge);
     [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
     [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
-    [...document.querySelectorAll("[data-act=copier]")].forEach(n => n.onclick = openCopier);
     [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
     [...document.querySelectorAll("[data-act=office]")].forEach(n => n.onclick = () => go("office"));
     [...document.querySelectorAll("[data-act=weeklyreview]")].forEach(n => n.onclick = openWeeklyReview);
     [...document.querySelectorAll("[data-act=checkin]")].forEach(n => n.onclick = openDailyCheckin);
-    [...document.querySelectorAll("[data-act=foundersdesk]")].forEach(n => n.onclick = openFoundersDesk);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
+    [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
     [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
     wireTook();
   }
@@ -3650,7 +4061,7 @@
         // Brief beat so the native loader finishes its entrance before revealing the floor
         setTimeout(signalFloorReady, 900);
       } else if ($("#screen-splash")) {
-        setTimeout(() => playSplashExit(enter), 400);
+        setTimeout(() => playSplashExit(() => { enter(); }), 400);
       } else {
         enter(); signalFloorReady();
       }

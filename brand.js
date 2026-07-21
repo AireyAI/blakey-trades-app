@@ -15,7 +15,7 @@ window.BRAND = {
 
   // ---- voice ----
   tagline: "Welcome to the future of trading.", // login hero headline
-  blurb: "Blakey Trades — part of The Phantom Group. Live signals, education, Zoom calls, and Signal IQ.", // login sub-line
+  blurb: "Blakey Trades — part of The Phantom Group. Live signals on Telegram, education, Zoom calls, and Signal IQ.", // login sub-line
   floor: "the floor",              // the community's word for itself ("the room", "the desk"…)
   parentGroup: "Phantom Group",    // co-brand parent (Welcome to BT deck, 2026-07)
 
@@ -33,6 +33,13 @@ window.BRAND = {
   market: "XAUUSD",
   marketName: "Gold",
   ccy: "£",                        // currency members journal their profit/loss in ($, €, etc.)
+
+  // ---- backend (MT5 screenshot import) ----
+  api: {
+    supabaseUrl: "https://rnoqrxdgzydkkfozvswe.supabase.co",
+    supabaseAnonKey: "sb_publishable_w0wPbG3RBM3Jvnd6bCYaLw_yX8TSbVc",
+    parseMt5Url: "https://rnoqrxdgzydkkfozvswe.supabase.co/functions/v1/parse-mt5-screenshot",
+  },
 
   // ---- brand colour — the WHOLE metallic theme derives from this one hex ----
   accent: "#E0B23C",

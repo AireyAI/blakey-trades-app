@@ -268,26 +268,9 @@ window.DATA = {
     { id:"j7", pair:"XAUUSD", dir:"long", r:-200, lots:0.5, outcome:"loss", session:"Asia", date:"Thu", setup:"Counter-trend", channel:"Off-plan", tags:["Off-plan","Counter-trend"], note:"Took a trade that wasn't on the plan, against the daily trend. Stopped out. This is exactly what the journal is for — name it, don't repeat it." },
   ],
 
-  // AUTO-COPIER FEED — the system's trades, each with the reasoning + an AI review (see REAL_BUILD_FOUNDATIONS §8).
-  // In the real app ai_review is LLM-generated per trade; these are representative samples.
-  copierTrades: [
-    { id:"c4", pair:"XAUUSD", dir:"long", entry:"4,041.50", sl:"4,033.00", tp:"4,062.00", status:"running", result:"Running", time:"Today · 11:05",
-      why:"London continuation — price held the 4,041 breaker block after the morning push. The copier added a long on the pullback, targeting the 4,062 liquidity resting above.",
-      review:"Live now, +0.8R and holding above entry. This is a breaker-retest with the trend — the copier's highest win-rate context. Risk is 1% with the stop under the breaker. The analysis finalises when it closes; watching whether it respects 4,062 or trails past it." },
-    { id:"c1", pair:"XAUUSD", dir:"long", entry:"4,024.50", sl:"4,014.00", tp:"4,048.00", status:"tp", result:"+2.3R", time:"Today · 08:12",
-      why:"London swept the Asian low at 4,020, then reclaimed the 4,024 order block on the 5-minute. The copier entered on the reclaim-and-hold — stop below the sweep, target at the prior-day high.",
-      review:"Textbook A+ execution. The entry came *after* the liquidity sweep, not before — the discipline most retail traders miss. Risk was 1%, stop protected below structure, and the 2.3R came from letting the runner reach prior-day liquidity. One note: it scaled 50% at 1.5R, which locked profit but capped upside on a clean trend day — a wider partial banks more here." },
-    { id:"c2", pair:"XAUUSD", dir:"short", entry:"4,051.00", sl:"4,059.00", tp:"4,035.00", status:"tp", result:"+2.0R", time:"Yesterday · 14:38",
-      why:"Price tapped weekly supply at 4,050 in New York and printed a lower-high rejection. The copier shorted the rejection with a tight stop above the zone.",
-      review:"Strong location-based entry — trading into a higher-timeframe supply zone stacks probability. The stop sat above the zone, not at the candle high, dodging the common stop-hunt. Full target at the prior-day open. Repeatable setup; the edge is patience to let price come to the zone, never chasing it." },
-    { id:"c3", pair:"XAUUSD", dir:"long", entry:"4,038.00", sl:"4,030.00", tp:"4,054.00", status:"sl", result:"-1.0R", time:"Mon · 09:20",
-      why:"An intraday break of the 4,038 range high suggested continuation. The copier took the breakout long expecting a push into 4,054.",
-      review:"An honest loss — and a useful one. This was a breakout *without* a retest, into the middle of the range rather than off a key level. The edge lives in liquidity sweeps and zone reactions, not raw breakouts. Risk was managed (1%, clean stop) so the account barely felt it. Lesson the review flags: range-middle breakouts are this system's lowest win-rate pattern — size down or skip." },
-  ],
-
   notifications: [
     { icon:"i-live", text:"Your next live call starts in 12 minutes", time:"now", unread:true, group:"Today", go:"live" },
-    { icon:"i-chart", text:"New gold idea — XAUUSD long @ 4,026.50", time:"08:14", unread:true, group:"Today", go:"signals" },
+    { icon:"i-chart", text:"New signal on Telegram — tap Signals to get onboarded", time:"08:14", unread:true, group:"Today", go:"signals" },
     { icon:"i-trophy", text:"You climbed to #6 on the weekly leaderboard", time:"1h ago", unread:true, group:"Today", go:"community" },
     { icon:"i-comment", text:"Marcus Webb replied to your post", time:"2h ago", unread:false, group:"Today", go:"community" },
     { icon:"i-play", text:"New replay added — New York Session", time:"Yesterday", unread:false, group:"Earlier", go:"learn" },
