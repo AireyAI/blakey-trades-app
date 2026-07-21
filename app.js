@@ -2230,6 +2230,15 @@
     });
   }
 
+  function isImageFile(f) {
+    if (f.type && f.type.startsWith("image/")) return true;
+    return /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name || "");
+  }
+
+  function mt5ErrMsg(payload, status) {
+    return payload.error || payload.message || `Parse failed (${status})`;
+  }
+
   async function parseMt5Screenshots(files) {
     const url = mt5ApiUrl();
     const key = (B.api || {}).supabaseAnonKey;
@@ -2240,18 +2249,30 @@
       images.push(await fileToBase64(f));
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({ images }),
-    });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 90000);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({ images }),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      if (e && e.name === "AbortError") throw new Error("Reading timed out — try a smaller crop or one screenshot");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
 
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload.error || `Parse failed (${res.status})`);
+    if (!res.ok) throw new Error(mt5ErrMsg(payload, res.status));
     return payload;
   }
 
@@ -2291,6 +2312,7 @@
           <div class="mt5-thumbs" id="mt5-thumbs"></div>
         </div>
         <p class="mt5-tip">${ic("i-shield")}<span>Crop to the trade rows only — no need to show account number or balance.</span></p>
+        <p class="mt5-status" id="mt5-status" hidden role="alert"></p>
         <button class="btn btn-gold btn-block" id="mt5-parse" style="margin-top:16px" disabled>${ic("i-chart")} Read trades</button>
         <div class="spacer"></div>
       `);
@@ -2301,6 +2323,15 @@
       const countEl = $("#mt5-count");
       const thumbs = $("#mt5-thumbs");
       const parseBtn = $("#mt5-parse");
+      const statusEl = $("#mt5-status");
+
+      function setMt5Status(msg, tone) {
+        if (!statusEl) return;
+        if (!msg) { statusEl.hidden = true; statusEl.textContent = ""; statusEl.className = "mt5-status"; return; }
+        statusEl.hidden = false;
+        statusEl.className = "mt5-status" + (tone ? " mt5-status-" + tone : "");
+        statusEl.textContent = msg;
+      }
 
       function paintThumbs() {
         const n = pendingFiles.length;
@@ -2318,10 +2349,11 @@
 
       function addFiles(list) {
         for (const f of list) {
-          if (!f.type.startsWith("image/")) continue;
+          if (!isImageFile(f)) continue;
           if (pendingFiles.length >= MT5_MAX_IMAGES) { toast(`Max ${MT5_MAX_IMAGES} screenshots`, null); break; }
           pendingFiles.push(f);
         }
+        setMt5Status("");
         paintThumbs();
       }
 
@@ -2332,6 +2364,7 @@
       parseBtn.onclick = async () => {
         if (!pendingFiles.length) return;
         parseBtn.disabled = true;
+        setMt5Status("Reading your screenshot…", "wait");
         parseBtn.textContent = "Reading…";
         try {
           const { hashes } = existingFingerprints();
@@ -2342,14 +2375,22 @@
           const payload = await parseMt5Screenshots(pendingFiles);
           const trades = payload.trades || [];
           parseWarnings = payload.warnings || [];
-          if (!trades.length) { toast("No closed trades found — try a clearer crop", null); parseBtn.disabled = false; parseBtn.innerHTML = `${ic("i-chart")} Read trades`; return; }
+          if (!trades.length) {
+            setMt5Status("No closed trades found — crop tighter to the History rows and try again.", "err");
+            toast("No closed trades found — try a clearer crop", null);
+            parseBtn.disabled = false;
+            parseBtn.innerHTML = `${ic("i-chart")} Read trades`;
+            return;
+          }
           staging = trades.map(t => mapParsedTrade(t, ""));
           const { fps } = existingFingerprints();
           staging = dedupeStagingRows(staging, fps);
           step = 2;
           renderReview();
         } catch (e) {
-          toast(e.message || "Could not read screenshot", null);
+          const msg = e.message || "Could not read screenshot";
+          setMt5Status(msg, "err");
+          toast(msg, null);
           parseBtn.disabled = false;
           parseBtn.innerHTML = `${ic("i-chart")} Read trades`;
         }
