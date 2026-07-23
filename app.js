@@ -1423,14 +1423,13 @@
 
   // ============================ LIVE ============================
   let livePreview = false; // demo: lets you peek into the live room when no call is on
-  function isLiveNow() { // true only inside a scheduled call window (UK timetable)
-    const now = Date.now();
-    return (D.schedule || []).some(c => {
-      const start = ukInstantOnDay(c.day, c.time, now);
-      if (start == null) return false;
-      const mins = (now - start) / 60000;
-      return mins >= -5 && mins <= 75;
-    });
+  // No real broadcast pipeline exists yet (Zoom→HLS is still on the roadmap — see
+  // REAL_BUILD_FOUNDATIONS.md §Phase 2). isLiveNow() previously flipped true purely from
+  // the clock matching the weekly schedule, which showed a fake "LIVE · N watching" stage
+  // and fired a fake "has started" push with nobody actually hosting — pulled per Kyle,
+  // 2026-07-23. Always false until there's a real live signal to check against.
+  function isLiveNow() {
+    return false;
   }
   function liveStageHtml(v, preview) {
     const ci = liveCallInfo() || { host: v.host, initials: v.hostInitials, session: v.session };
