@@ -1,0 +1,48 @@
+/* Blakey Trades — legal document pages. Standalone, brand-matched, reads on any device. */
+:root{
+  --ink:#060607; --surface:#0E0E11; --surface-2:#111116; --line:rgba(255,255,255,0.10);
+  --gold:#E0B23C; --gold-hi:#F3D277; --text:#F3F3F1; --text-2:#D6D6DA; --muted:#9A9AA6;
+  --display:"Sora",system-ui,sans-serif; --body:"Outfit",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ink:#F1F0EB; --surface:#FFFFFF; --surface-2:rgba(22,20,14,0.035); --line:rgba(22,20,14,0.12);
+    --gold:#9A7B2E; --gold-hi:#7C5E1C; --text:#15151A; --text-2:#2A2A30; --muted:#5E5E68;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink); color:var(--text); font-family:var(--body); font-size:16px; line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+.bar{
+  display:flex; align-items:center; justify-content:space-between; padding:18px 24px;
+  border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--ink); z-index:10;
+}
+.bar a.brand{ font-family:var(--display); font-weight:800; color:var(--text); text-decoration:none; font-size:15px; letter-spacing:-.01em; }
+.bar a.brand b{ color:var(--gold); }
+.bar nav a{ color:var(--muted); text-decoration:none; font-size:13px; margin-left:18px; font-weight:600; }
+.bar nav a:hover, .bar nav a.on{ color:var(--gold); }
+main{ max-width:720px; margin:0 auto; padding:48px 24px 96px; }
+.eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); margin:0 0 10px; }
+h1{ font-family:var(--display); font-weight:800; font-size:clamp(28px,5vw,38px); letter-spacing:-.02em; margin:0 0 8px; line-height:1.1; }
+.meta{ color:var(--muted); font-size:13.5px; margin:0 0 40px; }
+h2{ font-family:var(--display); font-weight:700; font-size:20px; margin:36px 0 12px; letter-spacing:-.01em; }
+h3{ font-family:var(--display); font-weight:600; font-size:16px; margin:22px 0 8px; }
+p, li{ color:var(--text-2); font-size:15px; }
+ul, ol{ padding-left:22px; }
+li{ margin-bottom:6px; }
+a{ color:var(--gold); }
+strong{ color:var(--text); }
+.callout{
+  background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+  margin:20px 0; font-size:14px; color:var(--text-2);
+}
+.callout b{ color:var(--gold); }
+table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:14px; }
+th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+th{ color:var(--muted); font-weight:600; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+td{ color:var(--text-2); }
+footer{ border-top:1px solid var(--line); padding:24px; text-align:center; color:var(--muted); font-size:12.5px; }
+footer a{ color:var(--muted); }

@@ -14,7 +14,27 @@
     }
     window.open(url, "_blank", "noopener");
   }
-  function openTgSupport() { openExternalUrl(tgSupportUrl()); }
+  function openTgSupport() {
+    setSetting("sigDay", ymd());
+    checkStreakEarned();
+    openExternalUrl(tgSupportUrl());
+  }
+  /** Native shell → /support (Aria). Web-only shows hint. */
+  function openAriaSupport(ev) {
+    if (ev && ev.preventDefault) { ev.preventDefault(); ev.stopPropagation(); }
+    if (window.__btAriaOpening) return;
+    haptic(10);
+    if (window.ReactNativeWebView) {
+      window.__btAriaOpening = true;
+      const first = !getSetting("ariaMet", false);
+      markAriaMet();
+      try { window.ReactNativeWebView.postMessage("open-support"); } catch (e) {}
+      if (first) toast("Ask Aria · +50 XP", "i-comment");
+      setTimeout(() => { window.__btAriaOpening = false; }, 600);
+      return;
+    }
+    toast("Ask Aria lives in the app — use the chat icon up top", "i-comment");
+  }
   function telegramOnboardCard(opts) {
     opts = opts || {};
     const compact = opts.compact;
@@ -128,9 +148,9 @@
   let _navSilent = false; // true while popstate drives navigation (don't re-push)
   function go(tab) {
     haptic(8);
+    if (tab === "signals") tab = "home"; // tab removed — stale deep links fall back to Home
     const m = $("#modal"); if (m && m.classList.contains("open")) closeModal(); // never trap the user in a sheet/player
     activeTab = tab; livePreview = false; // tab nav exits any live-room preview
-    if (tab === "signals") { setSetting("sigDay", ymd()); checkStreakEarned(); }
     if (!_navSilent) { try { history.pushState({ t: tab }, ""); } catch (e) {} }
     SCREENS[tab]();
     [...document.querySelectorAll(".tab")].forEach(t => { t.classList.toggle("active", t.dataset.tab === tab); t.setAttribute("aria-current", t.dataset.tab === tab ? "page" : "false"); });
@@ -151,7 +171,7 @@
     const displayName = title || D.user.name;
     const greet = sub || greeting();
     return topbar(`<div class="tb-actions"><button class="icon-btn" data-act="notif" aria-label="Notifications${unreadCount() ? ", unread" : ""}">${ic("i-bell")}${badgeHtml()}</button><button class="icon-btn" data-act="account" aria-label="Account">${ic("i-settings")}</button><button class="icon-btn" data-act="theme-top" aria-label="Toggle light or dark mode">${ic(currentTheme()==="light"?"i-moon":"i-sun")}</button>${storyTopBtn()}</div>`) +
-      `<div class="app-head"><button type="button" class="who who-profile" data-act="profile" aria-label="Open profile"><span class="who-copy"><small>${greet}</small><span class="who-name-row"><b>${displayName}</b>${ic("i-chev", "who-chev")}</span></span></button></div>`;
+      `<div class="app-head"><button type="button" class="who who-profile" data-act="profile" aria-label="Open profile"><span class="who-copy"><small>${greet}</small><span class="who-name-row"><b>${displayName}</b>${ic("i-chev", "who-chev")}</span></span></button><button type="button" class="ask-pill" data-act="ask-aria" aria-label="Ask Aria">Ask</button></div>`;
   }
   function greeting() { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + ","; }
 
@@ -160,6 +180,7 @@
   const DAY_FULL = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday", Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
   const TZ_UK = "Europe/London";
   function ukDayShort(ms) { return new Intl.DateTimeFormat("en-GB", { timeZone: TZ_UK, weekday: "short" }).format(new Date(ms)).slice(0, 3); }
+  function isFridayUk(ms) { return ukDayShort(ms || Date.now()) === "Fri"; }
   function ukYmd(ms) { return new Intl.DateTimeFormat("en-CA", { timeZone: TZ_UK, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)); }
   function ukWallToUtc(isoLocal) {
     const [date, time = "00:00:00"] = isoLocal.split("T");
@@ -431,7 +452,7 @@
   }
 
   // ============================ PROFILE STATE (persisted, client-side) ============================
-  // Makes the prototype cohesive: a logged trade feeds win-rate / R:R / streak / leaderboard / badges,
+  // Makes the prototype cohesive: a logged trade feeds win-rate / R:R / streak / badges,
   // all saved on the device. (True cross-device sync + real auth is the production app.)
   const PSTORE = "bt_profile_v1";
   let _pCache = null; // parsed-profile memo — a single home render reads state ~50×; parse once, refresh on save
@@ -454,15 +475,13 @@
   const cleanText = s => String(s || "").replace(/[<>]/g, "").trim(); // free-text inputs land in innerHTML templates — strip tag chars at save
   const escAttr = s => String(s || "").replace(/"/g, "&quot;");       // for value="…" attribute interpolation (names like O"Brien)
   function deriveHandle(nm) { const h = (nm || "").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, ""); return "@" + (h || "trader"); }
-  function syncPersona() { // handle + the leaderboard "You" row follow the display name — no Jordan Hale ghost
+  function syncPersona() { // handle follows the display name — no Jordan Hale ghost
     D.user.handle = deriveHandle(D.user.name);
-    const me = D.leaderboard.find(r => r.me);
-    if (me) { me.name = D.user.name; me.handle = D.user.handle; me.initials = D.user.initials; }
   }
   function hydrateProfile() { // first run seeds storage with the demo journal; thereafter it's the source of truth
     const s = pState();
     if (Array.isArray(s.journal)) D.journal = s.journal;
-    else pSet({ journal: D.journal, streak: D.user.streak, lbPoints: 3480 });
+    else pSet({ journal: D.journal, streak: D.user.streak });
     if (s.name) { D.user.name = s.name; D.user.first = s.first || s.name.split(/\s+/)[0]; D.user.initials = s.initials || D.user.initials; }
     syncPersona();
     if (s.country) D.user.country = s.country;
@@ -471,7 +490,6 @@
     if (s.challenge) Object.assign(D.challenge, s.challenge);
     if (Array.isArray(s.alerts)) D.alerts = s.alerts;
     if (Array.isArray(s.posts)) D.posts = s.posts;
-    if (Array.isArray(s.dms)) D.dms = s.dms;
   }
   function callKey(c) { return c.day + "|" + c.time + "|" + c.session; }
   function getTook(id) { return (pState().took || {})[id] || null; }
@@ -519,14 +537,36 @@
     rs.add(k); pSet({ reminders: [...rs] }); return true;
   }
   function remindBtnLabel(c) { return c && isReminded(c) ? "Reminder set ✓" : "Remind me"; }
-  // scheduled live-call alerts — in the real app these fire from the backend (§9): a 10-minute warning
-  // and a "started" push. Here they preview on reminder-set so the pitch shows exactly what lands.
+  function isNativeApp() {
+    return !!(window.ReactNativeWebView || /(?:^|[?&])native=1(?:&|$)/.test(location.search));
+  }
+  function postNativeRemindCall(nc) {
+    if (!nc || !window.ReactNativeWebView) return false;
+    try {
+      window.ReactNativeWebView.postMessage("remind-call:" + JSON.stringify({
+        day: nc.day, time: nc.time, session: nc.session, host: nc.host || "", startsIn: nc.startsIn || 0
+      }));
+      return true;
+    } catch (e) { return false; }
+  }
+  function handleRemindClick(nc, btnEl) {
+    if (!nc) return;
+    if (!setReminder(nc)) { toast("Reminder already set", "i-check"); return; }
+    if (postNativeRemindCall(nc)) {
+      if (btnEl) btnEl.innerHTML = ic("i-bell") + " Reminder set ✓";
+      return;
+    }
+    toast("We'll alert you 15 minutes before the call", "i-bell");
+    previewCallAlerts(nc);
+    if (btnEl) btnEl.innerHTML = ic("i-bell") + " Reminder set ✓";
+  }
+  // Web pitch only — native TestFlight uses APNs + scheduled locals (no in-app fake banners).
   let _callAlertT = [];
   function previewCallAlerts(nc) {
-    if (!nc) return;
+    if (!nc || isNativeApp()) return;
     _callAlertT.forEach(clearTimeout); _callAlertT = [];
     const host = nc.host || "the team", sess = nc.session || "Live call";
-    _callAlertT.push(setTimeout(() => showPush(`${sess} starts in 10 minutes`, `Your live call with ${host} is coming up — get ready to join.`), 1600));
+    _callAlertT.push(setTimeout(() => showPush(`${sess} starts in 15 minutes`, `Your live call with ${host} is coming up — get ready to join.`), 1600));
     _callAlertT.push(setTimeout(() => showPush(`🔴 ${sess} has started`, `${host} is live now — tap to join the room.`), 4400));
   }
   function bumpChallengeDay() {
@@ -540,6 +580,25 @@
   function savePosts() { pSet({ posts: D.posts.slice(0, 60) }); } // newest-first feed — cap the persisted tail
   function getSetting(key, def) { const v = (pState().settings || {})[key]; return v != null ? v : def; }
   function setSetting(key, val) { pSet({ settings: { ...(pState().settings || {}), [key]: val } }); }
+  function notificationsOn() { return !!getSetting("pushEnabled", false); }
+  function markPushEnabled() {
+    setSetting("pushEnabled", true);
+    if (activeTab === "office" && SCREENS.office) SCREENS.office();
+  }
+  function markAriaMet() {
+    if (getSetting("ariaMet", false)) return;
+    setSetting("ariaMet", true);
+    addXp(50);
+    if (activeTab === "office" && SCREENS.office) SCREENS.office();
+  }
+  function handleEnablePush() {
+    if (window.ReactNativeWebView) {
+      try { window.ReactNativeWebView.postMessage("enable-push"); return; } catch (e) {}
+    }
+    setSetting("push", true);
+    markPushEnabled();
+    toast("Notifications on — we'll ping you for live calls and news", "i-bell");
+  }
   // ---- theme (light default until the member picks dark) ----
   function currentTheme() { return getSetting("theme", "light") === "dark" ? "dark" : "light"; }
   function applyTheme(t) {
@@ -577,34 +636,6 @@
     pSet({ savedVideos: [...s] });
     return s.has(id);
   }
-  function icsStamp(ms) { return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z/, "Z"); }
-  function downloadCallIcs(call) {
-    const nc = call || nextCall(); if (!nc) { toast("No upcoming call to add", null); return; }
-    const start = ukInstantForDay(nc.day, nc.time, Date.now());
-    if (!start) { toast("Could not schedule this call", null); return; }
-    const end = start + 75 * 60000;
-    const uid = callKey(nc) + "@" + B.domain;
-    const body = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//" + B.name + "//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-      "BEGIN:VEVENT",
-      "UID:" + uid,
-      "DTSTAMP:" + icsStamp(Date.now()),
-      "DTSTART:" + icsStamp(start),
-      "DTEND:" + icsStamp(end),
-      "SUMMARY:" + nc.session.replace(/,/g, "\\,"),
-      "DESCRIPTION:" + B.name + " live call with " + nc.host + ". Free for members.",
-      "LOCATION:" + B.name + " App",
-      "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", "DESCRIPTION:Live call starts in 10 minutes", "END:VALARM",
-      "END:VEVENT", "END:VCALENDAR"
-    ].join("\r\n");
-    const blob = new Blob([body], { type: "text/calendar;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "blakey-trades-" + nc.session.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".ics";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 500);
-    toast("Calendar event downloaded", "i-cal");
-  }
   function callsJoined() { const s = pState(); return s.calls != null ? s.calls : D.user.sessions; }
   function bumpCalls() { const s = pState(), today = new Date().toLocaleDateString("en-CA"); if (s.lastCallDay === today) return false; s.calls = (s.calls != null ? s.calls : D.user.sessions) + 1; s.lastCallDay = today; pSave(s); return true; }
   // journalStats() is the canonical one defined below — extended with winRate + avgRR for these helpers
@@ -619,8 +650,6 @@
     const s = pState();
     return Math.max(s.maxStreak || 0, s.streak != null ? s.streak : D.user.streak);
   }
-  function lbPoints() { const s = pState(); return s.lbPoints != null ? s.lbPoints : 3480; }
-
   function animateFills(root) {
     const scope = root || document;
     const nodes = scope.querySelectorAll(".level-bar i, .sess-bar i, .nu-bar i, .chal-bar i, .player .bar i, [data-fill]");
@@ -666,24 +695,16 @@
     if (j.day === yday()) return "Yesterday";
     return new Date(j.day + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   }
-  function recordLog() { // a logged trade earns points + persists the journal (streak is owned by maybeExtendStreak)
+  function recordLog() { // a logged trade persists the journal (streak is owned by maybeExtendStreak)
     const s = pState();
     s.lastLogDay = new Date().toLocaleDateString("en-CA");
-    s.lbPoints = (s.lbPoints != null ? s.lbPoints : 3480) + 50;
     s.journal = D.journal;
     pSave(s);
     bumpChallengeDay();
   }
-  function liveLeaderboard() { // inject your real points, re-sort, re-rank
-    const rows = D.leaderboard.map(r => ({ ...r, _p: r.me ? lbPoints() : parseInt(String(r.pts).replace(/,/g, ""), 10) || 0 }));
-    rows.sort((a, b) => b._p - a._p);
-    rows.forEach((r, i) => { r.rank = i + 1; r.pts = r._p.toLocaleString("en-US"); r.top = i < 3; });
-    return rows;
-  }
-  function myRank() { const me = liveLeaderboard().find(r => r.me); return me ? me.rank : 99; }
   function liveBadges() { // unlock from real stats where computable
-    const st = journalStats(), streak = profStreak(), rank = myRank();
-    const cond = { "18-day streak": bestStreak() >= 18, "60% win rate": st.winRate >= 60, "Journaled 40": st.count >= 40, "Top 10": rank <= 10, "100 trades": st.count >= 100 };
+    const st = journalStats(), streak = profStreak();
+    const cond = { "18-day streak": bestStreak() >= 18, "60% win rate": st.winRate >= 60, "Journaled 40": st.count >= 40, "Floor regular": st.count >= 25, "100 trades": st.count >= 100 };
     return D.badges.map(b => ({ ...b, on: (b.name in cond) ? cond[b.name] : b.on }));
   }
   function liveHomeStats() {
@@ -751,9 +772,9 @@
     const cards = [];
     const pts = (bd && bd.points) || [];
     cards.push({ eyebrow: "Morning brief", h: (bd && bd.headline) || "Mapping today's session", body: `${bd && bd.bias ? `<span class="pill pill-gold" style="margin-bottom:14px">${bd.bias}</span>` : ""}${pts.slice(0, 2).map(p => `<p><b style="color:var(--gold)">${p.label}</b> — ${p.text}</p>`).join("")}` });
-    cards.push({ eyebrow: "Trade signals", h: "Live on Telegram", body: `<p>Every call is posted in our Telegram channels. Tap <b>Signals</b> in the app, then message <b>@${B.handle}</b> to get onboarded.</p>`, cta: { label: "Open Signals tab", go: "signals" } });
+    cards.push({ eyebrow: "Trade signals", h: "Live on Telegram", body: `<p>Every call is posted in our Telegram channels. Message <b>@${B.handle}</b> on Support to get onboarded.</p>`, cta: { label: "Contact Support", tg: true } });
     if (nc) cards.push({ eyebrow: nc.passed ? "Today's session" : "Next live call", h: nc.session, body: `<p style="margin-bottom:6px">with ${nc.host}</p><div class="st-big num">${callDayLabel(nc)} ${nc.at}</div>`, cta: { label: nc.passed ? "Watch the replay" : "Set a reminder", go: nc.passed ? "learn" : "live" } });
-    cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><div class="st-big num up">${w.ret}</div><p>${w.winRate} win rate · ${w.trades} trades</p>` });
+    cards.push({ eyebrow: "Trader of the week", h: w.name, body: `<div class="st-avatar">${av(w.initials, 64)}</div><p class="sub" style="margin-top:12px;font-style:italic">“${w.quote || "Recognised on the floor this week."}”</p>` });
     cards.push({ eyebrow: "Monthly challenge", h: "Journal every trade", body: `<div class="st-big num gold-text">${ch.done}<small style="font-size:22px">/${ch.total}</small></div><p>days logged — keep the streak alive</p>`, cta: { label: "Log a trade", go: "community" } });
     return cards;
   }
@@ -778,9 +799,12 @@
         <span class="eyebrow">${c.eyebrow}</span>
         <h2>${c.h}</h2>
         <div class="st-body">${c.body || ""}</div>
-        ${c.cta ? `<button class="btn btn-gold" data-stgo="${c.cta.go}" style="margin-top:22px;padding:0 28px">${c.cta.label}</button>` : ""}`;
+        ${c.cta ? (c.cta.tg
+          ? `<button class="btn btn-gold" data-sttg style="margin-top:22px;padding:0 28px">${c.cta.label}</button>`
+          : `<button class="btn btn-gold" data-stgo="${c.cta.go}" style="margin-top:22px;padding:0 28px">${c.cta.label}</button>`) : ""}`;
       bars.forEach((b, n) => { b.style.transition = "none"; b.style.transform = n < idx ? "scaleX(1)" : "scaleX(0)"; });
       const go2 = $("#st-card [data-stgo]"); if (go2) go2.onclick = () => { close(); go(go2.dataset.stgo); };
+      const tg2 = $("#st-card [data-sttg]"); if (tg2) tg2.onclick = () => { close(); openTgSupport(); };
       run();
     };
     const DUR = 5000;
@@ -857,13 +881,10 @@
       <div class="section-head"><span class="h2">Signal IQ</span><span class="more" data-tab="learn">Learn ›</span></div>
       ${signalIqCard()}
 
-      <div class="section-head"><span class="h2">Community</span><span class="more" data-tab="community" data-seg="community">Open ›</span></div>
-      ${floorCard()}
-
-      <div class="section-head"><span class="h2">Trade signals</span><span class="more" data-tab="signals">Channels ›</span></div>
+      <div class="section-head"><span class="h2">Trade signals</span><span class="more" data-act="tg-support">Support ›</span></div>
       ${telegramOnboardCard({ compact: true })}
 
-      <div class="section-head"><span class="h2">Trader of the week</span><span class="more" data-tab="community">View ›</span></div>
+      <div class="section-head"><span class="h2">Trader of the week</span></div>
       ${totwMini()}
 
       <div class="section-head"><span class="h2">Continue watching</span><span class="more" data-tab="learn">Library ›</span></div>
@@ -906,8 +927,7 @@
     }
     wireCommon();
     const jl = $("[data-act=joinlive]"); if (jl) jl.onclick = () => { if (isLiveNow()) { if (bumpCalls()) { addXp(50); toast("Joined the call · +50 XP", "i-live"); } } go("live"); };
-    const rm2 = $("[data-act=remind]"); if (rm2) rm2.onclick = (e) => { const call = nextCall(); if (!call) return; const isNew = setReminder(call); e.currentTarget.textContent = "Reminder set ✓"; toast("Reminder set — we'll alert you 10 minutes before", "i-bell"); if (isNew) previewCallAlerts(call); };
-    const fc = $("[data-home-chat]"); if (fc) fc.onclick = openChat;
+    const rm2 = $("[data-act=remind]"); if (rm2) rm2.onclick = () => { const call = nextCall(); if (!call) return; handleRemindClick(call, rm2); if (isReminded(call)) rm2.textContent = "Reminder set ✓"; };
     const beq = $("#book-eq"); if (beq && Charts.drawEquity) requestAnimationFrame(() => Charts.drawEquity(beq, D.journal.map(j => j.r).slice().reverse()));
     mountMarketBar();
   };
@@ -995,12 +1015,11 @@
 
   function totwMini() {
     const w = D.traderOfWeek;
-    return `<div class="card totw reveal" data-tab="community" data-seg="community">
+    return `<div class="card totw reveal">
       <div class="trophy">${ic("i-trophy")}</div>
       ${av(w.initials, 44)}
-      <div class="meta"><small class="eyebrow muted">This week</small><b>${w.name}</b>
-        <div class="num up" style="font-size:13px;margin-top:2px">${w.ret} · ${w.winRate} win rate</div></div>
-      <div style="margin-left:auto">${ic("i-chev","ic")}</div>
+      <div class="meta"><small class="eyebrow muted">Trader of the week</small><b class="gold-text">${w.name}</b>
+        ${w.quote ? `<div class="sub" style="font-size:12px;margin-top:4px;line-height:1.45">“${w.quote}”</div>` : ""}</div>
     </div>`;
   }
 
@@ -1027,36 +1046,51 @@
     const js = journalStats(), nc = nextCall();
     const healthy = js.pf >= 1 && js.netR >= 0;
     const when = nc ? (nc.passed ? "Replay soon" : `${callDayLabel(nc)} ${nc.at}`) : ""; // callDayLabel checks the real weekday — "Tonight" only when it IS today
-    const unread = unreadAnnouncements(), dmUn = dmUnread() + (thisWeeksReview() ? 0 : 1); // DMs + the pending weekly review pull people in
+    const unread = unreadAnnouncements(), officeUn = isFridayUk() && !thisWeeksReview() ? 1 : 0;
     const row = (icon, label, val, act, extra) => `<button class="as-btn desk-row" ${act}>${ic(icon, "ic")}<span class="dr-label">${label}</span><span class="dr-val ${extra || ""}">${val}</span>${ic("i-chev", "dr-chev")}</button>`;
     return `<div class="card card-pad desk reveal" style="animation-delay:.03s">
       <div class="sch-head" style="margin-bottom:4px"><span class="eyebrow">${ic("i-home", "ic")} Your office</span><span class="streak-chip">${ic("i-flame", "ic")} ${profStreak()}-day streak</span></div>
       ${row("i-shield", "Account health", healthy ? "Good ✓" : "Review risk", 'data-act="journal"', healthy ? "up" : "down")}
-      ${row("i-tg", "Trade signals", "On Telegram", 'data-tab="signals"')}
+      ${row("i-tg", "Trade signals", "On Telegram", 'data-act="tg-support"')}
       ${nc ? row("i-live", nc.session, when, 'data-tab="live"') : ""}
       ${row("i-target", "Your journal", `<span class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</span>`, 'data-act="journal"')}
       ${row("i-bell", "Announcements", unread ? `<span class="num">${unread}</span> unread` : "All read ✓", 'data-act="announce"', unread ? "gold-tx" : "")}
-      <button class="btn btn-gold btn-block btn-office" data-act="office" aria-label="${dmUn ? `Enter your office, ${dmUn} waiting` : "Enter your office"}">
-        <span class="btn-office-lead">${ic("i-home")}<span class="btn-office-copy"><b>Enter your office</b><small>${dmUn ? `${dmUn} waiting for you` : "Desk · inbox · daily goals"}</small></span></span>
-        <span class="btn-office-go" aria-hidden="true">${dmUn ? `<span class="btn-office-count num">${dmUn}</span>` : ""}${ic("i-chev")}</span>
+      <button class="btn btn-gold btn-block btn-office" data-act="office" aria-label="${officeUn ? "Enter your office, weekly review pending" : "Enter your office"}">
+        <span class="btn-office-lead">${ic("i-home")}<span class="btn-office-copy"><b>Enter your office</b><small>${officeUn ? "Weekly review waiting" : "Desk · goals · your journey"}</small></span></span>
+        <span class="btn-office-go" aria-hidden="true">${officeUn ? `<span class="btn-office-count num">${officeUn}</span>` : ""}${ic("i-chev")}</span>
       </button>
     </div>`;
   }
 
-  // ---- the office: DM inbox state + daily goals + streak extension ----
-  function dmSeenMap() { return pState().dmSeen || {}; }
-  function dmUnread() { const seen = dmSeenMap(); return (D.dms || []).reduce((s, t) => s + Math.max(0, t.msgs.length - (seen[t.id] || 0)), 0); }
-  function markDmSeen(id) { const t = D.dms.find(x => x.id === id); if (t) pSet({ dmSeen: { ...dmSeenMap(), [id]: t.msgs.length } }); }
+  // ---- the office: daily goals + streak extension ----
   function dailyGoals() {
-    const g = [
-      { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
-      { label: "Open Signals (Telegram)", done: getSetting("sigDay", "") === ymd(), act: 'data-tab="signals"' },
-      { label: "Quick check-in", done: getSetting("checkinDay", "") === ymd(), act: 'data-act="checkin"' },
-      { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
-    ];
-    // every Monday: plan the week around the economic calendar
-    if (new Date().getDay() === 1) g.unshift({ label: "Check the week's news", done: getSetting("newsWeek", "") === weekKey(), act: 'data-act="calendar"' });
-    return g;
+    const pool = {
+      story: { label: "Read the daily recap", done: getSetting("storySeen", "") === ymd(), act: 'data-act="story"' },
+      checkin: { label: "Quick check-in", done: getSetting("checkinDay", "") === ymd(), act: 'data-act="checkin"' },
+      journal: { label: "Log a trade in your journal", done: getSetting("logDay", "") === ymd(), act: 'data-act="journal"' },
+      news: { label: "Check the week's news", done: getSetting("newsWeek", "") === weekKey(), act: 'data-act="calendar"' },
+      review: { label: "Complete your weekly review", done: !!thisWeeksReview(), act: 'data-act="weeklyreview"' },
+      aria: { label: "Ask Aria a question", done: !!getSetting("ariaMet", false), act: 'data-act="ask-aria"', cta: "Ask" },
+      push: { label: "Turn notifications on", done: notificationsOn(), act: 'data-act="enable-push"' },
+    };
+    // UK weekday rotation — keeps Today's goals fresh; Friday swaps in the weekly review
+    const rot = {
+      Sun: ["story", "checkin", "journal"],
+      Mon: ["news", "story", "checkin"],
+      Tue: ["story", "journal", "aria"],
+      Wed: ["checkin", "story", "journal"],
+      Thu: ["journal", "checkin", "story"],
+      Fri: ["review", "checkin", "story"],
+      Sat: ["story", "checkin", "journal"],
+    };
+    const keys = rot[ukDayShort(Date.now())] || ["story", "checkin", "journal"];
+    return keys.map(k => {
+      const g = pool[k];
+      if (!g) return null;
+      const row = { label: g.label, done: g.done, act: g.act };
+      if (g.cta) row.cta = g.cta;
+      return row;
+    }).filter(Boolean);
   }
   function maybeExtendStreak() { // the ONE streak owner: all goals done → +1 if yesterday extended too, else restart at 1
     const last = getSetting("streakDay", "");
@@ -1085,7 +1119,6 @@
   SCREENS.office = function () {
     const stagesWon = maybeGrantStageXp(); // grant stage bounties first so the XP bar paints post-award
     const u = D.user, js = journalStats(), goals = dailyGoals(), gDone = goals.filter(g => g.done).length;
-    const seen = dmSeenMap();
     setScreen(`
       ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
       <div class="office-head reveal">
@@ -1108,7 +1141,7 @@
 
       <div class="card card-pad reveal" style="margin-top:14px">
         <div class="sch-head"><span class="eyebrow">${ic("i-check", "ic")} Today's goals</span><span class="sch-count num">${gDone}/${goals.length}</span></div>
-        ${goals.map(g => `<button class="as-btn jny-row ${g.done ? "is-done" : ""}" ${g.done ? 'aria-disabled="true"' : g.act}><span class="jny-node">${g.done ? ic("i-check", "ic") : ""}</span><span class="jny-label">${g.label}</span>${g.done ? "" : `<span class="jny-next">Do it</span>`}</button>`).join("")}
+        ${goals.map(g => `<button class="as-btn jny-row ${g.done ? "is-done" : ""}" ${g.done ? 'aria-disabled="true"' : g.act}><span class="jny-node">${g.done ? ic("i-check", "ic") : ""}</span><span class="jny-label">${g.label}</span>${g.done ? "" : g.cta ? `<span class="jny-next">${g.cta}</span>` : `<span class="jny-next">Do it</span>`}</button>`).join("")}
         <p class="of-goalnote">${gDone === goals.length ? `Perfect day — your ${profStreak()}-day streak is safe.` : profStreak() > 0 ? `Complete all ${goals.length} to extend your ${profStreak()}-day streak.` : `Complete all ${goals.length} to start a new streak.`}</p>
       </div>
 
@@ -1116,16 +1149,8 @@
 
       ${journeyCard()}
 
-      <div class="section-head"><span class="h2">Messages</span><span class="more" data-act="members">Members ›</span></div>
-      <div class="card card-pad">
-        ${D.dms.map(t => {
-          const un = Math.max(0, t.msgs.length - (seen[t.id] || 0)), lastM = t.msgs[t.msgs.length - 1];
-          return `<button class="as-btn dm-row" data-dm="${t.id}">${av(t.initials, 44, un ? "" : "quiet")}<div class="dm-body"><div class="dm-top"><b>${t.name}${t.role === "Coach" ? ' <span class="vchk">✓</span>' : ""}</b><span class="dm-time num">${t.last}</span></div><small class="dm-prev">${lastM.me ? "You: " : ""}${lastM.text}</small></div>${un ? `<span class="dm-un num">${un}</span>` : ic("i-chev", "dr-chev")}</button>`;
-        }).join("")}
-      </div>
-
       <div class="stat-row" style="margin-top:14px">
-        <div class="stat">${ic("i-trophy", "ic")}<b class="num">#${myRank()}</b><small>Leaderboard</small></div>
+        <div class="stat">${ic("i-trophy", "ic")}<b class="num" style="font-size:13px">${D.traderOfWeek.name.split(" ")[0]}</b><small>Trader of week</small></div>
         <div class="stat">${ic("i-target", "ic")}<b class="num">${js.winRate}%</b><small>Win rate</small></div>
         <div class="stat">${ic("i-chart", "ic")}<b class="num ${js.netR >= 0 ? "up" : "down"}">${money(js.netR)}</b><small>Net result</small></div>
       </div>
@@ -1138,7 +1163,6 @@
       <div class="spacer"></div>
     `);
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
-    [...document.querySelectorAll("[data-dm]")].forEach(n => n.onclick = () => openDm(n.dataset.dm));
     const tc = $('[data-act="tradercard"]'); if (tc) tc.onclick = openTraderCard;
     wireCommon();
     if (maybeExtendStreak()) setTimeout(() => {
@@ -1217,7 +1241,7 @@
     const done = thisWeeksReview();
     const hist = weeklyHistory();
     const prev = done ? hist.filter(w => w.week !== weekKey()).slice(-1)[0] : hist.slice(-1)[0];
-    const isFri = [5, 6, 0].includes(new Date().getDay());
+    const fri = isFridayUk();
     if (done) {
       const d = prev ? done.score - prev.score : null;
       return `<div class="card card-pad wr reveal">
@@ -1228,15 +1252,23 @@
         </div>
       </div>`;
     }
+    if (!fri) {
+      return `<div class="card card-pad wr wr-locked reveal">
+        <div class="sch-head"><span class="eyebrow">${ic("i-target", "ic")} Weekly review</span><span class="sch-count">Friday</span></div>
+        <p class="wr-hook">Opens every Friday — six honest questions, one Trader Score. We'll ping you around 6:30 PM UK.</p>
+        ${prev ? `<p class="wr-last">Last week: <b class="num">${prev.score}</b> · ${scoreBand(prev.score)}</p>` : ""}
+      </div>`;
+    }
     return `<button class="as-btn card card-pad wr reveal" data-act="weeklyreview">
       <div class="sch-head"><span class="eyebrow">${ic("i-target", "ic")} Weekly review</span><span class="sch-count">+75 XP</span></div>
-      <p class="wr-hook">${isFri ? "It's Friday — time for the truth." : "Get ahead of Friday — debrief your week."} Six honest questions, one Trader Score.</p>
+      <p class="wr-hook">It's Friday — time for the truth. Six honest questions, one Trader Score.</p>
       ${prev ? `<p class="wr-last">Last week: <b class="num">${prev.score}</b> · ${scoreBand(prev.score)}</p>` : ""}
       <span class="btn btn-gold btn-block" style="margin-top:11px">${ic("i-edit")} Start the review</span>
     </button>`;
   }
   function openWeeklyReview() {
-    if (thisWeeksReview()) { toast("This week's review is done — Friday's next", "i-check"); return; }
+    if (thisWeeksReview()) { toast("This week's review is done — see you next Friday", "i-check"); return; }
+    if (!isFridayUk()) { toast("Weekly review opens every Friday", "i-target"); return; }
     openModal(`
       <h3 class="sheet-title">Weekly review</h3>
       <p class="sheet-sub">Be brutally honest — this score is for you, not the leaderboard. 1 = not at all, 10 = nailed it.</p>
@@ -1275,53 +1307,9 @@
         ${entry.fix ? `<div class="wr-note">${ic("i-edit", "ic")}<div><b>Next week's fix</b><small>${entry.fix.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</small></div></div>` : ""}
         <button class="btn btn-gold btn-block" id="wr-close" style="margin-top:14px">See you next Friday</button>`);
       toast(`Trader score ${score} · +75 XP`, "i-check");
+      checkStreakEarned();
       $("#wr-close").onclick = () => { closeModal(); setTimeout(() => { if (SCREENS[activeTab]) SCREENS[activeTab](); }, 360); };
     };
-  }
-
-  // ---- DM thread — scripted replies with a typing indicator ----
-  function openDm(id) {
-    const t = D.dms.find(x => x.id === id); if (!t) return;
-    markDmSeen(id);
-    const listUn = document.querySelector(`[data-dm="${id}"] .dm-un`); if (listUn) listUn.remove();
-    const esc = (s) => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-    const bubble = (m) => `<div class="dm-msg${m.me ? " me" : ""}">${m.me ? esc(m.text) : m.text}<span class="dm-t num">${m.time}</span></div>`;
-    openModal(`
-      <div class="dm-head">${av(t.initials, 44)}<div><b>${t.name}${t.role === "Coach" ? ' <span class="vchk">✓</span>' : ""}</b><small>${t.role || "Member"}</small></div></div>
-      <div class="dm-thread" id="dm-thread">${t.msgs.map(bubble).join("")}</div>
-      <div class="dm-compose">
-        <input class="finput" id="dm-in" placeholder="Message ${t.name.split(" ")[0]}…" autocomplete="off" aria-label="Message ${t.name}">
-        <button class="btn btn-gold dm-send" id="dm-send" aria-label="Send">${ic("i-send")}</button>
-      </div>`);
-    const th = $("#dm-thread"), inp = $("#dm-in"), snd = $("#dm-send");
-    th.scrollTop = th.scrollHeight;
-    let ri = 0, timers = [];
-    const send = () => {
-      const v = (inp.value || "").trim(); if (!v) return;
-      inp.value = "";
-      const mine = { me: true, text: v, time: "now" };
-      t.msgs.push(mine);
-      pSet({ dms: D.dms }); // sent DMs survive reload
-      th.insertAdjacentHTML("beforeend", bubble(mine));
-      th.scrollTop = th.scrollHeight;
-      markDmSeen(id);
-      timers.push(setTimeout(() => {
-        th.insertAdjacentHTML("beforeend", `<div class="dm-msg dm-typing" id="dm-typing"><i></i><i></i><i></i></div>`);
-        th.scrollTop = th.scrollHeight;
-        timers.push(setTimeout(() => {
-          const ty = $("#dm-typing"); if (ty) ty.remove();
-          const rep = { text: t.replies[ri % t.replies.length], time: "now" }; ri++;
-          t.msgs.push(rep);
-          pSet({ dms: D.dms });
-          th.insertAdjacentHTML("beforeend", bubble(rep));
-          th.scrollTop = th.scrollHeight;
-          markDmSeen(id);
-        }, 1500 + Math.random() * 900));
-      }, 500));
-    };
-    snd.onclick = send;
-    inp.onkeydown = (e) => { if (e.key === "Enter") send(); };
-    onModalClose(() => timers.forEach(clearTimeout));
   }
 
   // ---- "Your journey" — the staged road to a consistently profitable trader.
@@ -1333,30 +1321,34 @@
       { name: "Get on " + B.floor, pace: "day one", steps: [
         { label: "Joined " + B.floor, done: true },
         { label: "Read the daily recap", done: !!getSetting("storySeen", ""), xp: 100, act: 'data-act="story"' },
-        { label: "Completed your first check-in", done: Object.keys(checkinsHistory()).length > 0, xp: 150, act: 'data-act="checkin"' },
+        { label: "Complete your first check-in", done: Object.keys(checkinsHistory()).length > 0, xp: 150, act: 'data-act="checkin"' },
+        { label: "Log your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
+        { label: "Turn notifications on", done: notificationsOn(), xp: 100, act: 'data-act="enable-push"' },
       ] },
       { name: "Learn the playbook", pace: "week one", steps: [
         { label: "Watched your first live call", done: callsJoined() > 0, xp: 50, act: 'data-tab="live"' },
+        { label: "Message Aria", done: !!getSetting("ariaMet", false), xp: 50, act: 'data-act="ask-aria"', cta: "Ask" },
         { label: "Started the education library", done: anyLesson, xp: 50, act: 'data-tab="learn"' },
-        { label: "Took your first trade", done: js.count > 0, xp: 50, act: 'data-act="journal"' },
+        { label: "Logged 5 trades in the journal", done: js.count >= 5, xp: 75, act: 'data-act="journal"' },
       ] },
       { name: "Build the discipline", pace: "weeks 2–4", steps: [
-        { label: "Logged 5 trades in the journal", done: js.count >= 5, xp: 75, act: 'data-act="journal"' },
+        { label: "Logged 10 trades in your journal", done: js.count >= 10, xp: 75, act: 'data-act="journal"' },
         { label: "First weekly review banked", done: wk.length >= 1, xp: 75, act: 'data-act="weeklyreview"' },
         { label: "First profitable week", done: js.netR > 0, xp: 100, act: 'data-act="journal"' },
         { label: "Held a 7-day streak", done: bestStreak() >= 7, xp: 75 },
       ] },
       { name: "Prove the edge", pace: "months 1–2", steps: [
-        { label: "60% win rate over 10+ trades", done: js.winRate >= 60 && js.count >= 10, xp: 150, act: 'data-act="journal"' },
+        { label: "Sixty percent win rate over twenty plus logged trades on the app", done: js.winRate >= 60 && js.count >= 20, xp: 150, act: 'data-act="journal"' },
         { label: "Logged 20 trades in the journal", done: js.count >= 20, xp: 200, act: 'data-act="journal"' },
         { label: "Two Trader Scores of 65+", done: wk.filter(w => w.score >= 65).length >= 2, xp: 150, act: 'data-act="weeklyreview"' },
         { label: "Held a 14-day streak", done: bestStreak() >= 14, xp: 100 },
       ] },
       { name: "Trade it like a pro", pace: "the long game", steps: [
-        { label: "Profit factor above 2.0 over 30 trades", done: js.pf >= 2 && js.count >= 30, xp: 250, act: 'data-act="journal"' },
+        // pf = total wins / total losses; need >= 2 over 30+ journal trades
+        { label: "Your wins are twice your losses — 30+ trades logged", done: js.pf >= 2 && js.count >= 30, xp: 250, act: 'data-act="journal"' },
         { label: "Held a 30-day streak", done: bestStreak() >= 30, xp: 250 },
         { label: "Four weekly reviews banked", done: wk.length >= 4, xp: 200, act: 'data-act="weeklyreview"' },
-        { label: `Cracked the top 5 on ${B.floor}`, done: myRank() <= 5, xp: 300, act: 'data-act="members"' },
+        { label: "Logged 40 trades in the journal", done: js.count >= 40, xp: 300, act: 'data-act="journal"' },
       ] },
     ];
   }
@@ -1388,33 +1380,13 @@
           return `<button class="as-btn jny-row ${s.done ? "is-done" : isNext ? "is-next" : ""}" ${(!s.done && s.act) || ""} ${s.done ? 'aria-disabled="true"' : ""}>
             <span class="jny-node">${s.done ? ic("i-check", "ic") : ""}</span>
             <span class="jny-label">${s.label}</span>
-            ${s.done ? "" : isNext ? `<span class="jny-next">Next up${s.xp ? ` · +${s.xp} XP` : ""}</span>` : s.xp ? `<span class="jny-xp num">+${s.xp} XP</span>` : ""}
+            ${s.done ? "" : s.cta ? `<span class="jny-next">${s.cta}</span>` : isNext ? `<span class="jny-next">Next up${s.xp ? ` · +${s.xp} XP` : ""}</span>` : s.xp ? `<span class="jny-xp num">+${s.xp} XP</span>` : ""}
           </button>`;
         }).join("");
       }).join("")}
       <div class="jny-summit ${summit ? "is-done" : ""}">
         <span class="jny-node">${ic("i-trophy", "ic")}</span>
         <div><b>Consistently profitable</b><small>${summit ? "You made it — this is what the numbers say." : "Where the road leads. Every step above moves you closer."}</small></div>
-      </div>
-    </div>`;
-  }
-
-  // home "on the floor" card — one-tap into the community chat
-  function floorCard() {
-    const seed = D.chatScript[0];
-    const stack = ["MW", "SR", "AK"];
-    return `<div class="card floor-card reveal" data-home-chat style="animation-delay:.05s">
-      <div class="floor-head">
-        <span class="pill pill-live"><span class="dot-live"></span> On ${B.floor} now</span>
-        <span class="floor-online num">4,213 online</span>
-      </div>
-      <div class="floor-msg">
-        ${av(seed.initials, 36)}
-        <div class="floor-bubble"><b>${seed.name} <span class="vchk">✓</span></b>${seed.text}</div>
-      </div>
-      <div class="floor-foot">
-        <div class="floor-stack">${stack.map((i, n) => `<span class="fs-av" style="margin-left:${n ? "-8px" : "0"};z-index:${9 - n}">${av(i, 28, "quiet")}</span>`).join("")}<span class="fs-more">chatting now</span></div>
-        <span class="floor-cta">${ic("i-comm", "ic")} Open chat</span>
       </div>
     </div>`;
   }
@@ -1479,14 +1451,6 @@
         </div>
         <div class="live-host">${av(ci.initials, 36)}<div><b>${ci.host} <span class="vchk">✓</span></b><small>Hosting · ${ci.session}</small></div></div>
         <div class="mark-chip" id="mark-chip" role="status" aria-live="polite"></div>
-      </div>
-      <div class="live-chatbox">
-        <div class="live-chat2" id="chat"></div>
-        <div class="live-compose2">
-          <div class="live-input">Say something to the floor…</div>
-          <button class="react-btn" data-react="🔥">🔥</button>
-          <button class="react-btn" data-react="💎">💎</button>
-        </div>
       </div>`;
   }
   function liveLobbyHtml(nc) {
@@ -1498,8 +1462,7 @@
           <div class="lobby-host">${nc ? `with ${nc.host} · ${callDayLabel(nc)} ${nc.at}` : "Schedule coming up"}</div>
           <div class="countdown lobby-cd" id="lobby-cd"></div>
           <div class="lobby-actions">
-            <button class="btn btn-gold" data-act="remind-call">${ic("i-bell")} ${remindBtnLabel(nc)}</button>
-            <button class="btn btn-ghost" data-act="add-cal">${ic("i-cal")} Add to calendar</button>
+            <button class="btn btn-gold btn-block" data-act="remind-call">${ic("i-bell")} ${remindBtnLabel(nc)}</button>
           </div>
         </div>
       </div>`;
@@ -1530,40 +1493,25 @@
         let left = nc ? nc.startsIn : 0;
         const paint = () => { if (!cd) return; const d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; cd.innerHTML = (d > 0 ? `<span class="cd-cell"><b>${d}</b><small>days</small></span>` : "") + `<span class="cd-cell"><b>${String(h).padStart(2,"0")}</b><small>hrs</small></span><span class="cd-cell"><b>${String(m).padStart(2,"0")}</b><small>min</small></span><span class="cd-cell"><b>${String(s).padStart(2,"0")}</b><small>sec</small></span>`; };
         paint();
-        let warned = false; // fire the real 10-minute warning once if the countdown reaches it while reminded
+        let warned = false;
         const lt = setInterval(() => {
           left = left > 0 ? left - 1 : 0; paint();
-          if (!warned && left <= 600 && left > 0 && nc && isReminded(nc)) { warned = true; showPush(`${nc.session} starts in 10 minutes`, `Your live call with ${nc.host} is coming up — get ready to join.`); }
-          if (left <= 0) { if (nc && isReminded(nc)) showPush(`🔴 ${nc.session} has started`, `${nc.host} is live now — tap to join the room.`); go("live"); }
+          if (!isNativeApp()) {
+            if (!warned && left <= 900 && left > 0 && nc && isReminded(nc)) { warned = true; showPush(`${nc.session} starts in 15 minutes`, `Your live call with ${nc.host} is coming up — get ready to join.`); }
+            if (left <= 0 && nc && isReminded(nc)) showPush(`🔴 ${nc.session} has started`, `${nc.host} is live now — tap to join the room.`);
+          }
+          if (left <= 0) go("live");
         }, 1000);
         cleanups.push(() => clearInterval(lt));
       }
-      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => { if (nc && setReminder(nc)) { toast("We'll alert you 10 minutes before the call", "i-bell"); previewCallAlerts(nc); } else toast("Reminder already set", "i-check"); rm.innerHTML = ic("i-bell") + " Reminder set ✓"; };
-      const ac = $("[data-act=add-cal]"); if (ac) ac.onclick = () => downloadCallIcs(nc);
+      const rm = $("[data-act=remind-call]"); if (rm) rm.onclick = () => handleRemindClick(nc, rm);
       wireCommon();
       return;
     }
     // watchers ticker
     let w = v.watchers;
     const wt = setInterval(() => { if (document.hidden) return; const el = $("#watchers"); if (el) { w += Math.floor(Math.random() * 9) - 3; el.textContent = w.toLocaleString(); } }, 2600);
-    // chat playback
-    const chat = $("#chat"); let ci = 0;
-    function push() {
-      const m = D.chatScript[ci % D.chatScript.length]; ci++;
-      const node = document.createElement("div");
-      node.className = "chat-msg" + (m.host ? " host" : "");
-      node.innerHTML = m.host
-        ? `<div class="ct"><b>${m.name} · ${m.name === B.founderFirst ? "Founder" : "Host"}</b>${m.text}</div>`
-        : `${av(m.initials, 28, "quiet")}<div class="ct"><b>${m.name}</b>${m.text}</div>`;
-      chat.appendChild(node);
-      while (chat.children.length > 14) chat.removeChild(chat.firstChild);
-      chat.scrollTop = chat.scrollHeight;
-    }
-    push(); push(); push();
-    const ct = setInterval(() => { if (!document.hidden) push(); }, 2400);
-    // auto reactions
-    const rt = setInterval(() => { if (document.hidden || reduceMotion()) return; if (Math.random() > .4) flyReaction(Math.random() > .5 ? "🔥" : "💎"); }, 1500);
-    cleanups.push(() => { clearInterval(wt); clearInterval(ct); clearInterval(rt); });
+    cleanups.push(() => { clearInterval(wt); });
     // founder chart markup → "marking the chart" chip
     const lcv = $("#live-canvas");
     if (lcv) {
@@ -1577,20 +1525,9 @@
       lcv.addEventListener("chart-mark", onMark);
       cleanups.push(() => { clearTimeout(mkT); lcv.removeEventListener("chart-mark", onMark); });
     }
-    [...document.querySelectorAll("[data-react]")].forEach(b => b.onclick = () => { flyReaction(b.dataset.react, b); });
     const ex = $("#live-exit"); if (ex) ex.onclick = () => { livePreview = false; SCREENS.live(); };
     wireCommon();
   };
-
-  function flyReaction(emoji, btn) {
-    const stage = $("#live-stage"); if (!stage) return;
-    const s = document.createElement("div"); s.className = "react-fly"; s.textContent = emoji;
-    const r = stage.getBoundingClientRect();
-    let x = r.width - 60 + (Math.random() * 30 - 15), y = r.height - 90;
-    if (btn) { const br = btn.getBoundingClientRect(); x = br.left - r.left + 6; y = br.top - r.top; }
-    s.style.left = x + "px"; s.style.top = y + "px"; s.style.setProperty("--rot", (Math.random() * 30 - 15) + "deg");
-    stage.appendChild(s); setTimeout(() => s.remove(), 2500);
-  }
 
   // ============================ LEARN ============================
   let learnCat = "For you";
@@ -1913,20 +1850,12 @@
         <span class="eyebrow">Trader of the week</span>
         ${av(w.initials, 64)}
         <div class="name gold-text">${w.name}</div>
-        <div class="handle num">${w.handle}</div>
-        <div class="stats">
-          <div><b class="num up">${w.ret}</b><small>Return</small></div>
-          <div><b class="num">${w.trades}</b><small>Trades</small></div>
-          <div><b class="num">${w.winRate}</b><small>Win rate</small></div>
-        </div>
-        <p class="sub" style="margin-top:15px;font-style:italic">“${w.quote}”</p>
+        ${w.handle ? `<div class="handle num">${w.handle}</div>` : ""}
+        ${w.quote ? `<p class="sub" style="margin-top:15px;font-style:italic">“${w.quote}”</p>` : ""}
       </div>
       <div class="comm-actions">
-        <button class="comm-act" data-act="chat">${ic("i-comm")}<span><b>Community chat</b><small>The floor, all day</small></span></button>
         <button class="comm-act" data-act="challenge">${ic("i-flame")}<span><b>Monthly challenge</b><small>${liveChallenge().done}/${liveChallenge().total} days</small></span></button>
       </div>
-      <div class="section-head"><span class="h2">Leaderboard</span><span class="more">This week</span></div>
-      ${liveLeaderboard().map(lbRow).join("")}
       <div class="section-head"><span class="h2">Your badges</span></div>
       <div class="badges">${liveBadges().map(b => `<div class="badge-it ${b.on ? "on" : "off"}"><div class="ring2">${ic(b.ic, "bdg-ic")}</div><small>${b.name}</small></div>`).join("")}</div>
       <div class="section-head"><span class="h2">From the floor</span></div>
@@ -1937,7 +1866,6 @@
       n += liked ? 1 : -1; c.dataset.n = n; c.textContent = n;
       const p = D.posts[i]; if (p) { p.liked = liked; p.likes = n; savePosts(); } // DOM order mirrors D.posts — persist so likes survive re-render
     });
-    const cbtn = body.querySelector("[data-act=chat]"); if (cbtn) cbtn.onclick = openChat;
     const chbtn = body.querySelector("[data-act=challenge]"); if (chbtn) chbtn.onclick = openChallenge;
   }
   function openJournalEntry(id) {
@@ -2511,16 +2439,6 @@
     renderUpload();
   }
 
-  function lbRow(r) {
-    const medalCls = r.rank === 1 ? "m1" : r.rank === 2 ? "m2" : r.rank === 3 ? "m3" : "";
-    const dn = r.delta.startsWith("+") ? "up" : r.delta.startsWith("-") ? "down" : "";
-    return `<div class="lb-row ${r.top?"top":""}" style="${r.me?"border-color:rgba(224,178,60,.4);background:rgba(224,178,60,.06)":""}">
-      <div class="rank num ${medalCls}">${r.rank}</div>
-      ${av(r.initials, 36, r.top ? "" : "quiet")}
-      <div class="nm"><b>${r.name}${r.me?' · You':''}</b><small class="num">${r.handle}</small></div>
-      <div style="text-align:right"><div class="pts num">${r.pts}</div><div class="delta num ${dn}">${r.delta!=="0"?r.delta:"—"}</div></div>
-    </div>`;
-  }
   function post(p) {
     return `<div class="card post">
       <div class="post-head">${av(p.initials, 44, p.me ? "" : "quiet")}
@@ -2624,7 +2542,7 @@
   }
 
   // ============================ PROFILE ============================
-  // ── profile: real "Your numbers" + next-milestone, derived from the journal + leaderboard ──
+  // ── profile: real "Your numbers" + next-milestone, derived from the journal ──
   function sessionStats() {
     const J = D.journal || [];
     return ["London", "New York", "Asia"].map(s => {
@@ -2635,10 +2553,9 @@
   }
   function bestTrade() { const J = D.journal || []; return J.length ? Math.max(...J.map(j => j.r || 0)) : 0; }
   function nextUp() {
-    const st = journalStats(), lb = liveLeaderboard(), me = lb.findIndex(r => r.me), out = [];
+    const st = journalStats(), out = [];
     const goals = [{ name: "Journaled 40 trades", t: 40 }, { name: "100 trades logged", t: 100 }].filter(g => st.count < g.t);
     if (goals.length) { const g = goals.sort((a, b) => (a.t - st.count) - (b.t - st.count))[0]; out.push({ label: g.name, val: `${st.count} / ${g.t}`, pct: Math.round(st.count / g.t * 100) }); }
-    if (me > 0) { const ab = lb[me - 1], gap = ab._p - lb[me]._p; out.push({ label: `Overtake ${ab.name.split(" ")[0]} for #${me}`, val: `${gap} pts to go`, pct: Math.round(lb[me]._p / ab._p * 100) }); }
     return out;
   }
   SCREENS.profile = function () {
@@ -2695,7 +2612,6 @@
       <div class="section-head"><span class="h2">Community & tools</span></div>
       <div class="card card-pad">
         ${hubRow("i-flame","Monthly challenge","Journal every trade · 30 days","challenge")}
-        ${hubRow("i-comm","Members & following","4,200+ on the floor","members")}
         ${hubRow("i-share","Invite a trader","Grow the community","invite")}
         ${hubRow("i-book","Trading glossary","Key terms, explained","glossary")}
         ${hubRow("i-bell","Notifications","Choose what pings you","settings")}
@@ -2724,13 +2640,13 @@
     [...document.querySelectorAll(".toggle")].forEach(t => t.onclick = () => {
       const on = t.classList.toggle("on");
       t.setAttribute("aria-checked", on);
-      if (t.id === "set1") setSetting("push", on);
+      if (t.id === "set1") { setSetting("push", on); if (on) markPushEnabled(); }
       else if (t.id === "set2") setSetting("liveReminders", on);
       toast(on ? "Turned on" : "Turned off", on ? "i-check" : null);
     });
     const bk = $("[data-back]"); if (bk) bk.onclick = () => go("home");
     const so = $("#sign-out"); if (so) so.onclick = signOut;
-    const sup = $('[data-act="support"]'); if (sup) sup.onclick = openTgSupport;
+    const sup = $('[data-act="support"]'); if (sup) sup.onclick = openAriaSupport;
     const themeBtn = $('[data-act="theme"]'); if (themeBtn) themeBtn.onclick = () => themeFade(t => { toast(t === "light" ? "Light mode on" : "Dark mode on", "i-moon"); SCREENS.profile(); });
     const acctBtn = $('[data-act="account"]'); if (acctBtn) acctBtn.onclick = openAccountSecurity;
     const ep = $("#edit-profile"); if (ep) ep.onclick = openEditProfile;
@@ -3096,7 +3012,6 @@
     (D.schedule || []).forEach(c => {
       if (isReminded(c)) out.push({ k: "rem-" + c.session, icon: "i-bell", text: `Reminder set · ${c.session} (${c.at} UK)`, time: "scheduled", unread: false, go: "live" });
     });
-    out.push({ k: "leaderboard", icon: "i-trophy", text: `You're #${myRank()} on the weekly leaderboard`, time: "now", unread: true, go: "community" });
     return out;
   }
   // state-driven bell badge — "mark all read" persists instead of un-doing itself on the next render
@@ -3110,7 +3025,7 @@
   function openNotifications() {
     const groups = {};
     liveNotifs().forEach(n => (groups.Today = groups.Today || []).push(n));
-    D.notifications.filter(n => n.go !== "live" && !/leaderboard/i.test(n.text)).forEach(n => (groups[n.group] = groups[n.group] || []).push(n));
+    D.notifications.filter(n => n.go !== "live").forEach(n => (groups[n.group] = groups[n.group] || []).push(n));
     const sec = g => groups[g] ? `<div class="eyebrow muted" style="margin:16px 2px 9px">${g}</div>` +
       groups[g].map(n => `<button class="notif ${n.unread ? "unread" : ""}" data-go="${n.go}">${ic(n.icon, "nicon")}<span class="ntext">${n.text}</span><span class="ntime num">${n.time}</span></button>`).join("") : "";
     openModal(`
@@ -3145,72 +3060,11 @@
   }
 
 
-  function phantomRoomsHtml() {
-    const rooms = (D.welcome && D.welcome.roomCards) || [
-      { title: "High RR", gate: "confident", body: "High risk-to-reward setups via market structure, supply & demand, FVGs, IFVGs and SMT divergence — larger moves, disciplined risk." },
-      { title: "RR Trader", gate: "confident", body: "High-quality setups with favourable risk-to-reward. Disciplined, high-probability signals throughout the trading day." },
-      { title: "Education", gate: null, body: "Step-by-step training, chart analysis and strategies — build knowledge at your own pace until you're a confident, independent trader." },
-    ];
-    return `<div class="section-head"><span class="h2">Phantom Group rooms</span><span class="more num">${rooms.length}</span></div>
-      <p class="sub" style="margin:0 2px 8px">From the Welcome guide — advanced rooms are for when you're confident.</p>
-      <div class="phantom-rooms">${rooms.map(r => `<div class="phantom-room"><div class="pr-top"><b>${r.title}</b>${r.gate === "confident" ? `<span class="chan-gate">Confident only</span>` : ""}</div><p>${r.body}</p></div>`).join("")}</div>
-      <p class="ob-disclaimer" style="max-width:none;margin:10px 2px 4px"><b>Disclaimer.</b> ${(D.welcome && D.welcome.disclaimer) || "Nothing in here is given as financial advice."}</p>`;
-  }
-
-  // ---------- signals: Telegram directory (calls live in Telegram — not in-app) ----------
-  SCREENS.signals = function () {
-    setScreen(`
-      ${topbar()}
-      <div class="app-head"><div class="who"><div><small>${ic("i-tg","ic")} Telegram channels</small><b>Trade Signals</b></div></div></div>
-      <p class="sub" style="margin:0 2px 8px">Every live call is posted in Telegram. This tab is your channel directory — use Support to get onboarded.</p>
-      ${telegramOnboardCard()}
-      <div class="nfa nfa-snug">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
-      <div class="section-head section-head-snug"><span class="h2">Channels</span><span class="more num">${D.channels.length}</span></div>
-      <p class="sub" style="margin:0 2px 8px">Once you're onboarded, you'll receive calls in the matching Telegram group for each desk.</p>
-      ${D.channels.map(channelCard).join("")}
-      ${phantomRoomsHtml()}
-      ${signalIqCard()}
-      <p class="sub" style="font-size:11px;text-align:center;margin-top:14px;color:var(--faint)">Not in the groups yet? Message <b>@${B.handle}</b> on Telegram.</p>
-      <div class="spacer"></div>`);
-    [...document.querySelectorAll("[data-chan]")].forEach(n => n.onclick = () => openChannel(n.dataset.chan));
-    [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
-  };
-  function openIdeas() { setSetting("ideasSeen", true); go("signals"); } // alias for the Home link / notifications
-  function chanMark(c, extra) {
-    const cls = `chan-mark ${c.tone || ""}${extra ? " " + extra : ""}${c.img ? " has-img" : ""}`;
-    return c.img
-      ? `<div class="${cls}"><img src="${c.img}" alt="${c.name}" loading="lazy"></div>`
-      : `<div class="${cls}">${c.mark}</div>`;
-  }
-  function channelCard(c) {
-    return `<button class="chan" data-chan="${c.id}">
-      ${chanMark(c)}
-      <div class="chan-body">
-        <div class="chan-top"><b>${c.name}${c.gate === "confident" ? `<span class="chan-gate">Confident only</span>` : ""}</b><span class="tg-badge">${ic("i-tg")} Telegram</span></div>
-        <div class="chan-desc">${c.desc}</div>
-        <div class="chan-meta">Live calls in ${c.handle}</div>
-      </div>
-      ${ic("i-chev", "ic")}
-    </button>`;
-  }
-  let lastChanId = null;
-  function openChannel(id) {
-    const c = D.channels.find(x => x.id === id) || D.channels[0];
-    setScreen(`
-      ${topbar(`<button class="icon-btn back-btn" data-back>${ic("i-chev")}</button>`)}
-      <div class="chan-head">
-        ${chanMark(c, "big")}
-        <div><div class="chan-title">${c.name}${c.gate === "confident" ? ` <span class="chan-gate">Confident only</span>` : ""}${c.bot ? ` <span class="pill pill-gold" style="height:20px;font-size:10px">🤖 Mechanical</span>` : ""}${c.host ? ` <span class="sub" style="font-size:11px"> · ${c.host}</span>` : ""}</div><div class="chan-handle num">${c.handle}</div></div>
-      </div>
-      <p class="sub" style="margin:11px 2px">${c.desc}</p>
-      <div class="nfa">${ic("i-shield","ic")} Educational only · not financial advice · capital at risk</div>
-      ${telegramOnboardCard({ title: `Join ${c.name}`, body: `This desk posts live calls in Telegram. Message ${B.name} Support — @${B.handle} — to get onboarded and added to the right groups.` })}
-      <div class="spacer"></div>`);
-    [...document.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.tab === "signals"));
-    activeTab = "signals";
-    lastChanId = id;
-    $("[data-back]").onclick = openIdeas;
-    [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
+  function openTgAccess() {
+    setSetting("ideasSeen", true);
+    setSetting("sigDay", ymd());
+    checkStreakEarned();
+    openTgSupport();
   }
 
   // ---------- shared wiring ----------
@@ -3414,7 +3268,7 @@
     const s = $("#inv-share"); if (s) s.onclick = () => toast("Share to anyone", "i-share");
   }
   function openSettings() {
-    const opts = ["Telegram signals", "Live call starting", "Replies & mentions", "Leaderboard moves", "Economic news", "Streak reminders"];
+    const opts = ["Telegram signals", "Live call starting", "Replies & mentions", "Trader of the week", "Economic news", "Streak reminders"];
     const prefs = getNotifPrefs();
     openModal(`<h3 class="sheet-title">Notifications</h3><p class="sheet-sub">Choose what pings you.</p><div class="settings">${opts.map((o, i) => `<div class="set-row"><span>${o}</span><button class="tgl ${prefs[i] ? "on" : ""}" data-set="${i}" role="switch" aria-checked="${!!prefs[i]}" aria-label="${o}"><span></span></button></div>`).join("")}</div>`);
     [...document.querySelectorAll("[data-set]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("on"); b.setAttribute("aria-checked", on); setNotifPref(+b.dataset.set, on); });
@@ -3436,28 +3290,14 @@
       <button class="btn ${c.joined ? "btn-ghost" : "btn-gold"} btn-block" id="chal-join" style="margin-top:16px">${c.joined ? "You're in ✓" : "Join challenge"}</button></div>`);
     const j = $("#chal-join"); if (j) j.onclick = () => { saveChallenge({ joined: true }); j.className = "btn btn-ghost btn-block"; j.textContent = "You're in ✓"; toast("Joined — log a trade today", "i-check"); };
   }
-  function openMembers() {
-    const W = D.welcome || {};
-    const ma = W.membersArea || {};
-    const groups = (W.subgroups || []).map(g => `<div class="ob-group" style="margin:0"><b>${g.name}</b>${g.gate === "confident" ? `<span class="ob-gate">Confident only</span>` : ""}</div>`).join("");
-    const rows = liveLeaderboard().map(m => `<div class="mem-row">${av(m.initials, 40, m.top ? "" : "quiet")}<div class="mem-body"><b>${m.name}${m.me ? " · You" : ""}</b><small class="num">${m.handle}</small></div>${m.me ? "" : `<button class="btn btn-ghost btn-sm" data-f>Follow</button>`}</div>`).join("");
-    openModal(`<h3 class="sheet-title">${ma.title || "Members Area"}</h3>
-      <p class="sheet-sub">${ma.body || ((4200).toLocaleString() + "+ on the floor.")}</p>
-      <div class="ob-groups" style="margin:12px 0 16px">${groups}</div>
-      <p class="ob-disclaimer" style="max-width:none;margin:0 0 12px"><b>Disclaimer.</b> ${W.disclaimer || "Nothing in here is given as financial advice."}</p>
-      <div class="section-head" style="margin-top:4px"><span class="h3">On the floor</span></div>
-      <div class="mem">${rows}</div>`);
-    [...document.querySelectorAll("[data-f]")].forEach(b => b.onclick = () => { const on = b.classList.toggle("following"); b.textContent = on ? "Following ✓" : "Follow"; });
-  }
-
   // ============================ MONETISATION + FOUNDER (the money story) ============================
   const IB = B.vipModel !== "paid"; // partner-funded VIP: verified via the founder's broker IB list
   const PLANS = [
-    { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Trade signals in Telegram (via Support)", "Community chat & the floor", "Education previews", "Economic calendar & tools"] },
+    { id: "free", name: "Free", tag: "The floor", cta: "Current plan", cur: true, feats: ["Trade signals in Telegram (via Support)", "Education previews & tools", "Economic calendar", "Journal & progress tracking"] },
     { id: "vip", name: `${B.short} VIP`, tag: "Full app + live room", gold: true, ib: IB, cta: IB ? `Unlock with ${B.broker}` : "Upgrade to VIP", feats: ["All Telegram signal groups (via Support)", "The live trading room, every session", "Complete education library (176+ lessons)", "Priority onboarding & member perks"] },
     { id: "inner", name: "Inner Circle", tag: "Everything + mentorship", cta: "Upgrade", feats: ["Everything in VIP", "1-to-1 trade reviews with the team", "Priority in the live room", "In-person Training Hub access"] },
   ];
-  function rerenderAfterTier() { if (lastChanId) openChannel(lastChanId); else if (SCREENS[activeTab]) SCREENS[activeTab](); }
+  function rerenderAfterTier() { if (SCREENS[activeTab]) SCREENS[activeTab](); }
   function openMembership() {
     const tierNow = effectiveTier(), lapsed = vipLapsed();
     const cards = PLANS.map(t => {
@@ -3663,41 +3503,6 @@
     setTimeout(dismiss, (opts && opts.holdMs) || 5200);
   }
 
-  function openChat() {
-    const hist = pState().chatHistory || [];
-    const seed = D.chatScript.slice(0, 8);
-    const renderMsg = m => `<div class="cmsg ${m.host ? "host" : ""}${m.me ? " me" : ""}">${m.me ? "" : av(m.initials, 30, "quiet")}<div class="ct"><b>${m.name}${m.host ? " · Host" : m.me ? " · You" : ""}</b>${m.text}</div></div>`;
-    openModal(`<h3 class="sheet-title">Community chat</h3><p class="sheet-sub">The floor, all day.</p><div class="cchat" id="cchat-feed">${seed.map(renderMsg).join("")}${hist.map(renderMsg).join("")}</div><div class="cchat-in"><input class="finput" id="cchat-in" placeholder="Message ${B.floor}…" aria-label="Message ${B.floor}"><button class="btn btn-gold" id="cchat-send" aria-label="Send message" style="height:48px;flex:none;padding:0 15px">${ic("i-send")}</button></div>`);
-    const feed = $("#cchat-feed"); feed.scrollTop = feed.scrollHeight;
-    const append = (m) => { feed.insertAdjacentHTML("beforeend", renderMsg(m)); feed.scrollTop = feed.scrollHeight; };
-    // demo replies — local echo only; a real build wires this to Arron's live community
-    let sent = hist.length;
-    const floorReplies = [
-      { name: "Marcus", initials: "MW", text: "👊 welcome to the floor" },
-      { name: B.founder, initials: B.founderInitials, host: true, text: "Good to have you. Risk first, profit second — always." },
-      { name: "Sofia", initials: "SR", text: "we're all on 4,025 too 👀" },
-      { name: "Aisha", initials: "AK", text: "🙌" },
-      { name: B.founder, initials: B.founderInitials, host: true, text: "Drop your entry + stop when you take it — we review them live." },
-      { name: "Daniel", initials: "DO", text: "same, waiting on the reclaim 🧘" },
-    ];
-    const send = () => {
-      const inp = $("#cchat-in"), txt = (inp.value || "").trim(); if (!txt) return;
-      const safe = txt.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-      const mine = { name: D.user.name, initials: D.user.initials, text: safe, me: true };
-      append(mine);
-      inp.value = "";
-      pSet({ chatHistory: [...(pState().chatHistory || []), mine].slice(-100) }); // cap — the blob is re-parsed on every state read
-      const reply = sent === 0
-        ? { name: B.founder, initials: B.founderInitials, text: `Welcome to ${B.floor}, ${D.user.first} — good to have you here.`, host: true }
-        : floorReplies[(sent - 1) % floorReplies.length];
-      sent++;
-      setTimeout(() => append(reply), 750 + Math.random() * 500);
-    };
-    const btn = $("#cchat-send"), inp = $("#cchat-in");
-    if (btn) btn.onclick = send;
-    if (inp) inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } };
-  }
-
   // ============================ ACADEMY + TRACK RECORD ============================
   function nextLessonTarget() { // the lesson to feature on Learn: the in-progress path first, else the first unfinished one
     const cand = D.paths.find(p => { const d = pathDone(p.id); return d > 0 && d < p.lessons; }) || D.paths.find(p => pathDone(p.id) < p.lessons);
@@ -3856,7 +3661,7 @@
     [...document.querySelectorAll("[data-idea]")].forEach(n => n.onclick = () => openIdea(n.dataset.idea));
     [...document.querySelectorAll("[data-act=notif]")].forEach(n => n.onclick = openNotifications);
     [...document.querySelectorAll("[data-act=theme-top]")].forEach(n => n.onclick = () => themeFade(t => { n.innerHTML = ic(t === "light" ? "i-moon" : "i-sun"); toast(t === "light" ? "Light mode" : "Dark mode", "i-moon"); }));
-    [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openIdeas);
+    [...document.querySelectorAll("[data-act=ideas]")].forEach(n => n.onclick = openTgAccess);
     [...document.querySelectorAll("[data-act=journal]")].forEach(n => n.onclick = () => { circleTab = "journal"; go("community"); });
     [...document.querySelectorAll("[data-act=profile]")].forEach(n => n.onclick = () => go("profile"));
     // account: native shell owns sign-out → bridge to its settings screen; plain web gets the in-app sheet
@@ -3874,22 +3679,21 @@
     [...document.querySelectorAll("[data-act=settings]")].forEach(n => n.onclick = openSettings);
     [...document.querySelectorAll("[data-act=announce]")].forEach(n => n.onclick = openAnnouncements);
     [...document.querySelectorAll("[data-act=challenge]")].forEach(n => n.onclick = openChallenge);
-    [...document.querySelectorAll("[data-act=members]")].forEach(n => n.onclick = openMembers);
     [...document.querySelectorAll("[data-act=membership]")].forEach(n => n.onclick = openMembership);
     [...document.querySelectorAll("[data-act=verifyib]")].forEach(n => n.onclick = openVerifyBroker);
     [...document.querySelectorAll("[data-act=office]")].forEach(n => n.onclick = () => go("office"));
     [...document.querySelectorAll("[data-act=weeklyreview]")].forEach(n => n.onclick = openWeeklyReview);
     [...document.querySelectorAll("[data-act=checkin]")].forEach(n => n.onclick = openDailyCheckin);
+    [...document.querySelectorAll("[data-act=enable-push]")].forEach(n => n.onclick = handleEnablePush);
     [...document.querySelectorAll("[data-act=story]")].forEach(n => n.onclick = openStories);
+    [...document.querySelectorAll("[data-act=ask-aria]")].forEach(n => n.onclick = (e) => openAriaSupport(e));
     [...document.querySelectorAll("[data-act=tg-support]")].forEach(n => n.onclick = openTgSupport);
-    [...document.querySelectorAll("[data-act=chat]")].forEach(n => n.onclick = () => { circleTab = "community"; go("community"); setTimeout(openChat, 60); });
     wireTook();
   }
 
   // ---------- tab bar ----------
   const TABS = [
     { id: "home", label: "Home", icon: "i-home" },
-    { id: "signals", label: "Signals", icon: "i-chart" },
     { id: "live", label: "Live", icon: "i-live", live: true },
     { id: "learn", label: "Learn", icon: "i-learn" },
     { id: "community", label: "Journal", icon: "i-book" },
@@ -3908,6 +3712,19 @@
         <span class="tab-cluster">${ic(t.icon)}${t.live && cue ? '<span class="dot"></span>' : ""}</span>${t.label}</button>`).join("");
     [...document.querySelectorAll("#tabbar .tab")].forEach(b => b.onclick = () => go(b.dataset.tab));
   }
+
+  // Capture-phase bridge — survives re-renders; beats tab bar hit targets stealing taps.
+  (function wireAriaBridge() {
+    if (window.__btAriaWired) return;
+    window.__btAriaWired = true;
+    const stale = document.getElementById("aria-fab");
+    if (stale) stale.remove();
+    document.addEventListener("click", (e) => {
+      const el = e.target && e.target.closest && e.target.closest("[data-act=ask-aria], .ask-pill");
+      if (!el) return;
+      openAriaSupport(e);
+    }, true);
+  })();
 
   // ---------- login + boot ----------
   function showLogin() {
@@ -3929,7 +3746,7 @@
           <button class="social-btn" data-soc aria-label="Continue with Google">${googleSvg()}</button>
           <button class="social-btn" data-soc aria-label="Continue with Telegram">${tgSvg()}</button>
         </div>
-        <p class="login-foot">Free for members — funded by our partners.<br>By continuing you agree to the Terms & Privacy Policy.</p>
+        <p class="login-foot">Free for members — funded by our partners.<br>By continuing you agree to the <a href="legal/terms.html" target="_blank" rel="noopener">Terms</a> &amp; <a href="legal/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
       </div>`;
     $("#app").appendChild(el);
     requestAnimationFrame(() => Charts.initIn(el));
@@ -4085,6 +3902,7 @@
     if (sc) sc.addEventListener("scroll", () => { const tb = $("#screen .app-topbar"); if (tb) tb.classList.toggle("scrolled", sc.scrollTop > 8); }, { passive: true });
     fitDevice();
     hydrateProfile(); // journal + streak + points from device storage (seeds the demo journal first run)
+    window.__btMarkPushEnabled = markPushEnabled;
     renderPaperPill(); // restore an open paper position across reloads
     // hydrate the economic calendar from cache (instant), then refresh from the live proxy
     try { const c = JSON.parse(localStorage.getItem("bt_cal") || "null"); if (c && c.d && c.d.length && (Date.now() - c.t) < 12 * 36e5) liveCal = c.d; } catch (e) {}
